@@ -195,7 +195,7 @@ class UIController {
   }
 
   /**
-   * Display songs in UI
+   * Display songs as full lead sheets with transpose controls
    */
   displaySongs() {
     if (!this.currentSongs || this.currentSongs.length === 0) {
@@ -209,10 +209,10 @@ class UIController {
     // Clear container
     this.elements.songsContainer.innerHTML = '';
     
-    // Create song cards
-    this.currentSongs.forEach(song => {
-      const songCard = this.createSongCard(song);
-      this.elements.songsContainer.appendChild(songCard);
+    // Create full lead sheet view for each song
+    this.currentSongs.forEach((song, index) => {
+      const songSheet = this.createLeadSheetView(song, index);
+      this.elements.songsContainer.appendChild(songSheet);
     });
     
     // Show sections
@@ -222,41 +222,141 @@ class UIController {
   }
 
   /**
-   * Create song card HTML
+   * Create full lead sheet view with transpose controls
    */
-  createSongCard(song) {
-    const card = document.createElement('div');
-    card.className = 'song-card';
-    card.setAttribute('data-song-id', song.id);
+  createLeadSheetView(song, index) {
+    const sheet = document.createElement('div');
+    sheet.className = 'lead-sheet';
+    sheet.setAttribute('data-song-id', song.id);
     
-    card.innerHTML = `
-      <div class="song-title">
-        <span>${this.escapeHtml(song.title)}</span>
-        <div class="key-indicator" id="keyIndicator-${song.id}">${song.currentKey}</div>
-      </div>
-      
-      <div class="song-meta">
-        <span>Original Key: ${song.originalKey}</span>
-        <span>Confidence: ${Math.round(song.keyConfidence * 100)}%</span>
-        <span>Chords: ${song.chords.length}</span>
-      </div>
-      
-      <div class="transpose-controls">
-        <button class="transpose-button" onclick="transposeApp.transposeSong(${song.id}, -1)">-</button>
-        <div class="transpose-value" id="transposeValue-${song.id}">0</div>
-        <button class="transpose-button" onclick="transposeApp.transposeSong(${song.id}, 1)">+</button>
-      </div>
-      
-      <div class="chord-preview" id="chordPreview-${song.id}">
-        ${this.escapeHtml(song.chordsPreview)}
+    // Create transpose controls bar
+    const controlsBar = `
+      <div class="song-controls">
+        <div class="song-header">
+          <h2 class="song-title">${this.escapeHtml(song.title)}</h2>
+          <div class="song-info">
+            <span class="key-indicator" id="keyIndicator-${song.id}">${song.currentKey}</span>
+            <span class="original-key">Original: ${song.originalKey}</span>
+          </div>
+        </div>
+        
+        <div class="transpose-controls">
+          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, -1)" title="Transpose down">♭</button>
+          <div class="transpose-display">
+            <div class="transpose-value" id="transposeValue-${song.id}">0</div>
+            <div class="transpose-label">semitones</div>
+          </div>
+          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, 1)" title="Transpose up">♯</button>
+        </div>
       </div>
     `;
     
-    return card;
+    // Create the lead sheet content area
+    const leadSheetContent = this.renderLeadSheetContent(song);
+    
+    sheet.innerHTML = `
+      ${controlsBar}
+      <div class="lead-sheet-content" id="leadSheet-${song.id}">
+        ${leadSheetContent}
+      </div>
+    `;
+    
+    return sheet;
+  }
+  
+  /**
+   * Render the actual lead sheet content with chords and lyrics
+   */
+  renderLeadSheetContent(song) {
+    const lines = song.songText.split('\n');
+    const musicTheory = new MusicTheory();
+    let html = '';
+    
+    lines.forEach((line, lineIndex) => {
+      const trimmedLine = line.trim();
+      if (trimmedLine.length === 0) {
+        html += '<div class="lead-sheet-line empty-line">&nbsp;</div>';
+        return;
+      }
+      
+      // Check if line contains chords
+      const chords = musicTheory.extractChords(trimmedLine);
+      const hasChords = chords.length > 0;
+      
+      if (hasChords) {
+        // Render chord line
+        html += `<div class="lead-sheet-line chord-line" data-line="${lineIndex}">`;
+        html += this.renderChordsInLine(trimmedLine, chords, song.transposition, musicTheory);
+        html += '</div>';
+      } else {
+        // Render lyric/text line
+        const className = this.getLineType(trimmedLine);
+        html += `<div class="lead-sheet-line ${className}">${this.escapeHtml(trimmedLine)}</div>`;
+      }
+    });
+    
+    return html;
+  }
+  
+  /**
+   * Render chords within a line with proper spacing
+   */
+  renderChordsInLine(line, chords, transposition, musicTheory) {
+    if (chords.length === 0) {
+      return this.escapeHtml(line);
+    }
+    
+    let html = '';
+    let lastPos = 0;
+    
+    // Sort chords by position
+    chords.sort((a, b) => a.position - b.position);
+    
+    chords.forEach(chord => {
+      // Add text before chord
+      if (chord.position > lastPos) {
+        html += this.escapeHtml(line.substring(lastPos, chord.position));
+      }
+      
+      // Add transposed chord
+      const transposedChord = transposition === 0 ? 
+        chord.original : 
+        musicTheory.transposeChord(chord.original, transposition);
+      
+      html += `<span class="chord" data-original="${chord.original}" data-transposed="${transposedChord}">${transposedChord}</span>`;
+      
+      lastPos = chord.position + chord.original.length;
+    });
+    
+    // Add remaining text
+    if (lastPos < line.length) {
+      html += this.escapeHtml(line.substring(lastPos));
+    }
+    
+    return html;
+  }
+  
+  /**
+   * Determine the type of text line for styling
+   */
+  getLineType(line) {
+    const upperLine = line.toUpperCase();
+    
+    if (upperLine.includes('VERSE') || upperLine.includes('CHORUS') || 
+        upperLine.includes('BRIDGE') || upperLine.includes('INTRO') ||
+        upperLine.includes('OUTRO') || upperLine.includes('PRE-CHORUS')) {
+      return 'section-header';
+    }
+    
+    if (/^[A-Z\s]+$/.test(line) && line.length > 3) {
+      return 'section-title';  
+    }
+    
+    return 'lyric-line';
   }
 
   /**
-   * Transpose individual song
+   * Transpose individual song with real-time lead sheet updates
    */
   transposeSong(songId, semitones) {
     const song = this.currentSongs.find(s => s.id === songId);
@@ -270,14 +370,47 @@ class UIController {
       const musicTheory = new MusicTheory();
       song.currentKey = musicTheory.transposeChord(song.originalKey, song.transposition);
       
-      // Update UI
-      this.updateSongCard(song);
+      // Update the lead sheet display in real-time
+      this.updateLeadSheetDisplay(song);
       
       // Log the change
       logger.status(`${song.title}: ${song.originalKey} → ${song.currentKey} (${song.transposition > 0 ? '+' : ''}${song.transposition})`, 'info');
       
     } catch (error) {
       this.showError(`Failed to transpose "${song.title}": ${error.message}`);
+    }
+  }
+  
+  /**
+   * Update lead sheet display with new transposition in real-time
+   */
+  updateLeadSheetDisplay(song) {
+    // Update key indicator
+    const keyIndicator = document.getElementById(`keyIndicator-${song.id}`);
+    if (keyIndicator) {
+      keyIndicator.textContent = song.currentKey;
+      keyIndicator.style.backgroundColor = song.transposition !== 0 ? '#ff9800' : '#1976d2';
+    }
+    
+    // Update transpose value display
+    const transposeValue = document.getElementById(`transposeValue-${song.id}`);
+    if (transposeValue) {
+      const displayValue = song.transposition === 0 ? '0' : 
+                          (song.transposition > 0 ? `+${song.transposition}` : `${song.transposition}`);
+      transposeValue.textContent = displayValue;
+      transposeValue.style.color = song.transposition !== 0 ? '#ff9800' : '#666';
+    }
+    
+    // Re-render the entire lead sheet content with new chords
+    const leadSheetContent = document.getElementById(`leadSheet-${song.id}`);
+    if (leadSheetContent) {
+      leadSheetContent.innerHTML = this.renderLeadSheetContent(song);
+      
+      // Add transition effect for smooth chord changes
+      leadSheetContent.style.opacity = '0.7';
+      setTimeout(() => {
+        leadSheetContent.style.opacity = '1';
+      }, 150);
     }
   }
 

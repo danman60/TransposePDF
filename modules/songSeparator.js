@@ -5,21 +5,28 @@
 
 class SongSeparator {
   constructor() {
-    this.SONG_BREAK_THRESHOLD = 50; // pixels between songs
-    this.MIN_SONG_LENGTH = 10; // minimum items per song
+    this.SONG_BREAK_THRESHOLD = 100; // Increased threshold - songs are typically 1-2 pages
+    this.MIN_SONG_LENGTH = 50; // Increased minimum items per song
     this.TITLE_PATTERNS = [
-      /^[A-Z][A-Za-z\s\-\'\"\(\)]{3,50}$/,  // Title case
-      /^[A-Z\s\-\'\"\(\)]{4,50}$/,           // ALL CAPS
-      /^\d+\.\s*[A-Z][A-Za-z\s\-\'\"]{2,45}$/ // Numbered titles
+      /^[A-Z][A-Za-z\s\-\'\"\(\)]{3,50}$/,  // Title case like "King Of Heaven"
+      /^[A-Z\s\-\'\"\(\)]{4,50}$/,           // ALL CAPS titles
+      /^[A-Z][a-z\s]{2,30}$/                 // Simple title case
     ];
     this.IGNORE_PATTERNS = [
       /^©/,                    // Copyright
-      /^CCLI/i,               // CCLI license
+      /^CCLI/i,               // CCLI license  
       /^page\s*\d+/i,         // Page numbers
-      /^\d+$/, 	              // Just numbers
+      /^\d+$/,                // Just numbers
       /^www\./i,              // Website URLs
       /^http/i,               // URLs
-      /^\s*$/                 // Empty strings
+      /^\s*$/,                // Empty strings
+      /^Key\s*-/i,            // Key signatures like "Key - E"
+      /^Tempo\s*-/i,          // Tempo markings
+      /^Time\s*-/i,           // Time signatures
+      /^\([^)]*\)$/,          // Parenthetical info
+      /^[A-Z][a-z]+\s*\|/,    // Author names with pipes
+      /SongSelect/i,          // SongSelect branding
+      /by\s+[A-Z]/i           // "by Author" lines
     ];
   }
 
@@ -57,41 +64,38 @@ class SongSeparator {
   }
 
   /**
-   * Detect boundaries between songs using various heuristics
+   * Detect boundaries between songs using page breaks and bold titles
+   * Optimized for 1-2 pages per song with clear title headers
    */
   detectSongBoundaries(textItems) {
     const boundaries = [0]; // Always start with first item
     
-    for (let i = 1; i < textItems.length; i++) {
-      const current = textItems[i];
-      const previous = textItems[i - 1];
+    // Group items by page first
+    const pageGroups = this.groupTextItemsByPage(textItems);
+    let currentIndex = 0;
+    
+    // Look for song boundaries at page breaks with bold titles
+    for (let pageNum = 1; pageNum <= Object.keys(pageGroups).length; pageNum++) {
+      const pageItems = pageGroups[pageNum] || [];
       
-      // Check for page breaks
-      if (current.pageNum !== previous.pageNum) {
-        const pageBreakScore = this.scorePageBreak(textItems, i);
-        if (pageBreakScore > 0.7) {
-          boundaries.push(i);
-          continue;
-        }
-      }
+      if (pageItems.length === 0) continue;
       
-      // Check for large vertical gaps (within same page)
-      if (current.pageNum === previous.pageNum) {
-        const verticalGap = Math.abs(current.y - (previous.y + previous.height));
-        if (verticalGap > this.SONG_BREAK_THRESHOLD) {
-          const gapScore = this.scoreVerticalGap(textItems, i);
-          if (gapScore > 0.6) {
-            boundaries.push(i);
-            continue;
-          }
-        }
-      }
+      // Find the first large, bold text item on this page (likely title)
+      const titleCandidate = this.findPageTitle(pageItems);
       
-      // Check for title patterns
-      if (this.looksLikeTitle(current)) {
-        const titleScore = this.scoreTitleBreak(textItems, i);
-        if (titleScore > 0.5) {
-          boundaries.push(i);
+      if (titleCandidate && pageNum > 1) { // Don't split before first song
+        // Calculate position in full text array
+        const titleIndex = textItems.findIndex(item => 
+          item.id === titleCandidate.id || 
+          (item.text === titleCandidate.text && 
+           item.pageNum === titleCandidate.pageNum &&
+           Math.abs(item.x - titleCandidate.x) < 5)
+        );
+        
+        if (titleIndex > currentIndex + this.MIN_SONG_LENGTH) {
+          boundaries.push(titleIndex);
+          currentIndex = titleIndex;
+          logger.status(`Found song boundary at "${titleCandidate.text}" (page ${pageNum})`, 'info');
         }
       }
     }
@@ -104,6 +108,52 @@ class SongSeparator {
     
     logger.status(`Found ${uniqueBoundaries.length - 1} potential song boundaries`, 'info');
     return uniqueBoundaries;
+  }
+
+  /**
+   * Group text items by page number
+   */
+  groupTextItemsByPage(textItems) {
+    const pageGroups = {};
+    textItems.forEach(item => {
+      if (!pageGroups[item.pageNum]) {
+        pageGroups[item.pageNum] = [];
+      }
+      pageGroups[item.pageNum].push(item);
+    });
+    return pageGroups;
+  }
+
+  /**
+   * Find the most likely title on a page (large, bold, at top)
+   */
+  findPageTitle(pageItems) {
+    // Sort by Y position (top to bottom) then by font size
+    const candidates = pageItems
+      .filter(item => item.text && item.text.trim().length > 2)
+      .filter(item => !this.shouldIgnoreText(item.text))
+      .sort((a, b) => {
+        // Prioritize items near top of page
+        const yDiff = a.y - b.y;
+        if (Math.abs(yDiff) > 20) return yDiff;
+        
+        // Then by font size (larger first)
+        return (b.fontSize || 12) - (a.fontSize || 12);
+      });
+
+    // Look for bold titles or large font sizes
+    for (const candidate of candidates.slice(0, 5)) { // Check top 5 candidates
+      const isBold = candidate.bold || candidate.fontName?.toLowerCase().includes('bold');
+      const isLargeFont = (candidate.fontSize || 12) > 14;
+      const isTitle = this.looksLikeTitle(candidate);
+      
+      if ((isBold && isTitle) || (isLargeFont && isTitle)) {
+        return candidate;
+      }
+    }
+    
+    // Fallback: return first non-ignored text item
+    return candidates[0] || null;
   }
 
   /**

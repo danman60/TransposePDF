@@ -11,18 +11,34 @@
   }
   
   .songs-container {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2rem;
+    gap: 1.5rem;
+    max-width: none;
   }
   
-  .song-card {
-    padding: 2rem;
+  .song-controls {
+    padding: 1.25rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+  
+  .song-header {
+    text-align: center;
+  }
+  
+  .transpose-controls {
+    justify-content: center;
   }
   
   .transpose-button {
     width: 50px;
     height: 50px;
     font-size: 1.4rem;
+  }
+  
+  .lead-sheet-content {
+    padding: 1.5rem;
+    font-size: 0.9rem;
   }
   
   .upload-area {
@@ -60,12 +76,25 @@
   }
   
   .songs-container {
-    grid-template-columns: 1fr;
     gap: 1rem;
   }
   
-  .song-card {
+  .song-controls {
     padding: 1rem;
+    flex-direction: column;
+  }
+  
+  .song-title {
+    font-size: 1.2rem;
+  }
+  
+  .lead-sheet-content {
+    padding: 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .chord-line {
+    font-size: 0.9rem;
   }
   
   .section-header {

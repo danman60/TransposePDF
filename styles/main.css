@@ -201,34 +201,182 @@ body {
   transform: none;
 }
 
-/* Song Cards */
+/* Lead Sheet Layout */
 .songs-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.song-card {
+.lead-sheet {
   background: var(--surface);
   border-radius: 8px;
   box-shadow: var(--shadow);
-  padding: 1.5rem;
+  overflow: hidden;
   transition: all 0.3s ease;
+  page-break-inside: avoid;
 }
 
-.song-card:hover {
+.lead-sheet:hover {
   box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
+}
+
+/* Song Controls Bar */
+.song-controls {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.song-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .song-title {
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--text-primary);
+  margin: 0;
+  color: white;
+}
+
+.song-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.key-indicator {
+  background: rgba(255,255,255,0.2);
+  padding: 0.25rem 0.75rem;
+  border-radius: 16px;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.original-key {
+  opacity: 0.8;
+}
+
+.transpose-controls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.75rem;
+  background: rgba(255,255,255,0.1);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}
+
+.transpose-display {
+  text-align: center;
+  margin: 0 0.5rem;
+}
+
+.transpose-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: white;
+  line-height: 1;
+}
+
+.transpose-label {
+  font-size: 0.7rem;
+  opacity: 0.8;
+  margin-top: 0.25rem;
+}
+
+.transpose-button {
+  background: rgba(255,255,255,0.2);
+  border: 2px solid rgba(255,255,255,0.3);
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.transpose-button:hover {
+  background: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.5);
+  transform: scale(1.1);
+}
+
+/* Lead Sheet Content */
+.lead-sheet-content {
+  padding: 2rem;
+  font-family: 'Courier New', Monaco, monospace;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  transition: opacity 0.3s ease;
+}
+
+.lead-sheet-line {
+  margin-bottom: 0.5rem;
+  min-height: 1.2em;
+}
+
+.chord-line {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.chord {
+  background: rgba(25, 118, 210, 0.1);
+  color: var(--primary-color);
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  display: inline-block;
+  margin: 0 0.1rem;
+}
+
+.chord:hover {
+  background: rgba(25, 118, 210, 0.2);
+  transform: translateY(-1px);
+}
+
+.lyric-line {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  margin-bottom: 0.75rem;
+}
+
+.section-header {
+  color: var(--primary-color);
+  font-weight: bold;
+  font-size: 1rem;
+  margin: 1.5rem 0 0.5rem 0;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 0.25rem;
+}
+
+.section-title {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 1rem 0 0.5rem 0;
+}
+
+.empty-line {
+  height: 0.75rem;
 }
 
 .song-meta {
