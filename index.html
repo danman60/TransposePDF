@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chord Transposer Pro</title>
+    <meta name="description" content="Offline chord transposition for worship songbooks">
+    <meta name="theme-color" content="#1976d2">
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png" sizes="192x192">
+    <link rel="icon" href="icons/icon-512.png" sizes="512x512">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/mobile.css">
+    
+    <!-- Core Libraries with fallbacks -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" 
+            onerror="this.onerror=null; this.src='./lib/pdf.min.js'"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tonal@5.0.0/browser/tonal.min.js"
+            onerror="this.onerror=null; this.src='./lib/tonal.min.js'"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
+            onerror="this.onerror=null; this.src='./lib/jspdf.min.js'"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Chord Transposer Pro</h1>
+            <div class="status-indicator" id="statusIndicator">Ready</div>
+        </header>
+
+        <!-- File Upload Section -->
+        <section class="upload-section" id="uploadSection">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <h2>Load Your Songbook</h2>
+                <p>Drag and drop a PDF file or click to select</p>
+                <input type="file" id="fileInput" accept=".pdf" hidden>
+                <button class="upload-button" onclick="document.getElementById('fileInput').click()">
+                    Choose PDF File
+                </button>
+            </div>
+            <div class="upload-progress" id="uploadProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">Processing...</div>
+            </div>
+        </section>
+
+        <!-- Songs List Section -->
+        <section class="songs-section" id="songsSection" style="display: none;">
+            <div class="section-header">
+                <h2>Songs <span class="song-count" id="songCount">0</span></h2>
+                <button class="export-button" id="exportButton" disabled>Export PDF</button>
+            </div>
+            <div class="songs-container" id="songsContainer"></div>
+        </section>
+
+        <!-- Export Section -->
+        <section class="export-section" id="exportSection" style="display: none;">
+            <div class="export-controls">
+                <label for="exportFilename">Export Filename:</label>
+                <input type="text" id="exportFilename" value="Transposed Songbook" placeholder="Enter filename">
+                <button class="export-final-button" id="exportFinalButton">Generate PDF</button>
+            </div>
+            <div class="export-progress" id="exportProgress" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="exportProgressFill"></div>
+                </div>
+                <div class="progress-text" id="exportProgressText">Generating PDF...</div>
+            </div>
+        </section>
+
+        <!-- Error Display -->
+        <div class="error-panel" id="errorPanel" style="display: none;">
+            <div class="error-content">
+                <h3>Error</h3>
+                <p id="errorMessage"></p>
+                <button class="error-close" onclick="closeError()">Close</button>
+                <button class="error-retry" id="errorRetry" onclick="retryOperation()" style="display: none;">Retry</button>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div class="loading-text" id="loadingText">Processing...</div>
+            </div>
+        </div>
+
+        <!-- Health Check Display (Development) -->
+        <div class="health-check" id="healthCheck" style="display: none;">
+            <h4>System Health</h4>
+            <div id="healthResults"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Initialize PDF.js worker
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        }
+    </script>
+    
+    <!-- Application modules -->
+    <script src="modules/pdfProcessor.js"></script>
+    <script src="modules/songSeparator.js"></script>
+    <script src="modules/musicTheory.js"></script>
+    <script src="modules/pdfGenerator.js"></script>
+    <script src="modules/uiController.js"></script>
+    <script src="app.js"></script>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => console.log('SW registered:', registration))
+                    .catch(error => console.log('SW registration failed:', error));
+            });
+        }
+    </script>
+</body>
+</html>
