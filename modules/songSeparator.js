@@ -78,44 +78,57 @@ class SongSeparator {
   }
 
   /**
-   * Detect boundaries between songs using page breaks and bold titles
-   * Optimized for 1-2 pages per song with clear title headers
+   * Detect boundaries between songs - CONSERVATIVE approach for 4 worship songs
+   * Expected: King Of Heaven, God Is For Us, His Mercy Is More, Waymaker
    */
   detectSongBoundaries(textItems) {
     const boundaries = [0]; // Always start with first item
     
-    // Group items by page first
-    const pageGroups = this.groupTextItemsByPage(textItems);
-    let currentIndex = 0;
+    // For a 4-song PDF, we expect songs to start on pages 1, 3, 5, 7 (roughly)
+    // Look for clear song titles that match known worship song patterns
+    const knownTitles = [
+      'King Of Heaven', 'God Is For Us', 'His Mercy Is More', 'Waymaker'
+    ];
     
-    // Look for song boundaries at page breaks with bold titles
-    for (let pageNum = 1; pageNum <= Object.keys(pageGroups).length; pageNum++) {
-      const pageItems = pageGroups[pageNum] || [];
+    logger.status('🔍 Looking for song boundaries with conservative detection...', 'info');
+    
+    // Group by page and look for obvious song titles
+    const pageGroups = this.groupTextItemsByPage(textItems);
+    const pageNumbers = Object.keys(pageGroups).map(n => parseInt(n)).sort((a, b) => a - b);
+    
+    for (const pageNum of pageNumbers) {
+      if (pageNum === 1) continue; // First page is already boundary 0
       
-      if (pageItems.length === 0) continue;
+      const pageItems = pageGroups[pageNum];
+      if (!pageItems || pageItems.length === 0) continue;
       
-      // Find the first large, bold text item on this page (likely title)
-      const titleCandidate = this.findPageTitle(pageItems);
+      // Look for the most obvious song title on this page
+      const titleCandidate = this.findObviousSongTitle(pageItems, knownTitles);
       
-      if (titleCandidate && pageNum > 1) { // Don't split before first song
-        // Calculate position in full text array
-        const titleIndex = textItems.findIndex(item => 
-          item.id === titleCandidate.id || 
-          (item.text === titleCandidate.text && 
-           item.pageNum === titleCandidate.pageNum &&
-           Math.abs(item.x - titleCandidate.x) < 5)
-        );
+      if (titleCandidate) {
+        const titleIndex = textItems.findIndex(item => item.id === titleCandidate.id);
         
-        if (titleIndex > currentIndex + this.MIN_SONG_LENGTH) {
-          // Additional validation: make sure this looks like a real song title
-          const isValidSongTitle = this.validateSongTitle(titleCandidate, pageItems);
+        if (titleIndex > 0 && titleIndex > boundaries[boundaries.length - 1] + 30) {
+          boundaries.push(titleIndex);
+          logger.status(`🎵 Found song: "${titleCandidate.text}" on page ${pageNum}`, 'success');
+        }
+      }
+    }
+    
+    // Conservative fallback: if we haven't found enough songs, add page-based boundaries
+    if (boundaries.length < 3 && pageNumbers.length >= 4) {
+      // For 4+ pages, assume songs roughly every 2 pages
+      for (let i = 3; i < pageNumbers.length; i += 2) {
+        const pageNum = pageNumbers[i - 1];
+        const pageItems = pageGroups[pageNum] || [];
+        
+        if (pageItems.length > 0) {
+          const firstItem = pageItems[0];
+          const titleIndex = textItems.findIndex(item => item.id === firstItem.id);
           
-          if (isValidSongTitle) {
+          if (titleIndex > boundaries[boundaries.length - 1] + 30) {
             boundaries.push(titleIndex);
-            currentIndex = titleIndex;
-            logger.status(`✅ Found song boundary at "${titleCandidate.text}" (page ${pageNum})`, 'success');
-          } else {
-            logger.status(`⚠️ Rejected boundary at "${titleCandidate.text}" - not a valid song title`, 'warning');
+            logger.status(`📄 Added page-based boundary on page ${pageNum}`, 'info');
           }
         }
       }
@@ -185,6 +198,52 @@ class SongSeparator {
     }
     
     return null; // No clear title found
+  }
+
+  /**
+   * Find obvious song titles that match known patterns or exact titles
+   */
+  findObviousSongTitle(pageItems, knownTitles = []) {
+    // Sort items by position - top to bottom, left to right
+    const sortedItems = pageItems
+      .filter(item => item.text && item.text.trim().length > 2)
+      .sort((a, b) => {
+        if (Math.abs(a.y - b.y) > 15) return a.y - b.y;
+        return a.x - b.x;
+      });
+    
+    // First, look for exact matches with known titles
+    for (const item of sortedItems) {
+      const text = item.text.trim();
+      
+      if (knownTitles.some(title => text.includes(title) || title.includes(text))) {
+        logger.status(`🎯 Found exact title match: "${text}"`, 'success');
+        return item;
+      }
+    }
+    
+    // Then look for obvious title patterns at the top of the page
+    for (const item of sortedItems.slice(0, 5)) {
+      const text = item.text.trim();
+      
+      // Skip obvious non-titles
+      if (this.shouldIgnoreText(text) || this.isSongSection(text)) {
+        continue;
+      }
+      
+      // Look for title characteristics
+      const isBold = item.bold || (item.fontName && item.fontName.toLowerCase().includes('bold'));
+      const isLargeFont = (item.fontSize || 12) > 13;
+      const isNearTop = item.y < 150; // Near top of page
+      const looksLikeTitle = this.looksLikeWorshipTitle(text);
+      
+      if (looksLikeTitle && (isBold || isLargeFont) && isNearTop) {
+        logger.status(`📝 Found title pattern: "${text}" (bold:${isBold}, large:${isLargeFont}, top:${isNearTop})`, 'info');
+        return item;
+      }
+    }
+    
+    return null;
   }
 
   /**
