@@ -265,37 +265,169 @@ class UIController {
   }
   
   /**
-   * Render the actual lead sheet content with chords and lyrics
+   * Render the actual lead sheet content exactly like the PDF layout
    */
   renderLeadSheetContent(song) {
-    const lines = song.songText.split('\n');
     const musicTheory = new MusicTheory();
-    let html = '';
+    let html = '<div class="pdf-layout-container">';
     
-    lines.forEach((line, lineIndex) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine.length === 0) {
-        html += '<div class="lead-sheet-line empty-line">&nbsp;</div>';
-        return;
-      }
+    // Group text items by page and position to preserve PDF layout
+    const pageGroups = this.groupTextItemsByPage(song.textItems);
+    
+    Object.keys(pageGroups).sort((a, b) => parseInt(a) - parseInt(b)).forEach(pageNum => {
+      html += `<div class="pdf-page" data-page="${pageNum}">`;
       
-      // Check if line contains chords
-      const chords = musicTheory.extractChords(trimmedLine);
-      const hasChords = chords.length > 0;
+      // Sort items by Y position (top to bottom), then X position (left to right)
+      const pageItems = pageGroups[pageNum].sort((a, b) => {
+        if (Math.abs(a.y - b.y) > 10) return a.y - b.y; // Different lines
+        return a.x - b.x; // Same line, left to right
+      });
       
-      if (hasChords) {
-        // Render chord line
-        html += `<div class="lead-sheet-line chord-line" data-line="${lineIndex}">`;
-        html += this.renderChordsInLine(trimmedLine, chords, song.transposition, musicTheory);
+      // Group items by lines (same Y position within tolerance)
+      const lines = this.groupItemsByLines(pageItems);
+      
+      lines.forEach((lineItems, lineIndex) => {
+        html += `<div class="pdf-line" style="position: relative; margin-bottom: 1em;">`;
+        
+        lineItems.forEach(item => {
+          const isChordLine = this.containsChords(item.text);
+          const className = this.getPDFItemClass(item, isChordLine);
+          
+          // Transpose chords if this item contains them
+          let displayText = item.text;
+          if (isChordLine && song.transposition !== 0) {
+            displayText = this.transposeTextItem(item.text, song.transposition, musicTheory);
+          }
+          
+          html += `<span class="${className}" 
+                         style="position: relative; 
+                                font-size: ${(item.fontSize || 12) * 0.75}px;
+                                font-weight: ${item.bold ? 'bold' : 'normal'};
+                                font-style: ${item.italic ? 'italic' : 'normal'};
+                                margin-right: 0.5em;
+                                display: inline-block;">
+                     ${this.escapeHtml(displayText)}
+                   </span>`;
+        });
+        
         html += '</div>';
-      } else {
-        // Render lyric/text line
-        const className = this.getLineType(trimmedLine);
-        html += `<div class="lead-sheet-line ${className}">${this.escapeHtml(trimmedLine)}</div>`;
-      }
+      });
+      
+      html += '</div>';
     });
     
+    html += '</div>';
     return html;
+  }
+  
+  /**
+   * Group text items by page number
+   */
+  groupTextItemsByPage(textItems) {
+    const pageGroups = {};
+    textItems.forEach(item => {
+      if (!pageGroups[item.pageNum]) {
+        pageGroups[item.pageNum] = [];
+      }
+      pageGroups[item.pageNum].push(item);
+    });
+    return pageGroups;
+  }
+  
+  /**
+   * Group items by lines based on Y position
+   */
+  groupItemsByLines(pageItems, tolerance = 10) {
+    const lines = [];
+    const processed = new Set();
+    
+    pageItems.forEach(item => {
+      if (processed.has(item.id)) return;
+      
+      const line = [item];
+      processed.add(item.id);
+      
+      // Find other items on the same line
+      pageItems.forEach(otherItem => {
+        if (processed.has(otherItem.id)) return;
+        
+        if (Math.abs(item.y - otherItem.y) <= tolerance) {
+          line.push(otherItem);
+          processed.add(otherItem.id);
+        }
+      });
+      
+      // Sort line items by X position
+      line.sort((a, b) => a.x - b.x);
+      lines.push(line);
+    });
+    
+    return lines;
+  }
+  
+  /**
+   * Get CSS class for PDF text item
+   */
+  getPDFItemClass(item, isChordLine) {
+    let className = 'pdf-text-item';
+    
+    if (isChordLine) {
+      className += ' chord-text';
+    } else if (this.isSectionHeader(item.text)) {
+      className += ' section-header-text';
+    } else if (item.bold || (item.fontSize || 12) > 14) {
+      className += ' title-text';
+    } else {
+      className += ' lyric-text';
+    }
+    
+    return className;
+  }
+  
+  /**
+   * Check if text is a section header
+   */
+  isSectionHeader(text) {
+    const sectionPatterns = [
+      /^VERSE\s*\d*/i, /^CHORUS\s*\d*/i, /^BRIDGE\s*/i, 
+      /^PRE-CHORUS/i, /^INTRO/i, /^OUTRO/i, /^INSTRUMENTAL/i
+    ];
+    return sectionPatterns.some(pattern => pattern.test(text.trim()));
+  }
+  
+  /**
+   * Transpose chords within a text item
+   */
+  transposeTextItem(text, transposition, musicTheory) {
+    if (transposition === 0) return text;
+    
+    const chords = musicTheory.extractChords(text);
+    if (chords.length === 0) return text;
+    
+    let result = text;
+    
+    // Process chords in reverse order to avoid position shifting
+    chords.sort((a, b) => b.position - a.position);
+    
+    chords.forEach(chord => {
+      const transposedChord = musicTheory.transposeChord(chord.original, transposition);
+      result = result.substring(0, chord.position) + 
+               transposedChord + 
+               result.substring(chord.position + chord.original.length);
+    });
+    
+    return result;
+  }
+  
+  /**
+   * Check if text contains musical chords
+   */
+  containsChords(text) {
+    if (!text) return false;
+    
+    const musicTheory = new MusicTheory();
+    const chords = musicTheory.extractChords(text);
+    return chords.length > 0;
   }
   
   /**

@@ -28,6 +28,20 @@ class SongSeparator {
       /SongSelect/i,          // SongSelect branding
       /by\s+[A-Z]/i           // "by Author" lines
     ];
+    
+    // Song section patterns - these are PART OF songs, not separators
+    this.SONG_SECTION_PATTERNS = [
+      /^VERSE\s*\d*/i,        // VERSE 1, VERSE 2, etc.
+      /^CHORUS\s*\d*/i,       // CHORUS, CHORUS 1A, etc.
+      /^BRIDGE\s*/i,          // BRIDGE
+      /^PRE-CHORUS/i,         // PRE-CHORUS
+      /^INTRO/i,              // INTRO
+      /^OUTRO/i,              // OUTRO
+      /^INSTRUMENTAL/i,       // INSTRUMENTAL
+      /^TURNAROUND/i,         // TURNAROUND
+      /^TAG/i,                // TAG
+      /^ENDING/i              // ENDING
+    ];
   }
 
   /**
@@ -93,9 +107,16 @@ class SongSeparator {
         );
         
         if (titleIndex > currentIndex + this.MIN_SONG_LENGTH) {
-          boundaries.push(titleIndex);
-          currentIndex = titleIndex;
-          logger.status(`Found song boundary at "${titleCandidate.text}" (page ${pageNum})`, 'info');
+          // Additional validation: make sure this looks like a real song title
+          const isValidSongTitle = this.validateSongTitle(titleCandidate, pageItems);
+          
+          if (isValidSongTitle) {
+            boundaries.push(titleIndex);
+            currentIndex = titleIndex;
+            logger.status(`✅ Found song boundary at "${titleCandidate.text}" (page ${pageNum})`, 'success');
+          } else {
+            logger.status(`⚠️ Rejected boundary at "${titleCandidate.text}" - not a valid song title`, 'warning');
+          }
         }
       }
     }
@@ -125,13 +146,14 @@ class SongSeparator {
   }
 
   /**
-   * Find the most likely title on a page (large, bold, at top)
+   * Find the most likely song title on a page (large, bold, at top, NOT a section header)
    */
   findPageTitle(pageItems) {
     // Sort by Y position (top to bottom) then by font size
     const candidates = pageItems
       .filter(item => item.text && item.text.trim().length > 2)
       .filter(item => !this.shouldIgnoreText(item.text))
+      .filter(item => !this.isSongSection(item.text)) // Exclude VERSE, CHORUS, etc.
       .sort((a, b) => {
         // Prioritize items near top of page
         const yDiff = a.y - b.y;
@@ -141,19 +163,73 @@ class SongSeparator {
         return (b.fontSize || 12) - (a.fontSize || 12);
       });
 
-    // Look for bold titles or large font sizes
-    for (const candidate of candidates.slice(0, 5)) { // Check top 5 candidates
+    // Look for actual song titles (bold, large font, proper title format)
+    for (const candidate of candidates.slice(0, 8)) { // Check more candidates
       const isBold = candidate.bold || candidate.fontName?.toLowerCase().includes('bold');
       const isLargeFont = (candidate.fontSize || 12) > 14;
       const isTitle = this.looksLikeTitle(candidate);
       
-      if ((isBold && isTitle) || (isLargeFont && isTitle)) {
+      // Must be a proper title AND (bold OR large font)
+      if (isTitle && (isBold || isLargeFont)) {
+        logger.status(`Found song title candidate: "${candidate.text}" (bold: ${isBold}, size: ${candidate.fontSize})`, 'info');
         return candidate;
       }
     }
     
-    // Fallback: return first non-ignored text item
-    return candidates[0] || null;
+    // Fallback: Look for any title-like text in top candidates
+    for (const candidate of candidates.slice(0, 3)) {
+      if (this.looksLikeTitle(candidate)) {
+        logger.status(`Fallback song title: "${candidate.text}"`, 'warning');
+        return candidate;
+      }
+    }
+    
+    return null; // No clear title found
+  }
+
+  /**
+   * Validate if a candidate text is actually a song title
+   */
+  validateSongTitle(titleCandidate, pageItems) {
+    const text = titleCandidate.text.trim();
+    
+    // Must not be a song section
+    if (this.isSongSection(text)) {
+      return false;
+    }
+    
+    // Must not be ignored text
+    if (this.shouldIgnoreText(text)) {
+      return false;
+    }
+    
+    // Look for supporting evidence on the page
+    const hasChords = pageItems.some(item => this.containsChords(item.text));
+    const hasSectionHeaders = pageItems.some(item => this.isSongSection(item.text));
+    
+    // A good song title should be followed by chords or section headers
+    const hasMusicalContent = hasChords || hasSectionHeaders;
+    
+    // Additional checks for known worship song patterns
+    const looksLikeWorship = this.looksLikeWorshipTitle(text);
+    
+    return hasMusicalContent && looksLikeWorship;
+  }
+  
+  /**
+   * Check if text looks like a typical worship song title
+   */
+  looksLikeWorshipTitle(text) {
+    // Common worship song title patterns
+    const worshipPatterns = [
+      /^[A-Z][a-z\s]+(Of|Is|Are)\s+[A-Z]/,     // "King Of Heaven", "God Is For Us"
+      /^[A-Z][a-z]+\s+(Mercy|Grace|Love|Way)/i, // "His Mercy", "Amazing Grace"
+      /^(How|What|When|Where)\s+[A-Z]/i,        // "How Great", "What Love"
+      /^(Holy|Great|Amazing|Blessed|All)/i,     // Common worship words
+      /^[A-Z][a-z\s]{3,30}$/                    // General title case, reasonable length
+    ];
+    
+    return worshipPatterns.some(pattern => pattern.test(text));
   }
 
   /**
@@ -337,7 +413,7 @@ class SongSeparator {
   }
 
   /**
-   * Check if text looks like a song title
+   * Check if text looks like a song title (NOT a song section)
    */
   looksLikeTitle(textItem) {
     if (!textItem || !textItem.text) return false;
@@ -349,8 +425,23 @@ class SongSeparator {
       return false;
     }
     
+    // IMPORTANT: Song sections (VERSE, CHORUS, etc.) are NOT titles
+    if (this.isSongSection(text)) {
+      return false;
+    }
+    
     // Check title patterns
     return this.TITLE_PATTERNS.some(pattern => pattern.test(text));
+  }
+  
+  /**
+   * Check if text is a song section (VERSE, CHORUS, BRIDGE, etc.)
+   * These are PART OF songs, not separate songs
+   */
+  isSongSection(text) {
+    if (!text || text.trim().length === 0) return false;
+    
+    return this.SONG_SECTION_PATTERNS.some(pattern => pattern.test(text.trim()));
   }
 
   /**

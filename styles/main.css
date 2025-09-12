@@ -316,13 +316,75 @@ body {
   transform: scale(1.1);
 }
 
-/* Lead Sheet Content */
+/* Lead Sheet Content - PDF Layout */
 .lead-sheet-content {
   padding: 2rem;
-  font-family: 'Courier New', Monaco, monospace;
-  line-height: 1.6;
-  white-space: pre-wrap;
   transition: opacity 0.3s ease;
+}
+
+.pdf-layout-container {
+  font-family: Arial, sans-serif;
+  line-height: 1.4;
+}
+
+.pdf-page {
+  background: white;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  page-break-after: always;
+}
+
+.pdf-line {
+  margin-bottom: 0.8em;
+  min-height: 1.2em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.pdf-text-item {
+  margin-right: 0.3em;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.chord-text {
+  color: var(--primary-color);
+  font-weight: bold;
+  background: rgba(25, 118, 210, 0.1);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  border: 1px solid rgba(25, 118, 210, 0.2);
+}
+
+.chord-text:hover {
+  background: rgba(25, 118, 210, 0.2);
+  transform: translateY(-1px);
+}
+
+.title-text {
+  font-weight: bold;
+  font-size: 1.2em;
+  color: var(--text-primary);
+  margin-bottom: 0.5em;
+  display: block;
+}
+
+.section-header-text {
+  font-weight: bold;
+  color: var(--primary-color);
+  text-transform: uppercase;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+  display: block;
+  border-bottom: 1px solid var(--primary-color);
+  padding-bottom: 0.2em;
+}
+
+.lyric-text {
+  color: var(--text-primary);
 }
 
 .lead-sheet-line {
