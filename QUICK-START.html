@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TransposePDF - Quick Start Guide</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #1976d2; }
+        h2 { color: #333; margin-top: 2rem; }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #1976d2;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .success { background: #e8f5e8; border-left-color: #4caf50; }
+        .warning { background: #fff3cd; border-left-color: #ff9800; }
+        .code {
+            background: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 1rem;
+            font-family: monospace;
+            margin: 1rem 0;
+        }
+        button {
+            background: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem;
+        }
+        button:hover { background: #1565c0; }
+        .launch-app {
+            background: #4caf50;
+            font-size: 1.2rem;
+            padding: 16px 32px;
+        }
+        .status {
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 TransposePDF - Quick Start Guide</h1>
+        
+        <div class="success">
+            <h2>✅ Server Status</h2>
+            <p><strong>Local Server:</strong> <span id="serverStatus">Checking...</span></p>
+            <p><strong>Application Files:</strong> Ready</p>
+            <p><strong>Test PDF:</strong> Available</p>
+        </div>
+
+        <h2>🚀 Launch Application</h2>
+        <div class="step">
+            <p>Click the button below to open the TransposePDF application:</p>
+            <button class="launch-app" onclick="window.open('index.html', '_blank')">
+                🎼 Launch TransposePDF App
+            </button>
+        </div>
+
+        <h2>📋 Testing Checklist</h2>
+        
+        <div class="step">
+            <h3>Step 1: Basic Load Test</h3>
+            <ul>
+                <li>✅ Application interface loads</li>
+                <li>✅ Upload area is visible</li>
+                <li>✅ No console errors</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: PDF Upload Test</h3>
+            <ul>
+                <li>📄 Upload: "Songbook For September 14, 2025.pdf"</li>
+                <li>⏱️ Processing: Should take 3-10 seconds</li>
+                <li>🎵 Detection: Should find 3-4 worship songs</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Functionality Test</h3>
+            <ul>
+                <li>🎼 Song Cards: Each song shows title and key</li>
+                <li>🔄 Transpose: Click +/- buttons on each song</li>
+                <li>📊 Key Changes: Watch key indicators update</li>
+                <li>📥 Export: Generate and download transposed PDF</li>
+            </ul>
+        </div>
+
+        <h2>🧪 Advanced Testing</h2>
+        
+        <div class="step">
+            <h3>Browser Console Tests</h3>
+            <p>Open Developer Tools (F12) and run these commands:</p>
+            <div class="code">
+// Run comprehensive test suite
+const tester = new TransposeAppTests();
+tester.runAllTests().then(results => {
+    console.log(`Success Rate: ${results.summary.successRate}%`);
+    console.log(`Overall: ${results.summary.overallPassed ? '✅ PASSED' : '❌ FAILED'}`);
+});
+
+// Test performance benchmarks  
+const perf = new PerformanceTester();
+perf.runBenchmarks().then(results => console.log(results));
+            </div>
+        </div>
+
+        <h2>🎯 Expected Results</h2>
+        
+        <div class="success">
+            <h3>Success Indicators:</h3>
+            <ul>
+                <li>✅ <strong>King Of Heaven</strong> (Key: E) - Chords: E, B, C#m7, A2, Bsus</li>
+                <li>✅ <strong>God Is For Us</strong> (Key: D) - Chords: D, G/D, Bm, A</li>
+                <li>✅ <strong>His Mercy Is More</strong> (Key: E) - Chords: E/G#, F#m7, C#m7</li>
+                <li>✅ <strong>Waymaker</strong> (Key: D) - Chords: D, Bm, G, A, Em</li>
+            </ul>
+        </div>
+
+        <h2>🔧 Alternative Access Methods</h2>
+        
+        <div class="step">
+            <h3>If Local Server Issues:</h3>
+            <p><strong>Direct File Access:</strong> Some features may not work due to browser security restrictions.</p>
+            <button onclick="window.open('file:///D:/ClaudeCode/TransposePDF/index.html', '_blank')">
+                📂 Open via File System (Limited)
+            </button>
+        </div>
+
+        <div class="step">
+            <h3>Python Server Commands:</h3>
+            <div class="code">
+# Navigate to project directory
+cd "D:\ClaudeCode\TransposePDF"
+
+# Start server
+python -m http.server 8000
+
+# Then open: http://localhost:8000
+            </div>
+        </div>
+
+        <h2>🎼 Real Worship Use Case</h2>
+        
+        <div class="step">
+            <p><strong>Scenario:</strong> You're preparing for Sunday worship and need to transpose "King Of Heaven" from E to D for your vocalist.</p>
+            <ol>
+                <li>Upload the songbook PDF</li>
+                <li>Find "King Of Heaven" card (Key: E)</li>
+                <li>Click the "-" button twice (E → D# → D)</li>
+                <li>Watch chords change: E→D, B→A, C#m7→Bm7, A2→G2</li>
+                <li>Export the transposed songbook</li>
+                <li>Use confidently during worship service!</li>
+            </ol>
+        </div>
+
+        <div class="success">
+            <h2>🏆 Mission: Reliable Worship Tool</h2>
+            <p>This application was built specifically for worship teams who need <strong>reliable, offline chord transposition</strong> during live services. It handles real worship songs with complex chord progressions and works completely offline after the initial load.</p>
+            <p><em>"Sing to the Lord a new song; sing to the Lord, all the earth."</em> - Psalm 96:1</p>
+        </div>
+
+        <hr>
+        <p style="text-align: center; color: #666;">
+            🤖 Generated with <a href="https://claude.ai/code" target="_blank">Claude Code</a><br>
+            Co-Authored-By: Claude &lt;noreply@anthropic.com&gt;
+        </p>
+    </div>
+
+    <script>
+        // Check if we can access the main application
+        fetch('index.html')
+            .then(response => {
+                if (response.ok) {
+                    document.getElementById('serverStatus').innerHTML = 
+                        '<span style="color: #4caf50;">✅ Server Running - Ready to Test</span>';
+                } else {
+                    document.getElementById('serverStatus').innerHTML = 
+                        '<span style="color: #ff9800;">⚠️ Server Access Issues</span>';
+                }
+            })
+            .catch(error => {
+                document.getElementById('serverStatus').innerHTML = 
+                    '<span style="color: #f44336;">❌ Server Not Responding</span>';
+            });
+
+        // Add some interactive testing
+        function runQuickTest() {
+            console.log('🧪 Running Quick TransposePDF Test...');
+            
+            // Test if main classes are available
+            const tests = [
+                { name: 'MusicTheory', test: () => typeof MusicTheory !== 'undefined' },
+                { name: 'PDFProcessor', test: () => typeof PDFProcessor !== 'undefined' },
+                { name: 'SongSeparator', test: () => typeof SongSeparator !== 'undefined' },
+                { name: 'PDFGenerator', test: () => typeof PDFGenerator !== 'undefined' },
+                { name: 'UIController', test: () => typeof UIController !== 'undefined' }
+            ];
+            
+            console.log('Available components:');
+            tests.forEach(test => {
+                try {
+                    const result = test.test();
+                    console.log(`${test.name}: ${result ? '✅' : '❌'}`);
+                } catch(e) {
+                    console.log(`${test.name}: ❌ (${e.message})`);
+                }
+            });
+        }
+        
+        // Auto-run basic checks
+        setTimeout(runQuickTest, 1000);
+    </script>
+</body>
+</html>
