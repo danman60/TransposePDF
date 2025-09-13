@@ -129,7 +129,7 @@ class VisibilityTester {
         await this.testElementVisibility(song.locator('.song-title'), `Song ${i + 1} title`);
         
         // Test song content visibility
-        const songContent = song.locator('.song-content');
+        const songContent = song.locator('.lead-sheet-content');
         await this.testElementVisibility(songContent, `Song ${i + 1} content`);
         
         // Test text content is not empty
@@ -188,9 +188,9 @@ class VisibilityTester {
       // Test text color contrast
       const textElements = [
         { selector: '.song-title', name: 'Song title' },
-        { selector: '.song-content', name: 'Song content' },
+        { selector: '.lead-sheet-content', name: 'Song content' },
         { selector: '.chord', name: 'Chord text' },
-        { selector: '.transpose-up', name: 'Transpose button' }
+        { selector: '.transpose-button[title*="up"]', name: 'Transpose button' }
       ];
       
       for (const element of textElements) {
@@ -242,7 +242,7 @@ class VisibilityTester {
     
     try {
       const firstSong = await this.page.locator('.lead-sheet').first();
-      const songContent = firstSong.locator('.song-content');
+      const songContent = firstSong.locator('.lead-sheet-content');
       
       // Test text selection
       console.log('📝 Testing text selection...');
@@ -275,9 +275,9 @@ class VisibilityTester {
       // Test button interactions
       console.log('🔘 Testing button interactions...');
       
-      const upButton = firstSong.locator('.transpose-up');
-      const downButton = firstSong.locator('.transpose-down');
-      const resetButton = firstSong.locator('.transpose-reset');
+      const upButton = firstSong.locator('.transpose-button[title*="up"]');
+      const downButton = firstSong.locator('.transpose-button[title*="down"]');
+      const resetButton = firstSong.locator('.reset-button');
       
       // Test hover effects
       await upButton.hover();
@@ -316,18 +316,18 @@ class VisibilityTester {
       const firstSong = await this.page.locator('.lead-sheet').first();
       
       // Get original content
-      const originalContent = await firstSong.locator('.song-content').textContent();
+      const originalContent = await firstSong.locator('.lead-sheet-content').textContent();
       const originalChords = await firstSong.locator('.chord').count();
       
       console.log(`📊 Original content: ${originalContent.length} chars, ${originalChords} chords`);
       
       // Transpose up
-      const upButton = firstSong.locator('.transpose-up');
+      const upButton = firstSong.locator('.transpose-button[title*="up"]');
       await upButton.click();
       await this.page.waitForTimeout(1000);
       
       // Check visibility after transposition
-      const transposedContent = await firstSong.locator('.song-content').textContent();
+      const transposedContent = await firstSong.locator('.lead-sheet-content').textContent();
       const transposedChords = await firstSong.locator('.chord').count();
       
       console.log(`📊 Transposed content: ${transposedContent.length} chars, ${transposedChords} chords`);
@@ -360,22 +360,22 @@ class VisibilityTester {
         await upButton.click();
         await this.page.waitForTimeout(500);
         
-        const content = await firstSong.locator('.song-content').textContent();
+        const content = await firstSong.locator('.lead-sheet-content').textContent();
         this.assert(content && content.length > 50,
           `Content should remain visible after ${i + 2} transpositions`);
       }
       
       // Reset and test down transposition
-      const resetButton = firstSong.locator('.transpose-reset');
+      const resetButton = firstSong.locator('.reset-button');
       await resetButton.click();
       await this.page.waitForTimeout(500);
       
-      const downButton = firstSong.locator('.transpose-down');
+      const downButton = firstSong.locator('.transpose-button[title*="down"]');
       for (let i = 0; i < 3; i++) {
         await downButton.click();
         await this.page.waitForTimeout(500);
         
-        const content = await firstSong.locator('.song-content').textContent();
+        const content = await firstSong.locator('.lead-sheet-content').textContent();
         this.assert(content && content.length > 50,
           `Content should remain visible after ${i + 1} down transpositions`);
       }
@@ -414,7 +414,7 @@ class VisibilityTester {
         const firstSong = await this.page.locator('.lead-sheet').first();
         
         if (await firstSong.isVisible()) {
-          const songContent = firstSong.locator('.song-content');
+          const songContent = firstSong.locator('.lead-sheet-content');
           const isContentVisible = await songContent.isVisible();
           
           this.assert(isContentVisible, `Song content should be visible on ${viewport.name}`);

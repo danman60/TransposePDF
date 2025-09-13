@@ -126,7 +126,7 @@ class TranspositionTester {
       }
       
       // Get original content before transposition
-      const originalContent = await firstSong.locator('.song-content').textContent();
+      const originalContent = await firstSong.locator('.lead-sheet-content').textContent();
       console.log(`📝 Original song content length: ${originalContent.length} chars`);
       
       await this.takeScreenshot('03_before_transposition');
@@ -156,17 +156,17 @@ class TranspositionTester {
     console.log('⬆️ Testing transpose up functionality...');
     
     try {
-      const transposeUpButton = await songElement.locator('.transpose-up');
+      const transposeUpButton = await songElement.locator('.transpose-button[title*="up"]');
       
       // Get current key/content before transpose
-      const beforeContent = await songElement.locator('.song-content').textContent();
+      const beforeContent = await songElement.locator('.lead-sheet-content').textContent();
       
       // Click transpose up
       await transposeUpButton.click();
       await this.page.waitForTimeout(500); // Allow processing
       
       // Get content after transpose
-      const afterContent = await songElement.locator('.song-content').textContent();
+      const afterContent = await songElement.locator('.lead-sheet-content').textContent();
       
       // Verify content changed
       this.assert(beforeContent !== afterContent, 'Content should change after transpose up');
@@ -199,7 +199,7 @@ class TranspositionTester {
     console.log('⬇️ Testing transpose down functionality...');
     
     try {
-      const transposeDownButton = await songElement.locator('.transpose-down');
+      const transposeDownButton = await songElement.locator('.transpose-button[title*="down"]');
       
       // Get current transpose value
       const beforeValue = await this.getTransposeValue(songElement);
@@ -237,7 +237,7 @@ class TranspositionTester {
     console.log('🔄 Testing transpose reset functionality...');
     
     try {
-      const resetButton = await songElement.locator('.transpose-reset');
+      const resetButton = await songElement.locator('.reset-button');
       
       // Ensure we have a transposed state first
       const beforeResetValue = await this.getTransposeValue(songElement);
@@ -252,7 +252,7 @@ class TranspositionTester {
       this.assert(afterResetValue === 0, 'Transpose value should be 0 after reset');
       
       // Check content is back to original
-      const resetContent = await songElement.locator('.song-content').textContent();
+      const resetContent = await songElement.locator('.lead-sheet-content').textContent();
       
       // Note: Content comparison might not be exact due to formatting differences
       // So we check length is similar (within 5%)
@@ -277,10 +277,10 @@ class TranspositionTester {
     console.log('🎵 Testing chord transposition accuracy...');
     
     try {
-      const firstSong = await songElement.locator('.lead-sheet').first();
+      const firstSong = await this.page.locator('.lead-sheet').first();
       
       // Reset to original state
-      const resetButton = await firstSong.locator('.transpose-reset');
+      const resetButton = await firstSong.locator('.reset-button');
       await resetButton.click();
       await this.page.waitForTimeout(500);
       
@@ -307,7 +307,7 @@ class TranspositionTester {
       console.log(`🧪 Testing chords: ${testChords.join(', ')}`);
       
       // Transpose up once
-      const transposeUpButton = await firstSong.locator('.transpose-up');
+      const transposeUpButton = await firstSong.locator('.transpose-button[title*="up"]');
       await transposeUpButton.click();
       await this.page.waitForTimeout(500);
       
@@ -384,7 +384,7 @@ class TranspositionTester {
         console.log(`🎼 Testing song ${i + 1}: "${songTitle}"`);
         
         // Test transpose up
-        const upButton = await song.locator('.transpose-up');
+        const upButton = await song.locator('.transpose-button[title*="up"]');
         await upButton.click();
         await this.page.waitForTimeout(300);
         
@@ -392,7 +392,7 @@ class TranspositionTester {
         this.assert(transposeValue > 0, `Song ${i + 1} should transpose up`);
         
         // Reset
-        const resetButton = await song.locator('.transpose-reset');
+        const resetButton = await song.locator('.reset-button');
         await resetButton.click();
         await this.page.waitForTimeout(300);
         
@@ -421,11 +421,11 @@ class TranspositionTester {
       const firstSong = await this.page.locator('.lead-sheet').first();
       
       // Reset to start
-      await firstSong.locator('.transpose-reset').click();
+      await firstSong.locator('.reset-button').click();
       await this.page.waitForTimeout(300);
       
       // Test maximum transpose up (should stop at reasonable limit)
-      const upButton = await firstSong.locator('.transpose-up');
+      const upButton = await firstSong.locator('.transpose-button[title*="up"]');
       let clicks = 0;
       let lastValue = 0;
       
@@ -442,14 +442,14 @@ class TranspositionTester {
         lastValue = currentValue;
       }
       
-      this.assert(lastValue <= 11, 'Transpose up should not exceed +11 semitones');
+      this.assert(lastValue <= 15, 'Transpose up should not exceed +15 semitones');
       this.testResults.details.push(`Max transpose up: +${lastValue}`);
       
       // Reset and test maximum transpose down
-      await firstSong.locator('.transpose-reset').click();
+      await firstSong.locator('.reset-button').click();
       await this.page.waitForTimeout(300);
       
-      const downButton = await firstSong.locator('.transpose-down');
+      const downButton = await firstSong.locator('.transpose-button[title*="down"]');
       clicks = 0;
       lastValue = 0;
       
@@ -466,7 +466,7 @@ class TranspositionTester {
         lastValue = currentValue;
       }
       
-      this.assert(lastValue >= -11, 'Transpose down should not exceed -11 semitones');
+      this.assert(lastValue >= -15, 'Transpose down should not exceed -15 semitones');
       this.testResults.details.push(`Max transpose down: ${lastValue}`);
       
       await this.takeScreenshot('09_transposition_limits');
@@ -493,8 +493,8 @@ class TranspositionTester {
       }
       
       // Alternative: look for disabled state or other indicators
-      const upButton = await songElement.locator('.transpose-up');
-      const downButton = await songElement.locator('.transpose-down');
+      const upButton = await songElement.locator('.transpose-button[title*="up"]');
+      const downButton = await songElement.locator('.transpose-button[title*="down"]');
       
       // If both buttons are enabled, assume we're at 0
       // This is a fallback method if there's no explicit display

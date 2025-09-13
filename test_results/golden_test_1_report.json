@@ -1,7 +1,7 @@
 {
   "testSuite": "Golden Test 1: PDF Loading and Song Detection",
-  "timestamp": "2025-09-13T04:36:52.377Z",
-  "duration": 7771,
+  "timestamp": "2025-09-13T09:08:54.574Z",
+  "duration": 8054,
   "results": {
     "passed": 15,
     "failed": 0,
@@ -18,8 +18,8 @@
       "test_results/golden_test_1_07_desktop_view.png"
     ],
     "timing": {
-      "appLoad": 1993.9679999999998,
-      "pdfLoad": 351.1734999999999
+      "appLoad": 1990.6436000000003,
+      "pdfLoad": 338.78229999999985
     },
     "details": [
       "Song count: 7",

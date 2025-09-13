@@ -1,0 +1,319 @@
+{
+  "testSuite": "Golden Test 5: UI Responsiveness and Layout Accuracy",
+  "timestamp": "2025-09-13T09:07:59.685Z",
+  "duration": 21033,
+  "results": {
+    "passed": 24,
+    "failed": 1,
+    "errors": [
+      "Layout changes should be fast (avg: 110.7ms)"
+    ],
+    "screenshots": [
+      "test_results/golden_test_5_01_app_loaded_for_layout.png",
+      "test_results/golden_test_5_02_songbook_loaded_layout.png",
+      "test_results/golden_test_5_03_basic_layout_structure.png",
+      "test_results/golden_test_5_04_mobile_s.png",
+      "test_results/golden_test_5_04_mobile_m.png",
+      "test_results/golden_test_5_04_mobile_l.png",
+      "test_results/golden_test_5_04_tablet.png",
+      "test_results/golden_test_5_04_laptop.png",
+      "test_results/golden_test_5_04_laptop_l.png",
+      "test_results/golden_test_5_04_desktop.png",
+      "test_results/golden_test_5_04_4k.png",
+      "test_results/golden_test_5_05_layout_during_transposition.png",
+      "test_results/golden_test_5_06_scroll_behavior_test.png"
+    ],
+    "timing": {
+      "layoutPerformance": {
+        "average": 110.74045999999944,
+        "results": [
+          {
+            "breakpoint": "Mobile S",
+            "layoutTime": 116.66879999999946
+          },
+          {
+            "breakpoint": "Mobile M",
+            "layoutTime": 105.52750000000015
+          },
+          {
+            "breakpoint": "Mobile L",
+            "layoutTime": 106.77990000000136
+          },
+          {
+            "breakpoint": "Tablet",
+            "layoutTime": 111.68149999999878
+          },
+          {
+            "breakpoint": "Laptop",
+            "layoutTime": 113.04459999999744
+          }
+        ]
+      }
+    },
+    "details": [],
+    "layoutTests": [
+      {
+        "element": "App header",
+        "exists": true,
+        "dimensions": "1280x71.03125",
+        "position": "0,0"
+      },
+      {
+        "element": "Songs section",
+        "exists": true,
+        "dimensions": "1280x8742.646484375",
+        "position": "0,71.03125"
+      },
+      {
+        "element": "Songs container",
+        "exists": true,
+        "dimensions": "800x8596.646484375",
+        "position": "240,185.03125"
+      },
+      {
+        "element": "Song cards",
+        "exists": true,
+        "dimensions": "800x1471.5208740234375",
+        "position": "240,185.03125"
+      }
+    ],
+    "responsiveTests": [
+      {
+        "breakpoint": "Mobile S",
+        "viewport": "320x568",
+        "elements": {
+          "header": {
+            "visible": true,
+            "dimensions": "304.66668701171875x111.97917175292969",
+            "fitsWidth": true
+          },
+          "songsContainer": {
+            "visible": true,
+            "dimensions": "288.66668701171875x9099.802062988281",
+            "fitsWidth": true
+          },
+          "songCards": {
+            "count": 7,
+            "firstCardVisible": true,
+            "firstCardDimensions": "288.66668701171875x1557.1145629882812",
+            "fitsWidth": true
+          },
+          "transposeControls": {
+            "visible": true,
+            "dimensions": "256.66668701171875x129.91665649414062"
+          }
+        },
+        "issues": [],
+        "score": 110
+      },
+      {
+        "breakpoint": "Mobile M",
+        "viewport": "375x667",
+        "elements": {
+          "header": {
+            "visible": true,
+            "dimensions": "360x111.97917175292969",
+            "fitsWidth": true
+          },
+          "songsContainer": {
+            "visible": true,
+            "dimensions": "344x8735.802062988281",
+            "fitsWidth": true
+          },
+          "songCards": {
+            "count": 7,
+            "firstCardVisible": true,
+            "firstCardDimensions": "344x1505.1145629882812",
+            "fitsWidth": true
+          },
+          "transposeControls": {
+            "visible": true,
+            "dimensions": "270.25x77.91665649414062"
+          }
+        },
+        "issues": [],
+        "score": 110
+      },
+      {
+        "breakpoint": "Mobile L",
+        "viewport": "425x812",
+        "elements": {
+          "header": {
+            "visible": true,
+            "dimensions": "410x111.97917175292969",
+            "fitsWidth": true
+          },
+          "songsContainer": {
+            "visible": true,
+            "dimensions": "394x8735.802062988281",
+            "fitsWidth": true
+          },
+          "songCards": {
+            "count": 7,
+            "firstCardVisible": true,
+            "firstCardDimensions": "394x1505.1145629882812",
+            "fitsWidth": true
+          },
+          "transposeControls": {
+            "visible": true,
+            "dimensions": "270.25x77.91665649414062"
+          }
+        },
+        "issues": [],
+        "score": 110
+      },
+      {
+        "breakpoint": "Tablet",
+        "viewport": "768x1024",
+        "elements": {
+          "header": {
+            "visible": true,
+            "dimensions": "752.6666870117188x122.86458587646484",
+            "fitsWidth": true
+          },
+          "songsContainer": {
+            "visible": true,
+            "dimensions": "720.6666870117188x8764.82290649414",
+            "fitsWidth": true
+          },
+          "songCards": {
+            "count": 7,
+            "firstCardVisible": true,
+            "firstCardDimensions": "720.6666870117188x1509.2604064941406",
+            "fitsWidth": true
+          },
+          "transposeControls": {
+            "visible": true,
+            "dimensions": "294.2500305175781x79.52081298828125"
+          }
+        },
+        "issues": [],
+        "score": 110
+      },
+      {
+        "breakpoint": "Laptop",
+        "viewport": "1024x768",
+        "elements": {
+          "header": {
+            "visible": true,
+            "dimensions": "1008.6666870117188x94.08333587646484",
+            "fitsWidth": true
+          },
+          "songsContainer": {
+            "visible": true,
+            "dimensions": "944.6666870117188x9016.69790649414",
+            "fitsWidth": true
+          },
+          "songCards": {
+            "count": 7,
+            "firstCardVisible": true,
+            "firstCardDimensions": "944.6666870117188x1538.3854064941406",
+            "fitsWidth": true
+          },
+          "transposeControls": {
+            "visible": true,
+            "dimensions": "904.6666870117188x79.52081298828125"
+          }
+        },
+        "issues": [],
+        "score": 100
+      },
+      {
+        "breakpoint": "Laptop L",
+        "viewport": "1440x900",
+        "elements": {
+          "header": {
+            "visible": true,
+            "dimensions": "1424.666748046875x71.03125",
+            "fitsWidth": true
+          },
+          "songsContainer": {
+            "visible": true,
+            "dimensions": "800.0000305175781x8596.646484375",
+            "fitsWidth": true
+          },
+          "songCards": {
+            "count": 7,
+            "firstCardVisible": true,
+            "firstCardDimensions": "800.0000305175781x1471.5208740234375",
+            "fitsWidth": true
+          },
+          "transposeControls": {
+            "visible": true,
+            "dimensions": "262.25x79.52084350585938"
+          }
+        },
+        "issues": [],
+        "score": 100
+      },
+      {
+        "breakpoint": "Desktop",
+        "viewport": "1920x1080",
+        "elements": {
+          "header": {
+            "visible": true,
+            "dimensions": "1904.666748046875x71.03125",
+            "fitsWidth": true
+          },
+          "songsContainer": {
+            "visible": true,
+            "dimensions": "800x8596.646484375",
+            "fitsWidth": true
+          },
+          "songCards": {
+            "count": 7,
+            "firstCardVisible": true,
+            "firstCardDimensions": "800x1471.5208740234375",
+            "fitsWidth": true
+          },
+          "transposeControls": {
+            "visible": true,
+            "dimensions": "262.25x79.52084350585938"
+          }
+        },
+        "issues": [],
+        "score": 100
+      },
+      {
+        "breakpoint": "4K",
+        "viewport": "2560x1440",
+        "elements": {
+          "header": {
+            "visible": true,
+            "dimensions": "2544.666748046875x71.03125",
+            "fitsWidth": true
+          },
+          "songsContainer": {
+            "visible": true,
+            "dimensions": "800x8596.646484375",
+            "fitsWidth": true
+          },
+          "songCards": {
+            "count": 7,
+            "firstCardVisible": true,
+            "firstCardDimensions": "800x1471.5208740234375",
+            "fitsWidth": true
+          },
+          "transposeControls": {
+            "visible": true,
+            "dimensions": "262.25x79.52084350585938"
+          }
+        },
+        "issues": [],
+        "score": 100
+      }
+    ]
+  },
+  "summary": {
+    "total": 25,
+    "passed": 24,
+    "failed": 1,
+    "successRate": "96.0"
+  },
+  "layoutAnalysis": {
+    "breakpointsTested": 8,
+    "responsiveTests": 8,
+    "averageLayoutScore": "105.0",
+    "averageLayoutTime": 110.74045999999944
+  }
+}

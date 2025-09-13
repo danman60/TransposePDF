@@ -341,7 +341,7 @@ class LayoutTester {
     console.log(`📱 Testing mobile behaviors for ${breakpoint.name}...`);
     
     // Test touch-friendly button sizes
-    const buttons = this.page.locator('.transpose-up, .transpose-down, .transpose-reset');
+    const buttons = this.page.locator('.transpose-button[title*="up"], .transpose-button[title*="down"], .reset-button');
     const buttonCount = await buttons.count();
     
     if (buttonCount > 0) {
@@ -420,7 +420,7 @@ class LayoutTester {
       const originalLayout = await this.captureLayoutSnapshot(firstSong, 'original');
       
       // Transpose up and check layout
-      const upButton = firstSong.locator('.transpose-up');
+      const upButton = firstSong.locator('.transpose-button[title*="up"]');
       await upButton.click();
       await this.page.waitForTimeout(500);
       
@@ -430,7 +430,7 @@ class LayoutTester {
       this.compareLayoutSnapshots(originalLayout, transposedUpLayout, 'transpose up');
       
       // Transpose down and check layout
-      const downButton = firstSong.locator('.transpose-down');
+      const downButton = firstSong.locator('.transpose-button[title*="down"]');
       await downButton.click();
       await downButton.click(); // Go below original
       await this.page.waitForTimeout(500);
@@ -439,7 +439,7 @@ class LayoutTester {
       this.compareLayoutSnapshots(originalLayout, transposedDownLayout, 'transpose down');
       
       // Reset and verify layout returns
-      const resetButton = firstSong.locator('.transpose-reset');
+      const resetButton = firstSong.locator('.reset-button');
       await resetButton.click();
       await this.page.waitForTimeout(500);
       
@@ -479,7 +479,7 @@ class LayoutTester {
       }
       
       // Capture content layout
-      const content = element.locator('.song-content');
+      const content = element.locator('.lead-sheet-content');
       if (await content.count() > 0) {
         snapshot.content = {
           boundingBox: await content.boundingBox(),

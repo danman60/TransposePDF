@@ -1,0 +1,180 @@
+{
+  "testSuite": "Golden Test 4: Text Visibility and Readability",
+  "timestamp": "2025-09-13T09:07:56.710Z",
+  "duration": 19379,
+  "results": {
+    "passed": 45,
+    "failed": 2,
+    "errors": [
+      "Content height should be reasonable on Mobile Portrait",
+      "Content height should be reasonable on Mobile Landscape"
+    ],
+    "screenshots": [
+      "test_results/golden_test_4_01_app_loaded_for_visibility.png",
+      "test_results/golden_test_4_02_songbook_loaded_visibility.png",
+      "test_results/golden_test_4_03_basic_visibility_tested.png",
+      "test_results/golden_test_4_04_contrast_analysis.png",
+      "test_results/golden_test_4_05_interaction_testing.png",
+      "test_results/golden_test_4_06_visibility_after_transposition.png",
+      "test_results/golden_test_4_07_mobile_portrait_visibility.png",
+      "test_results/golden_test_4_07_mobile_landscape_visibility.png",
+      "test_results/golden_test_4_07_tablet_portrait_visibility.png",
+      "test_results/golden_test_4_07_tablet_landscape_visibility.png",
+      "test_results/golden_test_4_07_desktop_visibility.png",
+      "test_results/golden_test_4_08_accessibility_testing.png"
+    ],
+    "timing": {},
+    "details": [
+      "Song title: 22.4px, color: rgb(255, 255, 255)",
+      "Song content: 16px, color: rgb(232, 234, 246)",
+      "Transpose button: 19.2px, color: rgb(232, 234, 246)",
+      "Text selection: 14 chars"
+    ],
+    "visibilityTests": [
+      {
+        "songIndex": 1,
+        "songTitle": "King Of Heaven",
+        "contentLength": 5921,
+        "chordCount": 0,
+        "visible": true
+      },
+      {
+        "songIndex": 2,
+        "songTitle": "King",
+        "contentLength": 1862,
+        "chordCount": 0,
+        "visible": true
+      },
+      {
+        "songIndex": 3,
+        "songTitle": "God Is For Us",
+        "contentLength": 6754,
+        "chordCount": 0,
+        "visible": true
+      },
+      {
+        "viewport": "Mobile Portrait",
+        "contentVisible": true,
+        "contentSize": "288.66668701171875x1296",
+        "fitsScreen": true
+      },
+      {
+        "viewport": "Mobile Landscape",
+        "contentVisible": true,
+        "contentSize": "520.6666870117188x1296",
+        "fitsScreen": true
+      },
+      {
+        "viewport": "Tablet Portrait",
+        "contentVisible": true,
+        "contentSize": "720.6666870117188x1296",
+        "fitsScreen": true
+      },
+      {
+        "viewport": "Tablet Landscape",
+        "contentVisible": true,
+        "contentSize": "944.6666870117188x1312",
+        "fitsScreen": true
+      },
+      {
+        "viewport": "Desktop",
+        "contentVisible": true,
+        "contentSize": "800x1328.0000305175781",
+        "fitsScreen": true
+      }
+    ],
+    "accessibilityTests": [
+      {
+        "test": "keyboard_navigation",
+        "result": "working",
+        "focusedElement": {
+          "tagName": "BUTTON",
+          "className": "transpose-button",
+          "id": ""
+        }
+      },
+      {
+        "test": "aria_attributes",
+        "elementCount": 0,
+        "elements": []
+      },
+      {
+        "test": "heading_structure",
+        "headingCount": 12,
+        "headings": [
+          {
+            "level": "H1",
+            "text": "Chord Transposer Pro",
+            "visible": true
+          },
+          {
+            "level": "H2",
+            "text": "Load Your Songbook",
+            "visible": false
+          },
+          {
+            "level": "H2",
+            "text": "Songs 7",
+            "visible": true
+          },
+          {
+            "level": "H2",
+            "text": "King Of Heaven",
+            "visible": true
+          },
+          {
+            "level": "H2",
+            "text": "King",
+            "visible": true
+          },
+          {
+            "level": "H2",
+            "text": "God Is For Us",
+            "visible": true
+          },
+          {
+            "level": "H2",
+            "text": "Neither",
+            "visible": true
+          },
+          {
+            "level": "H2",
+            "text": "His Mercy Is More",
+            "visible": true
+          },
+          {
+            "level": "H2",
+            "text": "Waymaker",
+            "visible": true
+          },
+          {
+            "level": "H2",
+            "text": "With",
+            "visible": true
+          },
+          {
+            "level": "H3",
+            "text": "Error",
+            "visible": false
+          },
+          {
+            "level": "H4",
+            "text": "System Health",
+            "visible": false
+          }
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "total": 47,
+    "passed": 45,
+    "failed": 2,
+    "successRate": "95.7"
+  },
+  "visibilityAnalysis": {
+    "totalVisibilityTests": 8,
+    "accessibilityTests": 3,
+    "responsiveViewports": 5
+  }
+}
