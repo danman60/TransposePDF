@@ -325,6 +325,7 @@ body {
 .pdf-layout-container {
   font-family: Arial, sans-serif;
   line-height: 1.4;
+  position: relative;
 }
 
 .pdf-page {
@@ -334,6 +335,7 @@ body {
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   page-break-after: always;
+  position: relative;
 }
 
 .pdf-line {
@@ -348,15 +350,28 @@ body {
   margin-right: 0.3em;
   white-space: nowrap;
   transition: all 0.3s ease;
+  color: var(--text-primary) !important;
+}
+
+/* Absolutely positioned text elements need explicit colors */
+.pdf-text-item[style*="position: absolute"] {
+  color: var(--text-primary) !important;
+  background: transparent !important;
 }
 
 .chord-text {
-  color: var(--primary-color);
+  color: var(--primary-color) !important;
   font-weight: bold;
   background: rgba(25, 118, 210, 0.1);
   padding: 0.1em 0.3em;
   border-radius: 3px;
   border: 1px solid rgba(25, 118, 210, 0.2);
+}
+
+/* Ensure absolutely positioned chord text is visible */
+.chord-text[style*="position: absolute"] {
+  color: var(--primary-color) !important;
+  background: rgba(25, 118, 210, 0.1) !important;
 }
 
 .chord-text:hover {

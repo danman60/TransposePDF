@@ -306,7 +306,8 @@ class UIController {
                               font-weight: ${item.bold ? 'bold' : 'normal'};
                               font-style: ${item.italic ? 'italic' : 'normal'};
                               line-height: 1.2;
-                              white-space: nowrap;">
+                              white-space: nowrap;
+                              color: ${className.includes('chord-text') ? '#1976d2' : '#212121'} !important;">
                    ${this.escapeHtml(displayText)}
                  </div>`;
       });
