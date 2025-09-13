@@ -17,18 +17,24 @@ class PDFGenerator {
   /**
    * Generate PDF from songs with transposed chords
    */
-  async generatePDF(songs, filename = 'Transposed Songbook') {
+  async generatePDF(songsInput, filename = 'Transposed Songbook') {
     try {
       logger.status('Generating PDF...', 'info');
       logger.startTimer('pdfExport');
 
+      // Ensure we have songs data
+      const songs = songsInput || [];
       if (!songs || songs.length === 0) {
         throw new Error('No songs to export');
       }
 
-      // Initialize jsPDF
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({
+      // Initialize jsPDF - handle different loading methods
+      const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
+      if (!jsPDFClass) {
+        throw new Error('jsPDF library not available');
+      }
+      
+      const pdf = new jsPDFClass({
         orientation: 'portrait',
         unit: 'pt',
         format: 'a4'
@@ -341,14 +347,14 @@ class PDFGenerator {
    */
   validatePDFGeneration() {
     try {
-      const { jsPDF } = window.jspdf;
+      const jsPDFClass = window.jspdf?.jsPDF || window.jsPDF;
       
-      if (!jsPDF) {
+      if (!jsPDFClass) {
         throw new Error('jsPDF library not available');
       }
       
       // Test basic PDF creation
-      const testPdf = new jsPDF();
+      const testPdf = new jsPDFClass();
       testPdf.text('Test', 10, 10);
       
       // Test blob generation
@@ -360,7 +366,7 @@ class PDFGenerator {
       
       return {
         available: true,
-        version: jsPDF.version || 'unknown',
+        version: jsPDFClass.version || 'unknown',
         testSize: blob.size
       };
       

@@ -5,8 +5,8 @@
 
 class SongSeparator {
   constructor() {
-    this.SONG_BREAK_THRESHOLD = 100; // Increased threshold - songs are typically 1-2 pages
-    this.MIN_SONG_LENGTH = 50; // Increased minimum items per song
+    this.SONG_BREAK_THRESHOLD = 50; // Flexible threshold for various song lengths
+    this.MIN_SONG_LENGTH = 10; // Reduced minimum - single page chord charts can be shorter
     this.TITLE_PATTERNS = [
       /^[A-Z][A-Za-z\s\-\'\"\(\)]{3,50}$/,  // Title case like "King Of Heaven"
       /^[A-Z\s\-\'\"\(\)]{4,50}$/,           // ALL CAPS titles
@@ -78,17 +78,11 @@ class SongSeparator {
   }
 
   /**
-   * Detect boundaries between songs - CONSERVATIVE approach for 4 worship songs
-   * Expected: King Of Heaven, God Is For Us, His Mercy Is More, Waymaker
+   * Detect boundaries between songs - DYNAMIC approach for any chord charts
+   * Detects song titles based on patterns rather than hardcoded names
    */
   detectSongBoundaries(textItems) {
     const boundaries = [0]; // Always start with first item
-    
-    // For a 4-song PDF, we expect songs to start on pages 1, 3, 5, 7 (roughly)
-    // Look for clear song titles that match known worship song patterns
-    const knownTitles = [
-      'King Of Heaven', 'God Is For Us', 'His Mercy Is More', 'Waymaker'
-    ];
     
     logger.status('🔍 Looking for song boundaries with conservative detection...', 'info');
     
@@ -103,7 +97,7 @@ class SongSeparator {
       if (!pageItems || pageItems.length === 0) continue;
       
       // Look for the most obvious song title on this page
-      const titleCandidate = this.findObviousSongTitle(pageItems, knownTitles);
+      const titleCandidate = this.findObviousSongTitle(pageItems);
       
       if (titleCandidate) {
         const titleIndex = textItems.findIndex(item => item.id === titleCandidate.id);

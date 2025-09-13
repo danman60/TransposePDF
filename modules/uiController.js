@@ -241,12 +241,13 @@ class UIController {
         </div>
         
         <div class="transpose-controls">
-          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, -1)" title="Transpose down">♭</button>
+          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, -1)" title="Transpose down">-</button>
           <div class="transpose-display">
             <div class="transpose-value" id="transposeValue-${song.id}">0</div>
             <div class="transpose-label">semitones</div>
           </div>
-          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, 1)" title="Transpose up">♯</button>
+          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, 1)" title="Transpose up">+</button>
+          <button class="reset-button" onclick="window.transposeApp.resetSong(${song.id})" title="Reset to original key">↺</button>
         </div>
       </div>
     `;
@@ -275,42 +276,39 @@ class UIController {
     const pageGroups = this.groupTextItemsByPage(song.textItems);
     
     Object.keys(pageGroups).sort((a, b) => parseInt(a) - parseInt(b)).forEach(pageNum => {
-      html += `<div class="pdf-page" data-page="${pageNum}">`;
+      html += `<div class="pdf-page" data-page="${pageNum}" style="position: relative; min-height: 600px;">`;
       
-      // Sort items by Y position (top to bottom), then X position (left to right)
-      const pageItems = pageGroups[pageNum].sort((a, b) => {
-        if (Math.abs(a.y - b.y) > 10) return a.y - b.y; // Different lines
-        return a.x - b.x; // Same line, left to right
-      });
+      // Process items with absolute positioning to match PDF exactly
+      const pageItems = pageGroups[pageNum];
       
-      // Group items by lines (same Y position within tolerance)
-      const lines = this.groupItemsByLines(pageItems);
-      
-      lines.forEach((lineItems, lineIndex) => {
-        html += `<div class="pdf-line" style="position: relative; margin-bottom: 1em;">`;
+      // Use absolute positioning for each text item to match PDF exactly
+      pageItems.forEach(item => {
+        const isChordLine = this.containsChords(item.text);
+        const className = this.getPDFItemClass(item, isChordLine);
         
-        lineItems.forEach(item => {
-          const isChordLine = this.containsChords(item.text);
-          const className = this.getPDFItemClass(item, isChordLine);
-          
-          // Transpose chords if this item contains them
-          let displayText = item.text;
-          if (isChordLine && song.transposition !== 0) {
-            displayText = this.transposeTextItem(item.text, song.transposition, musicTheory);
-          }
-          
-          html += `<span class="${className}" 
-                         style="position: relative; 
-                                font-size: ${(item.fontSize || 12) * 0.75}px;
-                                font-weight: ${item.bold ? 'bold' : 'normal'};
-                                font-style: ${item.italic ? 'italic' : 'normal'};
-                                margin-right: 0.5em;
-                                display: inline-block;">
-                     ${this.escapeHtml(displayText)}
-                   </span>`;
-        });
+        // Transpose chords if this item contains them
+        let displayText = item.text;
+        if (isChordLine && song.transposition !== 0) {
+          displayText = this.transposeTextItem(item.text, song.transposition, musicTheory);
+        }
         
-        html += '</div>';
+        // Calculate position with scaling factor to fit display
+        const scaleFactor = 0.6; // Reduced scale to better fit screen
+        const left = item.x * scaleFactor;
+        const top = item.y * scaleFactor;
+        const fontSize = (item.fontSize || 12) * scaleFactor;
+        
+        html += `<div class="${className}" 
+                       style="position: absolute; 
+                              left: ${left}px; 
+                              top: ${top}px; 
+                              font-size: ${fontSize}px; 
+                              font-weight: ${item.bold ? 'bold' : 'normal'};
+                              font-style: ${item.italic ? 'italic' : 'normal'};
+                              line-height: 1.2;
+                              white-space: nowrap;">
+                   ${this.escapeHtml(displayText)}
+                 </div>`;
       });
       
       html += '</div>';
@@ -505,6 +503,9 @@ class UIController {
       // Update the lead sheet display in real-time
       this.updateLeadSheetDisplay(song);
       
+      // Update transpose display
+      this.updateTransposeDisplay(song);
+      
       // Log the change
       logger.status(`${song.title}: ${song.originalKey} → ${song.currentKey} (${song.transposition > 0 ? '+' : ''}${song.transposition})`, 'info');
       
@@ -512,7 +513,43 @@ class UIController {
       this.showError(`Failed to transpose "${song.title}": ${error.message}`);
     }
   }
+
+  /**
+   * Reset individual song to original key
+   */
+  resetSong(songId) {
+    const song = this.currentSongs.find(s => s.id === songId);
+    if (!song) return;
+    
+    try {
+      // Reset to original state
+      song.transposition = 0;
+      song.currentKey = song.originalKey;
+      
+      // Update the lead sheet display
+      this.updateLeadSheetDisplay(song);
+      
+      // Update transpose display
+      this.updateTransposeDisplay(song);
+      
+      // Log the reset
+      logger.status(`${song.title}: Reset to original key (${song.originalKey})`, 'info');
+      
+    } catch (error) {
+      this.showError(`Failed to reset "${song.title}": ${error.message}`);
+    }
+  }
   
+  /**
+   * Update transpose display values
+   */
+  updateTransposeDisplay(song) {
+    const transposeValue = document.getElementById(`transposeValue-${song.id}`);
+    if (transposeValue) {
+      transposeValue.textContent = song.transposition > 0 ? `+${song.transposition}` : song.transposition.toString();
+    }
+  }
+
   /**
    * Update lead sheet display with new transposition in real-time
    */

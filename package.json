@@ -1,0 +1,19 @@
+{
+  "name": "transposepdf",
+  "version": "1.0.0",
+  "description": "A mission-critical worship tool for church teams who need **reliable, offline chord transposition** during live services.",
+  "main": "app.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "^1.55.0"
+  }
+}

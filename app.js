@@ -67,7 +67,7 @@ const healthCheck = async () => {
   const checks = [
     { name: 'PDF.js loaded', test: () => typeof pdfjsLib !== 'undefined' },
     { name: 'Tonal.js loaded', test: () => typeof Tonal !== 'undefined' },
-    { name: 'jsPDF loaded', test: () => typeof jsPDF !== 'undefined' },
+    { name: 'jsPDF loaded', test: () => typeof jsPDF !== 'undefined' || (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') },
     { name: 'Service Worker active', test: () => 'serviceWorker' in navigator },
     { name: 'Local storage available', test: () => typeof Storage !== 'undefined' },
     { name: 'File API supported', test: () => 'FileReader' in window },

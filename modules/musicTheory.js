@@ -45,8 +45,13 @@ class MusicTheory {
       ['vi', 'I', 'V', 'IV']   // Am-C-G-F
     ];
 
-    // Chromatic scale for transposition
+    // Chromatic scale for transposition (includes both sharps and flats for lookup)
     this.CHROMATIC_SCALE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+    
+    // Flat equivalents for lookups 
+    this.FLAT_TO_SHARP_MAP = {
+      'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
+    };
     
     // Enharmonic preferences (always prefer sharps)
     this.ENHARMONIC_PREFERENCES = {
@@ -148,8 +153,17 @@ class MusicTheory {
     
     // Handle enharmonic equivalents if not found
     if (currentIndex === -1) {
-      const enharmonic = this.getEnharmonicEquivalent(rootWithAccidental);
-      currentIndex = this.CHROMATIC_SCALE.indexOf(enharmonic);
+      // First try flat-to-sharp conversion
+      const sharpEquivalent = this.FLAT_TO_SHARP_MAP[rootWithAccidental];
+      if (sharpEquivalent) {
+        currentIndex = this.CHROMATIC_SCALE.indexOf(sharpEquivalent);
+      }
+      
+      // If still not found, try general enharmonic lookup
+      if (currentIndex === -1) {
+        const enharmonic = this.getEnharmonicEquivalent(rootWithAccidental);
+        currentIndex = this.CHROMATIC_SCALE.indexOf(enharmonic);
+      }
     }
     
     if (currentIndex === -1) {
