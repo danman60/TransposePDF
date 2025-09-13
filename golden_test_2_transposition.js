@@ -119,7 +119,7 @@ class TranspositionTester {
     
     try {
       // Get the first song
-      const firstSong = await this.page.locator('.song-card').first();
+      const firstSong = await this.page.locator('.lead-sheet').first();
       
       if (!await firstSong.isVisible()) {
         throw new Error('No songs found for transposition testing');
@@ -277,7 +277,7 @@ class TranspositionTester {
     console.log('🎵 Testing chord transposition accuracy...');
     
     try {
-      const firstSong = await songElement.locator('.song-card').first();
+      const firstSong = await songElement.locator('.lead-sheet').first();
       
       // Reset to original state
       const resetButton = await firstSong.locator('.transpose-reset');
@@ -371,7 +371,7 @@ class TranspositionTester {
     console.log('📚 Testing transposition across multiple songs...');
     
     try {
-      const songCards = await this.page.locator('.song-card');
+      const songCards = await this.page.locator('.lead-sheet');
       const songCount = await songCards.count();
       
       const maxSongs = Math.min(3, songCount); // Test first 3 songs
@@ -418,7 +418,7 @@ class TranspositionTester {
     console.log('🔄 Testing transposition limits and boundaries...');
     
     try {
-      const firstSong = await this.page.locator('.song-card').first();
+      const firstSong = await this.page.locator('.lead-sheet').first();
       
       // Reset to start
       await firstSong.locator('.transpose-reset').click();

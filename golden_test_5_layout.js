@@ -127,7 +127,7 @@ class LayoutTester {
         { selector: '#uploadSection', name: 'Upload section' },
         { selector: '#songsSection', name: 'Songs section' },
         { selector: '#songsContainer', name: 'Songs container' },
-        { selector: '.song-card', name: 'Song cards' }
+        { selector: '.lead-sheet', name: 'Song cards' }
       ];
       
       for (const element of layoutElements) {
@@ -265,7 +265,7 @@ class LayoutTester {
       }
       
       // Test song card layout
-      const songCards = this.page.locator('.song-card');
+      const songCards = this.page.locator('.lead-sheet');
       const cardCount = await songCards.count();
       
       if (cardCount > 0) {
@@ -387,7 +387,7 @@ class LayoutTester {
     console.log(`🖥️  Testing desktop behaviors for ${breakpoint.name}...`);
     
     // Test that layout doesn't become too wide (readability)
-    const songCards = this.page.locator('.song-card');
+    const songCards = this.page.locator('.lead-sheet');
     if (await songCards.count() > 0) {
       const cardBox = await songCards.first().boundingBox();
       
@@ -407,7 +407,7 @@ class LayoutTester {
     console.log('🔄 Testing layout stability during transposition...');
     
     try {
-      const songCards = this.page.locator('.song-card');
+      const songCards = this.page.locator('.lead-sheet');
       const cardCount = await songCards.count();
       
       if (cardCount === 0) {

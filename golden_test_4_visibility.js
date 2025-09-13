@@ -109,7 +109,7 @@ class VisibilityTester {
     console.log('📝 Testing basic text visibility and rendering...');
     
     try {
-      const songCards = await this.page.locator('.song-card');
+      const songCards = await this.page.locator('.lead-sheet');
       const songCount = await songCards.count();
       
       if (songCount === 0) {
@@ -183,7 +183,7 @@ class VisibilityTester {
     console.log('🌓 Testing text contrast and readability...');
     
     try {
-      const firstSong = await this.page.locator('.song-card').first();
+      const firstSong = await this.page.locator('.lead-sheet').first();
       
       // Test text color contrast
       const textElements = [
@@ -241,7 +241,7 @@ class VisibilityTester {
     console.log('👆 Testing text selection and interaction...');
     
     try {
-      const firstSong = await this.page.locator('.song-card').first();
+      const firstSong = await this.page.locator('.lead-sheet').first();
       const songContent = firstSong.locator('.song-content');
       
       // Test text selection
@@ -313,7 +313,7 @@ class VisibilityTester {
     console.log('🔄 Testing visibility after transposition...');
     
     try {
-      const firstSong = await this.page.locator('.song-card').first();
+      const firstSong = await this.page.locator('.lead-sheet').first();
       
       // Get original content
       const originalContent = await firstSong.locator('.song-content').textContent();
@@ -411,7 +411,7 @@ class VisibilityTester {
         await this.page.waitForTimeout(1000); // Allow UI to adjust
         
         // Test that content is still visible
-        const firstSong = await this.page.locator('.song-card').first();
+        const firstSong = await this.page.locator('.lead-sheet').first();
         
         if (await firstSong.isVisible()) {
           const songContent = firstSong.locator('.song-content');
@@ -480,7 +480,7 @@ class VisibilityTester {
       // Test keyboard navigation
       console.log('⌨️  Testing keyboard navigation...');
       
-      const firstSong = await this.page.locator('.song-card').first();
+      const firstSong = await this.page.locator('.lead-sheet').first();
       
       // Tab through controls
       await this.page.keyboard.press('Tab');

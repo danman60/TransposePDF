@@ -168,7 +168,7 @@ class PDFLoadingTester {
       
       // Check for songs in container
       const songsContainer = await this.page.locator('#songsContainer');
-      const songElements = await songsContainer.locator('.song-card').count();
+      const songElements = await songsContainer.locator('.lead-sheet').count();
       
       console.log(`🎼 Found ${songElements} song cards in UI`);
       this.assert(songElements === count, `UI song cards (${songElements}) should match count (${count})`);
@@ -194,7 +194,7 @@ class PDFLoadingTester {
     console.log('🔍 Testing first song card details...');
     
     try {
-      const firstSong = await this.page.locator('.song-card').first();
+      const firstSong = await this.page.locator('.lead-sheet').first();
       
       // Check for song title
       const titleElement = await firstSong.locator('.song-title');
@@ -206,12 +206,11 @@ class PDFLoadingTester {
       
       // Check for transpose controls
       await this.assertElementExists('.transpose-controls', 'Transpose controls should exist', firstSong);
-      await this.assertElementExists('.transpose-up', 'Transpose up button should exist', firstSong);
-      await this.assertElementExists('.transpose-down', 'Transpose down button should exist', firstSong);
-      await this.assertElementExists('.transpose-reset', 'Transpose reset button should exist', firstSong);
+      await this.assertElementExists('.transpose-button', 'Transpose buttons should exist', firstSong);
+      await this.assertElementExists('.reset-button', 'Transpose reset button should exist', firstSong);
       
       // Check for song content
-      const contentElement = await firstSong.locator('.song-content');
+      const contentElement = await firstSong.locator('.lead-sheet-content');
       const content = await contentElement.textContent();
       
       this.assert(content && content.trim().length > 50, 'Song should have substantial content');

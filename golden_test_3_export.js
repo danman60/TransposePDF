@@ -205,7 +205,7 @@ class ExportTester {
     
     try {
       // First, transpose some songs
-      const songCards = await this.page.locator('.song-card');
+      const songCards = await this.page.locator('.lead-sheet');
       const songCount = await songCards.count();
       
       if (songCount === 0) {
@@ -339,7 +339,7 @@ class ExportTester {
     
     try {
       // Reset all songs to original state
-      const songCards = await this.page.locator('.song-card');
+      const songCards = await this.page.locator('.lead-sheet');
       const songCount = await songCards.count();
       
       console.log(`🔄 Resetting ${songCount} songs to original state...`);

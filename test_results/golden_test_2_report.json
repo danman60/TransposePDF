@@ -1,19 +1,19 @@
 {
   "testSuite": "Golden Test 2: Chord Transposition Functionality",
-  "timestamp": "2025-09-13T04:29:11.113Z",
-  "duration": 34619,
+  "timestamp": "2025-09-13T04:38:31.610Z",
+  "duration": 93825,
   "results": {
     "passed": 0,
     "failed": 0,
     "errors": [
-      "Basic transposition failed: No songs found for transposition testing",
+      "Basic transposition failed: locator.textContent: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.lead-sheet').first().locator('.song-content')\u001b[22m\n",
       "Chord accuracy test failed: songElement is not defined",
-      "Transposition limits test failed: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.song-card').first().locator('.transpose-reset')\u001b[22m\n"
+      "Multiple songs test failed: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.lead-sheet').first().locator('.transpose-up')\u001b[22m\n",
+      "Transposition limits test failed: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.lead-sheet').first().locator('.transpose-reset')\u001b[22m\n"
     ],
     "screenshots": [
       "test_results/golden_test_2_01_app_loaded_for_transposition.png",
-      "test_results/golden_test_2_02_songbook_loaded.png",
-      "test_results/golden_test_2_08_multiple_songs_test.png"
+      "test_results/golden_test_2_02_songbook_loaded.png"
     ],
     "timing": {},
     "details": [],
