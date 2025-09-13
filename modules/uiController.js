@@ -293,7 +293,7 @@ class UIController {
         }
         
         // Calculate position with scaling factor to fit display
-        const scaleFactor = 0.6; // Reduced scale to better fit screen
+        const scaleFactor = 0.8; // Increased scale for better readability
         const left = item.x * scaleFactor;
         const top = item.y * scaleFactor;
         const fontSize = (item.fontSize || 12) * scaleFactor;

@@ -1,0 +1,37 @@
+{
+  "testSuite": "Golden Test 1: PDF Loading and Song Detection",
+  "timestamp": "2025-09-13T04:28:31.060Z",
+  "duration": 8474,
+  "results": {
+    "passed": 9,
+    "failed": 1,
+    "errors": [
+      "UI song cards (0) should match count (7)"
+    ],
+    "screenshots": [
+      "test_results/golden_test_1_01_app_loaded.png",
+      "test_results/golden_test_1_02_pdf_processing.png",
+      "test_results/golden_test_1_03_songs_loaded.png",
+      "test_results/golden_test_1_04_songs_detected.png",
+      "test_results/golden_test_1_05_error_test_start.png",
+      "test_results/golden_test_1_06_error_displayed.png",
+      "test_results/golden_test_1_07_mobile_view.png",
+      "test_results/golden_test_1_07_tablet_view.png",
+      "test_results/golden_test_1_07_desktop_view.png"
+    ],
+    "timing": {
+      "appLoad": 2627.3491,
+      "pdfLoad": 374.17920000000004
+    },
+    "details": [
+      "Song count: 7",
+      "Error handling: Please select a valid PDF file"
+    ]
+  },
+  "summary": {
+    "total": 10,
+    "passed": 9,
+    "failed": 1,
+    "successRate": "90.0"
+  }
+}

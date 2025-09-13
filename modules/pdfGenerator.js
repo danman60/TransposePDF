@@ -41,7 +41,7 @@ class PDFGenerator {
       });
 
       // Add title page
-      this.addTitlePage(pdf, filename, songs.length);
+      this.addTitlePage(pdf, filename, songs);
 
       // Add each song
       for (let i = 0; i < songs.length; i++) {
@@ -66,7 +66,7 @@ class PDFGenerator {
   /**
    * Add title page to PDF
    */
-  addTitlePage(pdf, title, songCount) {
+  addTitlePage(pdf, title, songs) {
     const centerX = this.pageWidth / 2;
     
     // Main title
@@ -77,7 +77,7 @@ class PDFGenerator {
     // Subtitle
     pdf.setFontSize(16);
     pdf.setFont(undefined, 'normal');
-    const subtitle = `${songCount} Songs - Chord Transposer Pro`;
+    const subtitle = `${songs.length} Songs - Chord Transposer Pro`;
     pdf.text(subtitle, centerX, 230, { align: 'center' });
     
     // Generation date

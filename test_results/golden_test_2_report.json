@@ -1,0 +1,33 @@
+{
+  "testSuite": "Golden Test 2: Chord Transposition Functionality",
+  "timestamp": "2025-09-13T04:29:11.113Z",
+  "duration": 34619,
+  "results": {
+    "passed": 0,
+    "failed": 0,
+    "errors": [
+      "Basic transposition failed: No songs found for transposition testing",
+      "Chord accuracy test failed: songElement is not defined",
+      "Transposition limits test failed: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.song-card').first().locator('.transpose-reset')\u001b[22m\n"
+    ],
+    "screenshots": [
+      "test_results/golden_test_2_01_app_loaded_for_transposition.png",
+      "test_results/golden_test_2_02_songbook_loaded.png",
+      "test_results/golden_test_2_08_multiple_songs_test.png"
+    ],
+    "timing": {},
+    "details": [],
+    "transpositionTests": []
+  },
+  "summary": {
+    "total": 0,
+    "passed": 0,
+    "failed": 0,
+    "successRate": "0.0"
+  },
+  "transpositionAnalysis": {
+    "totalChordTests": 0,
+    "correctTranspositions": 0,
+    "incorrectTranspositions": 0
+  }
+}
