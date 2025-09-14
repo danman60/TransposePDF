@@ -1,0 +1,7 @@
+# Test URLs for SoloTranscribeCLI - UNCOMMENT ONE AT A TIME FOR TESTING
+
+# Short educational video (about 1 minute, good for initial testing)
+https://www.youtube.com/watch?v=jNQXAC9IVRw
+
+# Slightly longer video (if first test works)
+# https://www.youtube.com/watch?v=kJQP7kiw5Fk

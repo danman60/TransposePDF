@@ -1,12 +1,4 @@
-const fs = require('fs');
-const path = require('path');
 
-// Create a simple test PDF content using jsPDF-like structure
-// This creates a basic PDF with chord charts for testing
-function createTestPDF() {
-    // Create a simple text file that can be converted to PDF later
-    // For now, let's create HTML content that represents chord charts
-    const testContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -56,64 +48,4 @@ function createTestPDF() {
         <div class="lyrics">Let me be singing when the evening comes</div>
     </div>
 </body>
-</html>`;
-
-    const testHtmlPath = path.join(__dirname, 'test_songbook.html');
-    fs.writeFileSync(testHtmlPath, testContent);
-    
-    console.log(`✅ Test HTML file created at: ${testHtmlPath}`);
-    return testHtmlPath;
-}
-
-// Create a simple text file that can be used for testing
-function createSimpleTextFile() {
-    const textContent = `
-Amazing Grace (Key of D)
-
-D       G       A       Bm
-Amazing grace how sweet the sound
-D       G       A       D
-That saved a wretch like me
-D       G       A       Bm
-I once was lost but now I'm found
-D       G       A       D
-Was blind but now I see
-
-
-How Great Thou Art (Key of Eb)
-
-Eb      Ab      Bb      Cm
-O Lord my God when I in awesome wonder
-Eb      Ab      Bb      Eb
-Consider all the worlds Thy hands have made
-Eb      Ab      Bb      Cm
-I see the stars I hear the rolling thunder
-Eb      Ab      Bb      Eb
-Thy power throughout the universe displayed
-
-
-10,000 Reasons (Key of G)
-
-G       C       D       Em
-The sun comes up it's a new day dawning
-G       C       D       G
-It's time to sing Your song again
-G       C       D       Em
-Whatever may pass and whatever lies before me
-G       C       D       G
-Let me be singing when the evening comes
-`;
-
-    const testTextPath = path.join(__dirname, 'test_songbook.txt');
-    fs.writeFileSync(testTextPath, textContent);
-    
-    console.log(`✅ Test text file created at: ${testTextPath}`);
-    return testTextPath;
-}
-
-if (require.main === module) {
-    createTestPDF();
-    createSimpleTextFile();
-}
-
-module.exports = { createTestPDF, createSimpleTextFile };
+</html>

@@ -1,203 +1,274 @@
-# TransposePDF - Worship Chord Transposition PWA
+# SoloTranscribeCLI
 
-A mission-critical worship tool for church teams who need **reliable, offline chord transposition** during live services.
+A command line tool that accepts a plain text or CSV file of social video URLs, downloads audio, converts to MP3, transcribes via AssemblyAI, and saves transcripts locally.
 
-## 🎯 Purpose
+## Features
 
-TransposePDF enables worship leaders to:
-- Load Sunday songbook PDFs on Saturday night
-- Transpose each song individually for different vocalists  
-- Export clean PDF for confident Sunday service use
-- Work completely offline after initial load
+- **Batch Processing**: Process multiple video URLs from a single file
+- **Multiple Platforms**: Supports YouTube, TikTok, Instagram, Facebook, and more (via yt-dlp)
+- **Multiple Formats**: Output transcripts as TXT, JSON, SRT, or VTT
+- **Cost Control**: Budget caps and cost estimation
+- **Robust Error Handling**: Retry mechanisms and detailed error reporting
+- **Progress Tracking**: Manifest files track job status and allow resuming
 
-## ✨ Features
+## Installation
 
-### Core Functionality
-- **Multi-song PDF processing** with intelligent song separation
-- **Individual song transposition** with +/- semitone controls
-- **Advanced chord support** from basic (C, G, Am) to complex (C#m7b5, Fmaj7#11)
-- **Key detection** with confidence scoring
-- **Clean PDF export** with custom filenames
-
-### Technical Excellence
-- **100% Offline Operation** after initial page load
-- **Mobile-first design** optimized for Android tablets
-- **Progressive Web App** with install capability
-- **Real-time transposition** with enharmonic preferences (F# over Gb)
-- **Comprehensive error handling** for production reliability
-
-### Worship-Specific
-- **Real chord patterns** from actual worship songs
-- **Slash chord support** (D/F#, G/B, Am/C)
-- **Complex extensions** (maj7, sus4, add9, m7b5)
-- **Common key signatures** (C, G, D, A, E, F, Bb, Eb, Ab, Am, Em, Bm, F#m, Dm, Gm, Cm)
-
-## 🚀 Quick Start
-
-### Local Development
-1. Clone the repository:
+1. **Clone the repository**:
    ```bash
-   git clone https://github.com/yourusername/TransposePDF.git
-   cd TransposePDF
+   git clone <repo-url>
+   cd SoloTranscribeCLI
    ```
 
-2. Serve locally (Python):
+2. **Install dependencies**:
    ```bash
-   python -m http.server 8000
-   ```
-   Or (Node.js):
-   ```bash
-   npx http-server
+   pip install -r requirements.txt
    ```
 
-3. Open `http://localhost:8000` in your browser
+3. **Set up API keys**:
+   ```bash
+   cp .env.example .env
+   # Edit .env and add your API keys
+   ```
 
-### Production Deployment
-1. Upload all files to your web server
-2. Ensure HTTPS is enabled for PWA features
-3. Test offline functionality
-4. Share with your worship team!
+4. **Install the CLI tool**:
+   ```bash
+   pip install -e .
+   ```
 
-## 📱 Usage
+## Configuration
 
-### Loading a Songbook
-1. Click "Choose PDF File" or drag-and-drop your songbook
-2. Wait for automatic song detection and chord analysis
-3. Review detected songs and their original keys
+Create a `.env` file with your API credentials:
 
-### Transposing Songs
-1. Use **+/-** buttons on individual song cards
-2. Watch real-time key changes and chord previews
-3. Orange indicators show modified songs
+```env
+# Required API Keys
+FREECONVERT_API_KEY=your_freeconvert_key_here
+ASSEMBLYAI_API_KEY=your_assemblyai_key_here
 
-### Exporting Results
-1. Click "Export PDF" when transpositions complete
-2. Customize filename if desired
-3. Download your transposed songbook
-4. Use confidently during worship!
-
-## 🧪 Testing
-
-### Run Test Suite
-Open browser console and run:
-```javascript
-const tester = new TransposeAppTests();
-tester.runAllTests().then(results => console.log(results));
+# Optional Settings
+OUT_DIR=./out
+TEMP_DIR=./temp
+RETRY_LIMIT=3
+DELETE_TEMP_ON_SUCCESS=true
+ENABLE_SUMMARY=false
+CAP_BUDGET_USD=20
 ```
 
-### Performance Benchmarks
-```javascript
-const perf = new PerformanceTester();
-perf.runBenchmarks().then(results => console.log(results));
+### Getting API Keys
+
+1. **AssemblyAI**: Sign up at [AssemblyAI](https://www.assemblyai.com/) and get your API key
+2. **FreeConvert**: Sign up at [FreeConvert](https://www.freeconvert.com/api) and get your API key
+
+## Usage
+
+### Basic Usage
+
+```bash
+# Process URLs from a text file
+solotranscribe run --in urls.txt --out ./transcripts --format txt,json
+
+# Process with custom settings
+solotranscribe run --in videos.csv --out ./output --format txt,json,srt --summarize --cap-budget 50
 ```
 
-### Debug Information
-Press **Ctrl+Shift+D** to export debug data.
+### Commands
 
-## 🎼 Supported Chord Types
+#### `run` - Process video URLs
 
-### Basic Chords
-- Major: `C`, `G`, `F`, `D`, `A`, `E`, `B`
-- Minor: `Am`, `Em`, `Bm`, `F#m`, `Dm`, `Gm`, `Cm`
+```bash
+solotranscribe run [OPTIONS]
 
-### Extensions
-- Sevenths: `Cmaj7`, `Am7`, `G7`, `Dm7`
-- Suspended: `Csus4`, `Gsus2`, `Fsus`
-- Added tones: `Cadd9`, `Gadd11`, `Fadd2`
+Options:
+  --in PATH          Input file with video URLs (txt or csv) [required]
+  --out PATH         Output directory for transcripts [required]
+  --format TEXT      Output formats (comma-separated): txt,json,srt,vtt [default: txt,json]
+  --summarize        Enable transcript summarization
+  --no-summarize     Disable transcript summarization
+  --delete-temp      Delete temporary files after processing
+  --keep-temp        Keep temporary files after processing
+  --cap-budget FLOAT Budget cap in USD
+  --dry-run          Show cost/time estimates without processing
+```
 
-### Complex Worship Chords
-- `Cmaj9`, `G7sus4`, `Am7b5`, `Fmaj7#11`
-- `C#m7b5`, `F#dim`, `Bbmaj7#11`, `Db/F`
+#### `retry` - Retry failed jobs
 
-### Slash Chords
-- `D/F#`, `G/B`, `Am/C`, `F/A`, `C/E`
-- `A/C#`, `Bm/D`, `F#/A#`, `Eb/G`
+```bash
+solotranscribe retry --manifest ./out/manifest.json
+```
 
-## 🔧 Architecture
+#### `dryrun` - Estimate costs
 
-### Core Modules
-- **PDFProcessor**: PDF.js integration for text extraction
-- **MusicTheory**: Chord detection, transposition, key analysis
-- **SongSeparator**: Intelligent multi-song boundary detection
-- **PDFGenerator**: jsPDF integration for clean output
-- **UIController**: Mobile-responsive interface management
+```bash
+solotranscribe dryrun --in urls.txt
+```
 
-### Libraries Used
-- **PDF.js 3.11.174**: Mozilla's PDF processing
-- **Tonal.js 5.0.0**: Music theory calculations
-- **jsPDF 2.5.1**: PDF generation
-- **Service Worker API**: Offline caching
+#### `status` - Check configuration
 
-## 🎯 Performance Requirements
+```bash
+solotranscribe status
+```
 
-The app meets these benchmarks:
-- **PDF Load**: < 2 seconds for 20-page files
-- **Song Separation**: < 1 second for 50+ songs
-- **Transposition**: < 100ms per chord
-- **PDF Export**: < 3 seconds for complete songbooks
-- **Memory Usage**: < 100MB for large files
+### Input Formats
 
-## 🛠️ Development
+#### Text File (urls.txt)
+```
+https://www.youtube.com/watch?v=dQw4w9WgXcQ
+https://www.tiktok.com/@user/video/1234567890
+https://www.instagram.com/reel/ABC123/
+# Comments start with #
+https://vimeo.com/123456789
+```
+
+#### CSV File (videos.csv)
+```csv
+url,title_override
+https://www.youtube.com/watch?v=dQw4w9WgXcQ,Rick Roll
+https://www.tiktok.com/@user/video/1234567890,Funny TikTok
+```
+
+## Output Structure
+
+For each processed video, the tool creates:
+
+```
+out/
+├── manifest.json              # Batch processing metadata
+├── manifest.csv               # Spreadsheet-friendly summary
+├── batch_20240115_143022_a1b2c3d4_job_001/
+│   ├── transcript.txt         # Plain text transcript
+│   ├── transcript.json        # Structured transcript with metadata
+│   ├── captions.srt          # SubRip subtitles (if requested)
+│   ├── captions.vtt          # WebVTT subtitles (if requested)
+│   └── meta.json             # Job metadata
+└── logs/
+    └── run-20240115-143022.jsonl
+```
+
+### Output Formats
+
+- **TXT**: Plain text transcript with basic metadata header
+- **JSON**: Structured format with full metadata, timestamps, and confidence scores
+- **SRT**: SubRip subtitle format for video players
+- **VTT**: WebVTT subtitle format for web players
+
+## Examples
+
+### Process YouTube playlist
+
+```bash
+# Create input file
+echo "https://www.youtube.com/watch?v=dQw4w9WgXcQ" > youtube_urls.txt
+echo "https://www.youtube.com/watch?v=oHg5SJYRHA0" >> youtube_urls.txt
+
+# Process with text and JSON output
+solotranscribe run --in youtube_urls.txt --out ./youtube_transcripts --format txt,json
+
+# Check results
+ls ./youtube_transcripts/
+```
+
+### Batch process with budget control
+
+```bash
+# Estimate costs first
+solotranscribe dryrun --in large_batch.txt
+
+# Process with budget cap
+solotranscribe run --in large_batch.txt --out ./batch_output --cap-budget 10.00 --format txt,json,srt
+```
+
+### Resume failed jobs
+
+```bash
+# If some jobs failed, retry them
+solotranscribe retry --manifest ./batch_output/manifest.json
+```
+
+## Performance
+
+- **Short videos (<2 min)**: ~45 seconds end-to-end per video
+- **Long videos (≤60 min)**: Near real-time transcription speed
+- **Batch of 50 videos**: Can complete in a single working session
+
+## Cost Estimation
+
+Typical costs (as of 2024):
+- **AssemblyAI**: ~$0.00037 per second of audio (~$1.33 per hour)
+- **FreeConvert**: ~$0.01-0.05 per conversion
+- **Total**: ~$1.35-1.40 per hour of video content
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"API key not found"**
+   - Check your `.env` file exists and contains valid API keys
+   - Run `solotranscribe status` to verify configuration
+
+2. **Download failures**
+   - Some videos may be private, geo-blocked, or require authentication
+   - Check the manifest.json for specific error details
+
+3. **Budget exceeded**
+   - Use `--cap-budget` to control spending
+   - Run `dryrun` first to estimate costs
+
+4. **Conversion failures**
+   - FreeConvert API may have temporary issues
+   - Failed jobs can be retried with the `retry` command
+
+### Debug Mode
+
+Set log level to DEBUG in your `.env` file:
+```env
+LOG_LEVEL=DEBUG
+```
+
+## Development
 
 ### Project Structure
+
 ```
-TransposePDF/
-├── index.html              # Main PWA entry point
-├── manifest.json           # PWA configuration
-├── service-worker.js       # Offline functionality
-├── app.js                  # Application initialization
-├── modules/                # Core functionality modules
-├── styles/                 # Responsive CSS
-├── tests/                  # Comprehensive test suite
-├── performance/            # Benchmark utilities
-└── icons/                  # PWA icons
+SoloTranscribeCLI/
+├── src/solotranscribe/
+│   ├── adapters/           # Platform integrations
+│   ├── core/              # Main processing logic
+│   ├── formatters/        # Output formatters
+│   ├── utils/             # Utility functions
+│   ├── cli.py            # CLI interface
+│   ├── config.py         # Configuration management
+│   └── models.py         # Data models
+├── tests/                # Test files
+├── requirements.txt      # Dependencies
+└── setup.py             # Package setup
 ```
 
-### Adding Features
-1. Create tests first in `tests/testSuite.js`
-2. Implement functionality in appropriate module
-3. Update UI in `modules/uiController.js`
-4. Test performance with `performance/benchmarks.js`
-5. Commit with descriptive message
+### Running Tests
 
-### Browser Support
-- Chrome/Chromium 80+ (Primary target)
-- Firefox 75+
-- Safari 13+
-- Edge 80+
+```bash
+python -m pytest tests/
+```
 
-## 📋 Production Checklist
+## License
 
-Before deploying:
-- [ ] All tests pass at 95%+ success rate
-- [ ] Performance benchmarks meet requirements
-- [ ] Offline functionality verified
-- [ ] Mobile responsiveness tested on tablets
-- [ ] Error handling validates gracefully
-- [ ] Service worker caches properly
-- [ ] PWA install prompt works
+MIT License - see LICENSE file for details.
 
-## 🤝 Contributing
-
-This project was built for worship teams worldwide. Contributions welcome!
+## Contributing
 
 1. Fork the repository
-2. Create feature branch: `git checkout -b feature/amazing-feature`
-3. Run tests: `npm test` or browser console testing
-4. Commit changes: `git commit -m 'Add amazing feature'`
-5. Push to branch: `git push origin feature/amazing-feature`
-6. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Submit a pull request
 
-## 📄 License
+## Support
 
-MIT License - feel free to use in your church or ministry!
+For issues and questions:
+1. Check the troubleshooting section above
+2. Search existing issues
+3. Create a new issue with detailed information
 
-## 🙏 Acknowledgments
+## Roadmap
 
-Built for worship leaders who serve faithfully each week. May this tool help you lead God's people in worship with confidence and excellence.
-
-**"Sing to the Lord a new song; sing to the Lord, all the earth."** - Psalm 96:1
-
----
-
-🤖 Generated with [Claude Code](https://claude.ai/code)
+- **Phase 1**: MVP with YouTube/TikTok support ✅
+- **Phase 2**: Additional platform support, speaker identification
+- **Phase 3**: Offline conversion options, cloud export hooks

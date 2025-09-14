@@ -1,0 +1,18 @@
+# Sample video URLs for testing SoloTranscribeCLI
+# Remove the # to uncomment URLs you want to test with
+
+# Short YouTube videos (good for testing)
+# https://www.youtube.com/watch?v=jNQXAC9IVRw
+# https://www.youtube.com/watch?v=dQw4w9WgXcQ
+
+# Educational content
+# https://www.youtube.com/watch?v=kJQP7kiw5Fk
+
+# TikTok videos (if accessible in your region)
+# https://www.tiktok.com/@tiktok/video/6829267836783828230
+
+# Vimeo videos
+# https://vimeo.com/148751763
+
+# Note: Uncomment 1-2 URLs at a time for initial testing
+# Some URLs may not be accessible due to privacy settings or geographic restrictions

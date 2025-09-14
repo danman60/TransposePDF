@@ -1,0 +1,22 @@
+# SoloTranscribeCLI Dependencies
+# Requires Python 3.8+ for full compatibility
+
+# Core dependencies
+requests>=2.28.0
+python-dotenv>=0.19.0
+click>=8.0.0
+
+# Video processing
+yt-dlp>=2023.1.6
+
+# API integrations
+assemblyai>=0.15.0
+
+# File format handling
+pydantic>=1.10.0,<2.0.0
+
+# Async processing
+aiohttp>=3.7.0
+
+# Development/Testing
+pytest>=6.2.0
