@@ -1,0 +1,27 @@
+{
+  "timestamp": "2025-09-14T13:43:12.634Z",
+  "moduleCheck": {
+    "PDFProcessor": true,
+    "SongSeparator": true,
+    "MusicTheory": true,
+    "PDFGenerator": true,
+    "UIController": true,
+    "transposeApp": true
+  },
+  "fileInputExists": false,
+  "consoleLogs": [
+    "[log] [INFO] Initializing Transpose App...",
+    "[log] [INFO] Running health checks...",
+    "[log] [SUCCESS] All health checks passed",
+    "[log] [INFO] Running validation tests...",
+    "[log] [SUCCESS] Music theory validation: 100.0% accuracy",
+    "[log] [SUCCESS] PDF generation: Available",
+    "[log] [INFO] appInit completed in 6ms",
+    "[log] [SUCCESS] Transpose App initialized successfully",
+    "[log] [INFO] Page loaded in 1549ms (DOM ready in 1545ms)",
+    "[error] Failed to load resource: the server responded with a status of 404 (File not found)",
+    "[log] SW registered: ServiceWorkerRegistration",
+    "[error] Failed to load resource: the server responded with a status of 404 (File not found)"
+  ],
+  "testPdfExists": true
+}

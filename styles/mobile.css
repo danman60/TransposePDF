@@ -65,6 +65,13 @@
   
   .upload-area {
     padding: 2rem 1rem;
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
   
   .upload-icon {
@@ -168,6 +175,13 @@
   
   .upload-area {
     padding: 1.5rem 0.5rem;
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 180px;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
   
   .upload-area h2 {

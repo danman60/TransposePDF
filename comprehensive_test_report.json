@@ -1,0 +1,147 @@
+{
+  "timestamp": "2025-09-14T13:45:00.039Z",
+  "summary": {
+    "totalTests": 10,
+    "passed": 9,
+    "failed": 1,
+    "passRate": 90
+  },
+  "testResults": [
+    {
+      "test": "Page Loading & Initial State",
+      "passed": true,
+      "details": {
+        "pageTitle": "Chord Transposer Pro",
+        "mainHeading": "Chord Transposer Pro",
+        "uploadAreaVisible": true,
+        "uploadButtonVisible": true,
+        "fileInputExists": true
+      }
+    },
+    {
+      "test": "Upload Interface & PDF Processing",
+      "passed": true,
+      "details": {
+        "testPdfExists": true,
+        "uploadButtonClickable": true,
+        "uploadProcessed": true
+      }
+    },
+    {
+      "test": "Song Detection & Display",
+      "passed": true,
+      "details": {
+        "songsSection": true,
+        "songCount": "1",
+        "leadSheets": 1,
+        "exportButtonEnabled": true
+      }
+    },
+    {
+      "test": "Transpose Controls & Functionality",
+      "passed": true,
+      "details": {
+        "transposeUpButtons": 1,
+        "transposeDownButtons": 1,
+        "keyIndicators": 1,
+        "resetButtons": 1,
+        "transposeFunctional": true
+      }
+    },
+    {
+      "test": "Chord Display & Real-time Updates",
+      "passed": true,
+      "details": {
+        "chordElements": 12,
+        "pdfTextItems": 18
+      }
+    },
+    {
+      "test": "Export Functionality",
+      "passed": true,
+      "details": {
+        "exportWorked": true
+      }
+    },
+    {
+      "test": "Responsive Design",
+      "passed": false,
+      "details": {
+        "mobileUploadVisible": false,
+        "mobileButtonsVisible": true
+      }
+    },
+    {
+      "test": "Error Handling",
+      "passed": true,
+      "details": {
+        "errorHandlingWorked": true
+      }
+    },
+    {
+      "test": "Performance & Loading States",
+      "passed": true,
+      "details": {
+        "loadTime": 0,
+        "domContentLoaded": 7,
+        "memoryUsage": 6
+      }
+    },
+    {
+      "test": "Overall System Integration",
+      "passed": true,
+      "details": {
+        "moduleStatus": {
+          "PDFProcessor": true,
+          "SongSeparator": true,
+          "MusicTheory": true,
+          "PDFGenerator": true,
+          "UIController": true,
+          "transposeApp": true
+        },
+        "criticalFeaturesWorking": true
+      }
+    }
+  ],
+  "consoleLogs": [
+    "[log] [INFO] Initializing Transpose App...",
+    "[log] [INFO] Running health checks...",
+    "[log] [SUCCESS] All health checks passed",
+    "[log] [INFO] Running validation tests...",
+    "[log] [SUCCESS] Music theory validation: 100.0% accuracy",
+    "[log] [SUCCESS] PDF generation: Available",
+    "[log] [INFO] appInit completed in 5ms",
+    "[log] [SUCCESS] Transpose App initialized successfully",
+    "[log] [INFO] Page loaded in 1516ms (DOM ready in 1511ms)",
+    "[error] Failed to load resource: the server responded with a status of 404 (File not found)",
+    "[log] SW registered: ServiceWorkerRegistration",
+    "[error] Failed to load resource: the server responded with a status of 404 (File not found)",
+    "[log] [INFO] Loading PDF file...",
+    "[log] [INFO] Processing page 1/1...",
+    "[log] [INFO] pdfLoad completed in 213ms",
+    "[log] [SUCCESS] PDF loaded successfully (1 pages, 18 text items)",
+    "[log] [INFO] Detecting song boundaries...",
+    "[log] [INFO] 🔍 Looking for song boundaries with conservative detection...",
+    "[log] [INFO] Found 1 potential song boundaries",
+    "[log] [INFO] songSeparation completed in 1ms",
+    "[log] [SUCCESS] Detected 1 songs",
+    "[log] [INFO] Amazing Grace: Gm → G#m (+1)"
+  ],
+  "performanceMetrics": {
+    "loadTime": 0,
+    "domContentLoaded": 7,
+    "memoryUsage": 6
+  },
+  "moduleStatus": {
+    "PDFProcessor": true,
+    "SongSeparator": true,
+    "MusicTheory": true,
+    "PDFGenerator": true,
+    "UIController": true,
+    "transposeApp": true
+  },
+  "criticalIssues": [
+    "Responsive Design"
+  ],
+  "recommendations": []
+}

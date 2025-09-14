@@ -1,0 +1,148 @@
+{
+  "timestamp": "2025-09-14T13:41:52.221Z",
+  "testResults": [
+    {
+      "test": "Golden Test 1: App Loading",
+      "passed": true,
+      "details": {
+        "title": "Chord Transposer Pro",
+        "mainHeading": "Chord Transposer Pro",
+        "uploadAreaVisible": true,
+        "uploadTextVisible": true,
+        "consoleLogs": [
+          "[log] [INFO] Initializing Transpose App...",
+          "[log] [INFO] Running health checks...",
+          "[log] [SUCCESS] All health checks passed",
+          "[log] [INFO] Running validation tests...",
+          "[log] [SUCCESS] Music theory validation: 100.0% accuracy",
+          "[log] [SUCCESS] PDF generation: Available",
+          "[log] [INFO] appInit completed in 5ms",
+          "[log] [SUCCESS] Transpose App initialized successfully",
+          "[log] [INFO] Page loaded in 1514ms (DOM ready in 1509ms)",
+          "[error] Failed to load resource: the server responded with a status of 404 (File not found)",
+          "[log] SW registered: ServiceWorkerRegistration",
+          "[error] Failed to load resource: the server responded with a status of 404 (File not found)"
+        ]
+      }
+    },
+    {
+      "test": "Golden Test 2: Upload Interface",
+      "passed": true,
+      "details": {
+        "uploadButtonVisible": false,
+        "fileInputVisible": false,
+        "dragDropAreaVisible": true,
+        "acceptsPdf": true
+      }
+    },
+    {
+      "test": "Golden Test 3: PDF Upload Process",
+      "passed": false,
+      "details": {
+        "testPdfExists": true,
+        "uploadAttempted": true,
+        "uploadSuccessful": false
+      }
+    },
+    {
+      "test": "Golden Test 4: Song Detection",
+      "passed": false,
+      "details": {
+        "songsListVisible": false,
+        "songItemsCount": 0,
+        "chordProgressionsCount": 0,
+        "songTitlesCount": 3
+      }
+    },
+    {
+      "test": "Golden Test 5: Chord Transposition Controls",
+      "passed": false,
+      "details": {
+        "transposeUpVisible": false,
+        "transposeDownVisible": false,
+        "keyDisplayVisible": false,
+        "transposeControlsVisible": false
+      }
+    },
+    {
+      "test": "Golden Test 6: Chord Transposition Functionality",
+      "passed": false,
+      "details": {
+        "initialChordsFound": 0,
+        "transpositionWorked": false,
+        "initialChords": []
+      }
+    },
+    {
+      "test": "Golden Test 7: Export Functionality",
+      "passed": false,
+      "details": {
+        "exportButtonVisible": false,
+        "printButtonVisible": false,
+        "exportClickable": false
+      }
+    },
+    {
+      "test": "Golden Test 8: UI Responsiveness",
+      "passed": false,
+      "details": {
+        "buttonsCount": 5,
+        "contentVisible": false,
+        "menuAccessible": false,
+        "buttonsClickable": true
+      }
+    },
+    {
+      "test": "Golden Test 9: Error Handling",
+      "passed": false,
+      "details": {
+        "errorHandlingTested": true,
+        "errorHandlingWorked": false
+      }
+    },
+    {
+      "test": "Golden Test 10: Performance & Loading States",
+      "passed": true,
+      "details": {
+        "loadingIndicators": 0,
+        "statusIndicators": 0,
+        "performanceMetrics": {
+          "loadTime": 0.10000000149011612,
+          "domContentLoaded": 1.3000000044703484
+        },
+        "responsive": true,
+        "consoleErrors": 0
+      }
+    }
+  ],
+  "consoleLogs": [
+    "[log] [INFO] Initializing Transpose App...",
+    "[log] [INFO] Running health checks...",
+    "[log] [SUCCESS] All health checks passed",
+    "[log] [INFO] Running validation tests...",
+    "[log] [SUCCESS] Music theory validation: 100.0% accuracy",
+    "[log] [SUCCESS] PDF generation: Available",
+    "[log] [INFO] appInit completed in 5ms",
+    "[log] [SUCCESS] Transpose App initialized successfully",
+    "[log] [INFO] Page loaded in 1514ms (DOM ready in 1509ms)",
+    "[error] Failed to load resource: the server responded with a status of 404 (File not found)",
+    "[log] SW registered: ServiceWorkerRegistration",
+    "[error] Failed to load resource: the server responded with a status of 404 (File not found)",
+    "[log] [INFO] Initializing Transpose App...",
+    "[log] [INFO] Running health checks...",
+    "[log] [SUCCESS] All health checks passed",
+    "[log] [INFO] Running validation tests...",
+    "[log] [SUCCESS] Music theory validation: 100.0% accuracy",
+    "[log] [SUCCESS] PDF generation: Available",
+    "[log] [INFO] appInit completed in 1ms",
+    "[log] [SUCCESS] Transpose App initialized successfully",
+    "[log] SW registered: ServiceWorkerRegistration",
+    "[log] [INFO] Page loaded in 348ms (DOM ready in 346ms)"
+  ],
+  "summary": {
+    "totalTests": 10,
+    "passed": 3,
+    "failed": 7,
+    "passRate": 30
+  }
+}
