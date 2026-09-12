@@ -738,7 +738,8 @@ body {
 
 /* Unified chart entry and authoring */
 .start-section,
-.author-section {
+.author-section,
+.audio-section {
   width: min(1100px, calc(100% - 2rem));
   margin: 2.5rem auto;
 }
@@ -827,6 +828,52 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 16px;
   box-shadow: var(--shadow-hover);
+}
+
+.audio-section {
+  padding: clamp(1rem, 3vw, 2rem);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-hover);
+}
+
+.audio-section .author-header p,
+.audio-drop span,
+.audio-job p {
+  color: var(--text-secondary);
+}
+
+.audio-drop {
+  min-height: 240px;
+  margin-top: 1.5rem;
+  padding: 2rem;
+  border: 2px dashed var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  text-align: center;
+}
+
+.audio-drop:hover,
+.audio-drop:focus-within {
+  border-color: var(--primary-color);
+  background: rgba(79, 195, 247, 0.06);
+}
+
+.audio-job {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.audio-job .progress-bar {
+  margin: 0.8rem 0;
 }
 
 .author-header,

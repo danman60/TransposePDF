@@ -50,11 +50,37 @@
                     <strong>Import chord chart</strong>
                     <span>Open an existing PDF</span>
                 </button>
-                <button class="start-card" type="button" disabled aria-describedby="audioComingSoon">
+                <button class="start-card" id="importAudioButton" type="button">
                     <span class="start-card-icon">♪</span>
                     <strong>Import recording</strong>
-                    <span id="audioComingSoon">MP3 chart creation coming next</span>
+                    <span>Generate an editable draft from audio</span>
                 </button>
+            </div>
+        </section>
+
+        <!-- Recording import -->
+        <section class="audio-section" id="audioSection" style="display: none;">
+            <div class="author-header">
+                <div>
+                    <span class="eyebrow">Recording analysis</span>
+                    <h2>Turn a recording into a chord sheet</h2>
+                    <p>Lyrics and chord changes become an editable draft. Review every result before using it live.</p>
+                </div>
+                <button class="secondary-button" id="cancelAudioButton" type="button">Cancel</button>
+            </div>
+            <label class="audio-drop" for="audioFileInput">
+                <span class="start-card-icon">♪</span>
+                <strong>Choose a recording</strong>
+                <span>MP3, WAV, M4A, AAC, FLAC, or OGG · up to 100 MB</span>
+                <input type="file" id="audioFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg" hidden>
+            </label>
+            <div class="audio-job" id="audioJob" style="display: none;">
+                <div class="preview-heading">
+                    <strong id="audioJobStage">Uploading recording</strong>
+                    <span id="audioJobPercent">0%</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" id="audioJobProgress"></div></div>
+                <p id="audioJobMessage">Keep this page open while the draft is created. Cancel stops after the current analysis step.</p>
             </div>
         </section>
 

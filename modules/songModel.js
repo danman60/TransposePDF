@@ -161,6 +161,42 @@ class SongModel {
   static toEditorText(song) {
     return this.toSongText(song);
   }
+
+  static retainAnalysisMetadata(edited, previous) {
+    const oldLines = (previous.sections || []).flatMap(section => section.lines || []);
+    const newLines = (edited.sections || []).flatMap(section => section.lines || []);
+    newLines.forEach((line, lineIndex) => {
+      const oldLine = oldLines[lineIndex];
+      if (!oldLine) return;
+      line.startTime = oldLine.startTime ?? null;
+      line.endTime = oldLine.endTime ?? null;
+      const available = [...(oldLine.chords || [])];
+      for (const chord of line.chords || []) {
+        if (!available.length) break;
+        let bestIndex = 0;
+        let bestScore = Infinity;
+        available.forEach((candidate, candidateIndex) => {
+          const symbolPenalty = candidate.symbol === chord.symbol ? 0 : 4;
+          const score = Math.abs(candidate.characterOffset - chord.characterOffset) + symbolPenalty;
+          if (score < bestScore) {
+            bestScore = score;
+            bestIndex = candidateIndex;
+          }
+        });
+        const [match] = available.splice(bestIndex, 1);
+        if (match.timestamp !== null || match.confidence !== null) {
+          chord.timestamp = match.timestamp;
+          chord.confidence = match.confidence;
+        }
+      }
+    });
+    edited.tempo = previous.tempo ?? edited.tempo;
+    edited.timeSignature = previous.timeSignature || edited.timeSignature;
+    edited.keyConfidence = previous.keyConfidence ?? edited.keyConfidence;
+    edited.chords = previous.chords || [];
+    edited.songText = this.toSongText(edited);
+    return edited;
+  }
 }
 
 if (typeof window !== 'undefined') window.SongModel = SongModel;

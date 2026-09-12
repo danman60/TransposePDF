@@ -2,7 +2,7 @@
 
 ## Active Task
 
-Implement unified chord-sheet authoring: manual creation plus compatible PDF import, transposition, editing, and PDF export through one canonical song model.
+Implement recording-to-chord-chart authoring through the same editable/transposable/exportable model used by manual and PDF imports.
 
 ## Recent Changes
 
@@ -14,17 +14,23 @@ Implement unified chord-sheet authoring: manual creation plus compatible PDF imp
 - PDF imports append to the collection instead of replacing authored charts.
 - Added synchronized long-line wrapping and monospaced chord/lyric metrics for generated PDFs.
 - Updated offline cache for the required song model.
+- Added local FFmpeg/NumPy major/minor chord analysis and OpenAI word-timestamp transcription.
+- Added background Starlette audio jobs with 100 MB upload validation, bounded concurrency, cancellation, TTL cleanup, and no-store status responses.
+- Added recording import/progress UI; completed drafts open directly in the existing editor.
+- Preserved chord timing/confidence through nearby lyric and chord corrections.
+- Added accurate web-app runtime dependencies and README.
 
 ## Blockers
 
-- MP3 analysis remains a separate backend/model implementation.
+- No production deployment target exists. Audio backend needs FFmpeg-capable hosting plus authentication/rate limiting and durable job storage before public exposure.
+- Mixed-vocal synthetic test detected A/E/A instead of backing C/F/G/Am; current chord analysis is draft-grade, not production-accuracy.
 - A lyric-only line containing only chord-shaped tokens is inherently ambiguous in alternating-row paste format; live preview exposes interpretation for correction.
 
 ## Next Steps
 
-1. Implement MP3 upload and background analysis pipeline.
-2. Add persistent local/cloud song library.
-3. Add direct chord-anchor placement UI beyond alternating-row text entry.
+1. Choose and configure an FFmpeg-capable production worker host; add auth, rate limiting, durable jobs, and secret management.
+2. Improve chord accuracy with vocal/instrument separation, beat/downbeat tracking, and richer chord vocabulary.
+3. Add persistent local/cloud song library and direct visual chord-anchor placement.
 
 ## Context for Next Session
 
@@ -34,3 +40,6 @@ Implement unified chord-sheet authoring: manual creation plus compatible PDF imp
 - Do not alter `MusicTheory` public signatures.
 - Direct E2E: 18/18 authoring/import/export checks plus 7/7 regression checks passed.
 - QA Agent attempted 16 checks but timed out before its first browser action; direct browser results are authoritative.
+- Audio probes: pure C/F/G/Am analyzer 4/4; real 2-second transcription 6/6 words with timestamps.
+- Final audio browser E2E passed upload, cancel, same-file retry, edit, timing retention, transpose, reset, and PDF download; 0 console errors.
+- Vercel account project inventory, GitHub Pages API, and repository config all confirm no current production deployment.

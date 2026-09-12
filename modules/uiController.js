@@ -10,6 +10,8 @@ class UIController {
     this.currentFile = null;
     this.exportFilename = 'Transposed Songbook';
     this.editingSongId = null;
+    this.audioAbortController = null;
+    this.audioJobId = null;
     
     // Initialize UI elements
     this.initializeElements();
@@ -32,6 +34,7 @@ class UIController {
       // Sections
       startSection: document.getElementById('startSection'),
       authorSection: document.getElementById('authorSection'),
+      audioSection: document.getElementById('audioSection'),
       uploadSection: document.getElementById('uploadSection'),
       songsSection: document.getElementById('songsSection'),
       exportSection: document.getElementById('exportSection'),
@@ -52,6 +55,14 @@ class UIController {
       authorContent: document.getElementById('authorContent'),
       authorPreview: document.getElementById('authorPreview'),
       authorPreviewStatus: document.getElementById('authorPreviewStatus'),
+      importAudioButton: document.getElementById('importAudioButton'),
+      cancelAudioButton: document.getElementById('cancelAudioButton'),
+      audioFileInput: document.getElementById('audioFileInput'),
+      audioJob: document.getElementById('audioJob'),
+      audioJobStage: document.getElementById('audioJobStage'),
+      audioJobPercent: document.getElementById('audioJobPercent'),
+      audioJobProgress: document.getElementById('audioJobProgress'),
+      audioJobMessage: document.getElementById('audioJobMessage'),
       
       // Export
       exportButton: document.getElementById('exportButton'),
@@ -84,8 +95,11 @@ class UIController {
 
     this.elements.createChartButton.addEventListener('click', () => this.openAuthoring());
     this.elements.importPdfButton.addEventListener('click', () => this.showStartView('pdf'));
+    this.elements.importAudioButton.addEventListener('click', () => this.showStartView('audio'));
     this.elements.cancelImportButton.addEventListener('click', () => this.showStartView());
     this.elements.cancelAuthorButton.addEventListener('click', () => this.closeAuthoring());
+    this.elements.cancelAudioButton.addEventListener('click', () => this.cancelAudioAnalysis());
+    this.elements.audioFileInput.addEventListener('change', event => this.handleAudioUpload(event));
     this.elements.saveChartButton.addEventListener('click', () => this.saveAuthoredSong());
     this.elements.authorContent.addEventListener('input', () => this.updateAuthorPreview());
     this.elements.authorTitle.addEventListener('input', () => this.updateAuthorPreview());
@@ -109,10 +123,88 @@ class UIController {
   showStartView(mode = 'start') {
     this.elements.startSection.style.display = mode === 'start' ? 'block' : 'none';
     this.elements.uploadSection.style.display = mode === 'pdf' ? 'block' : 'none';
+    this.elements.audioSection.style.display = mode === 'audio' ? 'block' : 'none';
     this.elements.authorSection.style.display = 'none';
     if (mode === 'start' && this.currentSongs.length) {
       this.elements.songsSection.style.display = 'block';
     }
+  }
+
+  async handleAudioUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file || this.isProcessing) return;
+
+    this.isProcessing = true;
+    this.audioAbortController = new AbortController();
+    this.elements.audioJob.style.display = 'block';
+    this.updateAudioProgress('Uploading recording', 5, 'Sending audio to the analysis server.');
+
+    try {
+      const formData = new FormData();
+      formData.append('audio', file);
+      const response = await fetch('/api/audio-jobs', {
+        method: 'POST', body: formData, signal: this.audioAbortController.signal
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || `Upload failed (${response.status})`);
+
+      this.audioJobId = payload.jobId;
+      const result = await this.waitForAudioJob(payload.jobId, this.audioAbortController.signal);
+      const song = SongModel.create({ ...result, id: Date.now() });
+      this.currentSongs.push(song);
+      this.updateStatus(`Created draft for ${song.title}`, 'success');
+      this.elements.audioFileInput.value = '';
+      this.elements.audioJob.style.display = 'none';
+      this.openAuthoring(song.id);
+    } catch (error) {
+      if (this.audioJobId && error.name !== 'AbortError') {
+        fetch(`/api/audio-jobs/${encodeURIComponent(this.audioJobId)}`, { method: 'DELETE' }).catch(() => {});
+      }
+      if (error.name !== 'AbortError') {
+        this.updateAudioProgress('Analysis failed', 0, error.message);
+        this.showError(`Recording analysis failed: ${error.message}`);
+        this.updateStatus('Recording analysis failed', 'error');
+      }
+    } finally {
+      this.isProcessing = false;
+      this.audioAbortController = null;
+      this.audioJobId = null;
+      this.elements.audioFileInput.value = '';
+    }
+  }
+
+  async waitForAudioJob(jobId, signal) {
+    const deadline = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < deadline) {
+      const response = await fetch(`/api/audio-jobs/${encodeURIComponent(jobId)}`, { signal });
+      const job = await response.json();
+      if (!response.ok) throw new Error(job.error || `Status check failed (${response.status})`);
+      this.updateAudioProgress(job.stage, job.progress, 'Lyrics, key, and chord timing remain editable when complete.');
+      if (job.status === 'complete') return job.result;
+      if (job.status === 'error') throw new Error(job.error || 'Audio analysis failed');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    throw new Error('Audio analysis exceeded 10 minutes');
+  }
+
+  async cancelAudioAnalysis() {
+    const jobId = this.audioJobId;
+    this.audioAbortController?.abort();
+    if (jobId) {
+      fetch(`/api/audio-jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' }).catch(() => {});
+    }
+    this.elements.audioJob.style.display = 'none';
+    this.elements.audioFileInput.value = '';
+    this.updateStatus('Recording analysis cancelled', 'info');
+    this.showStartView();
+  }
+
+  updateAudioProgress(stage, progress, message) {
+    const percent = Math.max(0, Math.min(100, Number(progress) || 0));
+    this.elements.audioJobStage.textContent = stage;
+    this.elements.audioJobPercent.textContent = `${percent}%`;
+    this.elements.audioJobProgress.style.width = `${percent}%`;
+    this.elements.audioJobMessage.textContent = message;
   }
 
   openAuthoring(songId = null) {
@@ -125,6 +217,7 @@ class UIController {
     this.elements.authorContent.value = song ? SongModel.toEditorText(song) : '';
     this.elements.startSection.style.display = 'none';
     this.elements.uploadSection.style.display = 'none';
+    this.elements.audioSection.style.display = 'none';
     this.elements.songsSection.style.display = 'none';
     this.elements.exportSection.style.display = 'none';
     this.elements.authorSection.style.display = 'block';
@@ -167,6 +260,7 @@ class UIController {
       authored.sourceType = previous.sourceType;
       authored.source = { ...(previous.source || {}), preserveLayout: false, edited: true };
       authored.textItems = previous.textItems || [];
+      SongModel.retainAnalysisMetadata(authored, previous);
       this.currentSongs[index] = authored;
     } else {
       this.currentSongs.push(authored);

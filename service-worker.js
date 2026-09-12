@@ -3,7 +3,7 @@
  * Handles caching for offline functionality
  */
 
-const CACHE_NAME = 'transpose-app-v2';
+const CACHE_NAME = 'transpose-app-v3';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -104,6 +104,11 @@ self.addEventListener('fetch', event => {
   
   // Skip non-GET requests
   if (request.method !== 'GET') {
+    return;
+  }
+
+  // Job state must never be cached or served stale.
+  if (url.origin === location.origin && url.pathname.startsWith('/api/')) {
     return;
   }
   
