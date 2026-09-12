@@ -409,7 +409,7 @@ class SongSeparator {
     // Detect original key
     const keyDetection = musicTheory.detectKey(chords);
     
-    return {
+    const song = {
       id: songIndex,
       title: title,
       originalKey: keyDetection.key,
@@ -423,6 +423,7 @@ class SongSeparator {
       songText: songText,
       chordsPreview: chords.slice(0, 10).map(c => c.original).join(' ')
     };
+    return typeof SongModel !== 'undefined' ? SongModel.fromPDFSong(song) : song;
   }
 
   /**
@@ -640,7 +641,7 @@ class SongSeparator {
     const pageStart = Math.min(...songParts.map(s => s.pageStart));
     const pageEnd = Math.max(...songParts.map(s => s.pageEnd));
     
-    return {
+    const combinedSong = {
       ...mainSong,
       textItems: allTextItems,
       chords: allChords,
@@ -649,6 +650,7 @@ class SongSeparator {
       songText: allTextItems.map(item => item.text).join('\n'),
       chordsPreview: allChords.slice(0, 10).map(c => c.original).join(' ')
     };
+    return typeof SongModel !== 'undefined' ? SongModel.fromPDFSong(combinedSong) : combinedSong;
   }
 
   /**

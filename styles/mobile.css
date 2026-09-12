@@ -48,6 +48,54 @@
 
 /* Tablet Portrait and Large Phones */
 @media (max-width: 768px) {
+  .start-section,
+  .author-section {
+    width: calc(100% - 1rem);
+    margin: 1.25rem auto;
+  }
+
+  .start-actions,
+  .song-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .start-card {
+    min-height: 132px;
+  }
+
+  .author-section {
+    padding: 1rem;
+  }
+
+  .author-header,
+  .preview-heading {
+    align-items: flex-start;
+  }
+
+  .chart-input {
+    min-height: 240px;
+    font-size: 16px;
+  }
+
+  .author-preview {
+    padding: 1rem;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .song-meta-grid input,
+  .song-meta-grid select {
+    min-height: 48px;
+  }
+
+  .author-footer .primary-button {
+    width: 100%;
+  }
+
+  .structured-chart {
+    min-width: max-content;
+  }
+
   .app-header {
     padding: 1rem;
     flex-direction: column;
@@ -148,6 +196,11 @@
   .transpose-controls {
     gap: 1rem;
     justify-content: center;
+  }
+
+  .edit-song-button {
+    flex-basis: 100%;
+    margin: 0 0 0.25rem;
   }
   
   .song-meta {

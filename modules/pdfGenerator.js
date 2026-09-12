@@ -150,6 +150,11 @@ class PDFGenerator {
    * Process song content and transpose chords
    */
   processSongContent(song) {
+    const usesStructuredEditor = song.sourceType === 'manual' || song.source?.preserveLayout === false;
+    if (usesStructuredEditor && Array.isArray(song.sections) && song.sections.length > 0) {
+      return this.processStructuredSongContent(song);
+    }
+
     const musicTheory = new MusicTheory();
     const lines = song.songText.split('\n');
     const processedLines = [];
@@ -181,6 +186,96 @@ class PDFGenerator {
     });
     
     return processedLines;
+  }
+
+  /**
+   * Convert canonical section/line/chord-anchor data into printable rows.
+   */
+  processStructuredSongContent(song) {
+    const musicTheory = new MusicTheory();
+    const processedLines = [];
+
+    song.sections.forEach((section, sectionIndex) => {
+      if (section.label) {
+        processedLines.push({ type: 'section', content: section.label, originalLine: section.label });
+      }
+
+      (section.lines || []).forEach(line => {
+        this.wrapStructuredLine(line).forEach(segment => {
+          if (segment.chords.length) {
+            processedLines.push({
+              type: 'chords',
+              content: this.buildChordRow(segment.chords, song.transposition, musicTheory),
+              originalLine: SongModel.buildChordRow(segment),
+              structured: true
+            });
+          }
+
+          processedLines.push({
+            type: segment.lyrics ? 'text' : 'empty',
+            content: segment.lyrics || '',
+            originalLine: segment.lyrics || '',
+            structured: true
+          });
+        });
+      });
+
+      if (sectionIndex < song.sections.length - 1) {
+        processedLines.push({ type: 'empty', content: '', originalLine: '' });
+      }
+    });
+
+    return processedLines;
+  }
+
+  wrapStructuredLine(line, maxCharacters = 68) {
+    const lyrics = line.lyrics || '';
+    const chords = line.chords || [];
+    const chordExtent = chords.reduce((extent, chord) => {
+      return Math.max(extent, (Number(chord.characterOffset) || 0) + String(chord.symbol || '').length);
+    }, 0);
+    const totalExtent = Math.max(lyrics.length, chordExtent);
+    if (totalExtent <= maxCharacters) return [{ lyrics, chords }];
+
+    const segments = [];
+    let start = 0;
+    while (start < totalExtent) {
+      let end = Math.min(start + maxCharacters, totalExtent);
+      if (end < lyrics.length) {
+        const breakAt = lyrics.lastIndexOf(' ', end);
+        if (breakAt > start) end = breakAt;
+      }
+      const rawLyrics = lyrics.slice(start, end);
+      const leadingSpaces = rawLyrics.match(/^\s*/)?.[0].length || 0;
+      segments.push({
+        lyrics: rawLyrics.trim(),
+        chords: chords
+          .filter(chord => chord.characterOffset >= start && chord.characterOffset < end)
+          .map(chord => ({
+            ...chord,
+            characterOffset: Math.max(0, chord.characterOffset - start - leadingSpaces)
+          }))
+      });
+      start = end;
+    }
+    return segments;
+  }
+
+  buildChordRow(chords, semitones, musicTheory) {
+    const characters = [];
+    [...chords]
+      .sort((a, b) => a.characterOffset - b.characterOffset)
+      .forEach(chord => {
+        const offset = Math.max(0, Number(chord.characterOffset) || 0);
+        while (characters.length < offset) characters.push(' ');
+        const symbol = semitones === 0
+          ? chord.symbol
+          : musicTheory.transposeChord(chord.symbol, semitones);
+        for (let index = 0; index < symbol.length; index += 1) {
+          characters[offset + index] = symbol[index];
+        }
+      });
+    return characters.map(character => character || ' ').join('').trimEnd();
   }
 
   /**
@@ -220,8 +315,8 @@ class PDFGenerator {
   async renderLine(pdf, line, x, y) {
     switch (line.type) {
       case 'chords':
-        pdf.setFontSize(this.chordFontSize);
-        pdf.setFont(undefined, 'bold');
+        pdf.setFontSize(line.structured ? this.fontSize : this.chordFontSize);
+        pdf.setFont(line.structured ? 'courier' : undefined, 'bold');
         pdf.setTextColor(0, 0, 200); // Blue for chords
         pdf.text(line.content, x, y);
         pdf.setTextColor(0, 0, 0); // Reset to black
@@ -229,8 +324,16 @@ class PDFGenerator {
         
       case 'text':
         pdf.setFontSize(this.fontSize);
-        pdf.setFont(undefined, 'normal');
+        pdf.setFont(line.structured ? 'courier' : undefined, 'normal');
         pdf.text(line.content, x, y);
+        break;
+
+      case 'section':
+        pdf.setFontSize(this.fontSize);
+        pdf.setFont(undefined, 'bold');
+        pdf.setTextColor(60, 60, 60);
+        pdf.text(line.content, x, y);
+        pdf.setTextColor(0, 0, 0);
         break;
         
       case 'empty':

@@ -190,9 +190,7 @@ class TransposeApp {
    * Check if running in development mode
    */
   isDevelopmentMode() {
-    return window.location.hostname === 'localhost' || 
-           window.location.hostname === '127.0.0.1' ||
-           window.location.search.includes('debug=true');
+    return new URLSearchParams(window.location.search).get('debug') === 'true';
   }
 
   /**

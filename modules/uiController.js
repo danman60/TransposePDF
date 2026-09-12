@@ -9,6 +9,7 @@ class UIController {
     this.isProcessing = false;
     this.currentFile = null;
     this.exportFilename = 'Transposed Songbook';
+    this.editingSongId = null;
     
     // Initialize UI elements
     this.initializeElements();
@@ -29,6 +30,8 @@ class UIController {
       progressText: document.getElementById('progressText'),
       
       // Sections
+      startSection: document.getElementById('startSection'),
+      authorSection: document.getElementById('authorSection'),
       uploadSection: document.getElementById('uploadSection'),
       songsSection: document.getElementById('songsSection'),
       exportSection: document.getElementById('exportSection'),
@@ -36,6 +39,19 @@ class UIController {
       // Songs
       songCount: document.getElementById('songCount'),
       songsContainer: document.getElementById('songsContainer'),
+
+      // Authoring
+      createChartButton: document.getElementById('createChartButton'),
+      importPdfButton: document.getElementById('importPdfButton'),
+      cancelImportButton: document.getElementById('cancelImportButton'),
+      cancelAuthorButton: document.getElementById('cancelAuthorButton'),
+      saveChartButton: document.getElementById('saveChartButton'),
+      authorHeading: document.getElementById('authorHeading'),
+      authorTitle: document.getElementById('authorTitle'),
+      authorKey: document.getElementById('authorKey'),
+      authorContent: document.getElementById('authorContent'),
+      authorPreview: document.getElementById('authorPreview'),
+      authorPreviewStatus: document.getElementById('authorPreviewStatus'),
       
       // Export
       exportButton: document.getElementById('exportButton'),
@@ -65,6 +81,15 @@ class UIController {
   attachEventListeners() {
     // File input
     this.elements.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+    this.elements.createChartButton.addEventListener('click', () => this.openAuthoring());
+    this.elements.importPdfButton.addEventListener('click', () => this.showStartView('pdf'));
+    this.elements.cancelImportButton.addEventListener('click', () => this.showStartView());
+    this.elements.cancelAuthorButton.addEventListener('click', () => this.closeAuthoring());
+    this.elements.saveChartButton.addEventListener('click', () => this.saveAuthoredSong());
+    this.elements.authorContent.addEventListener('input', () => this.updateAuthorPreview());
+    this.elements.authorTitle.addEventListener('input', () => this.updateAuthorPreview());
+    this.elements.authorKey.addEventListener('change', () => this.updateAuthorPreview());
     
     // Upload area click
     this.elements.uploadArea.addEventListener('click', () => {
@@ -79,6 +104,89 @@ class UIController {
     this.elements.exportFilename.addEventListener('input', (e) => {
       this.exportFilename = e.target.value || 'Transposed Songbook';
     });
+  }
+
+  showStartView(mode = 'start') {
+    this.elements.startSection.style.display = mode === 'start' ? 'block' : 'none';
+    this.elements.uploadSection.style.display = mode === 'pdf' ? 'block' : 'none';
+    this.elements.authorSection.style.display = 'none';
+    if (mode === 'start' && this.currentSongs.length) {
+      this.elements.songsSection.style.display = 'block';
+    }
+  }
+
+  openAuthoring(songId = null) {
+    const song = songId === null ? null : this.currentSongs.find(item => item.id === songId);
+    this.editingSongId = song?.id ?? null;
+    this.elements.authorHeading.textContent = song ? 'Edit chord sheet' : 'Create a chord sheet';
+    this.elements.saveChartButton.textContent = song ? 'Save changes' : 'Add chord sheet';
+    this.elements.authorTitle.value = song?.title || '';
+    this.elements.authorKey.value = song?.originalKey || 'C';
+    this.elements.authorContent.value = song ? SongModel.toEditorText(song) : '';
+    this.elements.startSection.style.display = 'none';
+    this.elements.uploadSection.style.display = 'none';
+    this.elements.songsSection.style.display = 'none';
+    this.elements.exportSection.style.display = 'none';
+    this.elements.authorSection.style.display = 'block';
+    this.updateAuthorPreview();
+    this.elements.authorTitle.focus();
+  }
+
+  closeAuthoring() {
+    this.editingSongId = null;
+    this.elements.authorSection.style.display = 'none';
+    if (this.currentSongs.length) {
+      this.displaySongs();
+    } else {
+      this.showStartView();
+    }
+  }
+
+  saveAuthoredSong() {
+    const title = this.elements.authorTitle.value.trim();
+    const content = this.elements.authorContent.value;
+    if (!title) {
+      this.showError('Enter a song title before saving');
+      return;
+    }
+    if (!content.trim()) {
+      this.showError('Add lyrics or chords before saving');
+      return;
+    }
+
+    const authored = SongModel.fromManual({
+      title,
+      originalKey: this.elements.authorKey.value,
+      content
+    });
+
+    if (this.editingSongId !== null) {
+      const index = this.currentSongs.findIndex(song => song.id === this.editingSongId);
+      const previous = this.currentSongs[index];
+      authored.id = previous.id;
+      authored.sourceType = previous.sourceType;
+      authored.source = { ...(previous.source || {}), preserveLayout: false, edited: true };
+      authored.textItems = previous.textItems || [];
+      this.currentSongs[index] = authored;
+    } else {
+      this.currentSongs.push(authored);
+    }
+
+    this.editingSongId = null;
+    this.elements.authorSection.style.display = 'none';
+    this.updateStatus(`Saved ${authored.title}`, 'success');
+    this.displaySongs();
+  }
+
+  updateAuthorPreview() {
+    const draft = SongModel.fromManual({
+      title: this.elements.authorTitle.value || 'Untitled Song',
+      originalKey: this.elements.authorKey.value,
+      content: this.elements.authorContent.value
+    });
+    const populated = draft.sections.some(section => section.lines.some(line => line.lyrics || line.chords.length));
+    this.elements.authorPreview.innerHTML = populated ? this.renderStructuredContent(draft) : '';
+    this.elements.authorPreviewStatus.textContent = populated ? 'Chords stay anchored above lyrics' : 'Start typing to preview your chart';
   }
 
   /**
@@ -170,11 +278,13 @@ class UIController {
       this.updateStatus('Analyzing chords...', 'info');
       
       // Process each song
-      this.currentSongs = songs.map(song => ({
-        ...song,
-        transposition: 0,
-        currentKey: song.originalKey
+      const importIdBase = Date.now();
+      const importedSongs = songs.map((song, index) => ({
+        ...SongModel.fromPDFSong(song),
+        id: importIdBase + index,
+        transposition: 0
       }));
+      this.currentSongs = [...this.currentSongs, ...importedSongs];
       
       this.showUploadProgress(100);
       this.updateStatus(`Successfully loaded ${songs.length} songs`, 'success');
@@ -217,6 +327,8 @@ class UIController {
     
     // Show sections
     this.elements.uploadSection.style.display = 'none';
+    this.elements.startSection.style.display = 'block';
+    this.elements.authorSection.style.display = 'none';
     this.elements.songsSection.style.display = 'block';
     this.elements.exportButton.disabled = false;
   }
@@ -241,6 +353,7 @@ class UIController {
         </div>
         
         <div class="transpose-controls">
+          <button class="secondary-button edit-song-button" onclick="window.transposeApp.openAuthoring(${song.id})" title="Edit chord sheet">Edit</button>
           <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, -1)" title="Transpose down">-</button>
           <div class="transpose-display">
             <div class="transpose-value" id="transposeValue-${song.id}">0</div>
@@ -269,6 +382,10 @@ class UIController {
    * Render the actual lead sheet content exactly like the PDF layout
    */
   renderLeadSheetContent(song) {
+    if (song.sections?.length && (!song.textItems?.length || song.source?.preserveLayout === false || song.sourceType === 'manual')) {
+      return this.renderStructuredContent(song);
+    }
+
     const musicTheory = new MusicTheory();
     let html = '<div class="pdf-layout-container">';
     
@@ -317,6 +434,40 @@ class UIController {
     
     html += '</div>';
     return html;
+  }
+
+  renderStructuredContent(song) {
+    const musicTheory = new MusicTheory();
+    const sections = song.sections || [];
+    return `<div class="structured-chart">${sections.map(section => {
+      const label = section.label ? `<div class="section-label">${this.escapeHtml(section.label)}</div>` : '';
+      const lines = (section.lines || []).map(line => {
+        const chords = (line.chords || []).map(chord => ({
+          ...chord,
+          displaySymbol: song.transposition === 0
+            ? chord.symbol
+            : musicTheory.transposeChord(chord.symbol, song.transposition)
+        }));
+        return `<div class="chart-line">
+          <div class="chord-line" aria-label="Chords">${this.renderChordAnchors(chords)}</div>
+          <div class="lyric-line">${this.escapeHtml(line.lyrics || '') || '&nbsp;'}</div>
+        </div>`;
+      }).join('');
+      return `<section class="section-block">${label}${lines}</section>`;
+    }).join('')}</div>`;
+  }
+
+  renderChordAnchors(chords) {
+    if (!chords.length) return '&nbsp;';
+    const output = [];
+    let cursor = 0;
+    [...chords].sort((a, b) => a.characterOffset - b.characterOffset).forEach(chord => {
+      const offset = Math.max(cursor, Number(chord.characterOffset) || 0);
+      if (offset > cursor) output.push(this.escapeHtml(' '.repeat(offset - cursor)));
+      output.push(`<span class="chord-token">${this.escapeHtml(chord.displaySymbol || chord.symbol)}</span>`);
+      cursor = offset + String(chord.displaySymbol || chord.symbol).length;
+    });
+    return output.join('');
   }
   
   /**

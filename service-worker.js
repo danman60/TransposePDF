@@ -3,7 +3,7 @@
  * Handles caching for offline functionality
  */
 
-const CACHE_NAME = 'transpose-app-v1';
+const CACHE_NAME = 'transpose-app-v2';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -14,10 +14,9 @@ const CACHE_FILES = [
   '/modules/pdfProcessor.js',
   '/modules/songSeparator.js',
   '/modules/musicTheory.js',
+  '/modules/songModel.js',
   '/modules/pdfGenerator.js',
-  '/modules/uiController.js',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/modules/uiController.js'
 ];
 
 // CDN resources to cache

@@ -32,16 +32,83 @@
             <div class="status-indicator" id="statusIndicator">Ready</div>
         </header>
 
+        <!-- Creation choices -->
+        <section class="start-section" id="startSection">
+            <div class="start-copy">
+                <span class="eyebrow">Start a chord sheet</span>
+                <h2>Create new or bring in an existing chart</h2>
+                <p>Every chart stays editable, transposable, and exportable.</p>
+            </div>
+            <div class="start-actions">
+                <button class="start-card start-card-primary" id="createChartButton" type="button">
+                    <span class="start-card-icon">＋</span>
+                    <strong>Create chord sheet</strong>
+                    <span>Type or paste chords and lyrics</span>
+                </button>
+                <button class="start-card" id="importPdfButton" type="button">
+                    <span class="start-card-icon">PDF</span>
+                    <strong>Import chord chart</strong>
+                    <span>Open an existing PDF</span>
+                </button>
+                <button class="start-card" type="button" disabled aria-describedby="audioComingSoon">
+                    <span class="start-card-icon">♪</span>
+                    <strong>Import recording</strong>
+                    <span id="audioComingSoon">MP3 chart creation coming next</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Manual authoring -->
+        <section class="author-section" id="authorSection" style="display: none;">
+            <div class="author-header">
+                <div>
+                    <span class="eyebrow">Chord-sheet editor</span>
+                    <h2 id="authorHeading">Create a chord sheet</h2>
+                </div>
+                <button class="secondary-button" id="cancelAuthorButton" type="button">Cancel</button>
+            </div>
+            <div class="song-meta-grid">
+                <label>
+                    <span>Song title</span>
+                    <input type="text" id="authorTitle" placeholder="Enter song title" autocomplete="off">
+                </label>
+                <label>
+                    <span>Original key</span>
+                    <select id="authorKey">
+                        <option>C</option><option>Db</option><option>D</option><option>Eb</option>
+                        <option>E</option><option>F</option><option>F#</option><option>G</option>
+                        <option>Ab</option><option>A</option><option>Bb</option><option>B</option>
+                    </select>
+                </label>
+            </div>
+            <label class="chart-input-label" for="authorContent">
+                <span>Chords and lyrics</span>
+                <small>Put a chord line directly above its lyric line. Section labels such as Verse 1 and Chorus are recognized.</small>
+            </label>
+            <textarea id="authorContent" class="chart-input" spellcheck="true" placeholder="Verse 1&#10;G              C&#10;Amazing grace, how sweet the sound&#10;G                   D&#10;That saved a soul like me"></textarea>
+            <div class="author-preview-wrap">
+                <div class="preview-heading">
+                    <strong>Live preview</strong>
+                    <span id="authorPreviewStatus">Start typing to preview your chart</span>
+                </div>
+                <div class="author-preview" id="authorPreview"></div>
+            </div>
+            <div class="author-footer">
+                <button class="primary-button" id="saveChartButton" type="button">Add chord sheet</button>
+            </div>
+        </section>
+
         <!-- File Upload Section -->
-        <section class="upload-section" id="uploadSection">
+        <section class="upload-section" id="uploadSection" style="display: none;">
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📄</div>
                 <h2>Load Your Songbook</h2>
                 <p>Drag and drop a PDF file or click to select</p>
                 <input type="file" id="fileInput" accept=".pdf" hidden>
-                <button class="upload-button" onclick="document.getElementById('fileInput').click()">
+                <button class="upload-button" type="button" onclick="document.getElementById('fileInput').click()">
                     Choose PDF File
                 </button>
+                <button class="secondary-button" id="cancelImportButton" type="button">Back</button>
             </div>
             <div class="upload-progress" id="uploadProgress" style="display: none;">
                 <div class="progress-bar">
@@ -109,9 +176,10 @@
     </script>
     
     <!-- Application modules -->
+    <script src="modules/musicTheory.js"></script>
+    <script src="modules/songModel.js"></script>
     <script src="modules/pdfProcessor.js"></script>
     <script src="modules/songSeparator.js"></script>
-    <script src="modules/musicTheory.js"></script>
     <script src="modules/pdfGenerator.js"></script>
     <script src="modules/uiController.js"></script>
     <script src="app.js"></script>

@@ -735,3 +735,252 @@ body {
 .text-warning {
   color: var(--warning-color);
 }
+
+/* Unified chart entry and authoring */
+.start-section,
+.author-section {
+  width: min(1100px, calc(100% - 2rem));
+  margin: 2.5rem auto;
+}
+
+.start-copy {
+  max-width: 680px;
+  margin-bottom: 1.5rem;
+}
+
+.start-copy h2,
+.author-header h2 {
+  font-size: clamp(1.6rem, 4vw, 2.35rem);
+  line-height: 1.15;
+  margin: 0.35rem 0 0.65rem;
+}
+
+.start-copy p,
+.chart-input-label small,
+.preview-heading span {
+  color: var(--text-secondary);
+}
+
+.eyebrow {
+  color: var(--primary-color);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.start-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.start-card {
+  min-height: 190px;
+  padding: 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 0.3rem;
+  text-align: left;
+  box-shadow: var(--shadow);
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.start-card:not(:disabled):hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.start-card-primary {
+  background: linear-gradient(145deg, rgba(79, 195, 247, 0.18), var(--surface) 65%);
+  border-color: rgba(79, 195, 247, 0.65);
+}
+
+.start-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+.start-card > span:last-child {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.start-card-icon {
+  margin-bottom: auto;
+  color: var(--primary-color) !important;
+  font-size: 1.35rem !important;
+  font-weight: 750;
+}
+
+.author-section {
+  padding: clamp(1rem, 3vw, 2rem);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  box-shadow: var(--shadow-hover);
+}
+
+.author-header,
+.author-footer,
+.preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.song-meta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.song-meta-grid label,
+.chart-input-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.song-meta-grid input,
+.song-meta-grid select,
+.chart-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0.75rem 0.9rem;
+  background: var(--background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font: inherit;
+}
+
+.chart-input {
+  min-height: 280px;
+  margin-top: 0.65rem;
+  resize: vertical;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.96rem;
+  line-height: 1.65;
+  tab-size: 4;
+  white-space: pre;
+  overflow: auto;
+}
+
+.song-meta-grid input:focus,
+.song-meta-grid select:focus,
+.chart-input:focus,
+.start-card:focus-visible,
+.primary-button:focus-visible,
+.secondary-button:focus-visible {
+  outline: 3px solid rgba(79, 195, 247, 0.28);
+  outline-offset: 2px;
+  border-color: var(--primary-color);
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 44px;
+  padding: 0.7rem 1.1rem;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primary-button {
+  background: var(--primary-color);
+  border: 1px solid var(--primary-color);
+  color: #07151b;
+}
+
+.secondary-button {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+}
+
+.secondary-button:hover {
+  border-color: var(--primary-color);
+}
+
+.author-preview-wrap {
+  margin-top: 1.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.preview-heading {
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.035);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.author-preview {
+  min-height: 150px;
+  padding: 1.25rem;
+  overflow-x: auto;
+}
+
+.author-footer {
+  justify-content: flex-end;
+  margin-top: 1.25rem;
+}
+
+.structured-chart {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  white-space: normal;
+  overflow-x: auto;
+}
+
+.section-block + .section-block {
+  margin-top: 1.35rem;
+}
+
+.section-label {
+  margin-bottom: 0.55rem;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.chart-line {
+  min-height: 3.15rem;
+}
+
+.chord-line {
+  min-height: 1.35rem;
+  color: var(--primary-color);
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: pre;
+}
+
+.lyric-line {
+  color: var(--text-primary);
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.chord-token {
+  color: var(--primary-color);
+}
+
+.edit-song-button {
+  margin-right: 0.35rem;
+}
