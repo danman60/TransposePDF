@@ -68,6 +68,20 @@
                 </div>
                 <button class="secondary-button" id="cancelAudioButton" type="button">Cancel</button>
             </div>
+            <div class="authoritative-lyrics">
+                <div class="lyrics-heading">
+                    <label for="audioLyricsInput">
+                        <strong>Lyrics <span class="optional-label">Optional · authoritative</span></strong>
+                        <span>Paste lyrics here or load a plain-text file. Supplied words and line breaks override transcription.</span>
+                    </label>
+                    <label class="secondary-button text-file-button" for="lyricsFileInput">
+                        Load .txt
+                        <input type="file" id="lyricsFileInput" accept="text/plain,.txt" hidden>
+                    </label>
+                </div>
+                <textarea id="audioLyricsInput" class="lyrics-input" spellcheck="true" placeholder="Verse 1&#10;Amazing grace, how sweet the sound&#10;That saved a wretch like me"></textarea>
+                <div class="lyrics-source-status" id="lyricsSourceStatus">No lyric sheet supplied — recording transcription will be used.</div>
+            </div>
             <label class="audio-drop" for="audioFileInput">
                 <span class="start-card-icon">♪</span>
                 <strong>Choose a recording</strong>

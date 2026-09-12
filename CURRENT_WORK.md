@@ -2,7 +2,7 @@
 
 ## Active Task
 
-Implement recording-to-chord-chart authoring through the same editable/transposable/exportable model used by manual and PDF imports.
+Add authoritative pasted or `.txt` lyrics to recording imports, using transcription for timing without replacing supplied wording.
 
 ## Recent Changes
 
@@ -19,6 +19,9 @@ Implement recording-to-chord-chart authoring through the same editable/transposa
 - Added recording import/progress UI; completed drafts open directly in the existing editor.
 - Preserved chord timing/confidence through nearby lyric and chord corrections.
 - Added accurate web-app runtime dependencies and README.
+- Added authoritative lyric paste and `.txt` upload to recording import.
+- Added deterministic machine-transcript reconciliation that preserves supplied wording, punctuation, capitalization, blank lines, and line order.
+- Stored raw transcript, authoritative lyrics, reconciliation confidence, and chord timing as separate evidence layers.
 
 ## Blockers
 
@@ -43,3 +46,5 @@ Implement recording-to-chord-chart authoring through the same editable/transposa
 - Audio probes: pure C/F/G/Am analyzer 4/4; real 2-second transcription 6/6 words with timestamps.
 - Final audio browser E2E passed upload, cancel, same-file retry, edit, timing retention, transpose, reset, and PDF download; 0 console errors.
 - Vercel account project inventory, GitHub Pages API, and repository config all confirm no current production deployment.
+- Authoritative-lyrics E2E: `.txt` and paste text preserved exactly; raw transcript retained; transpose/reset and 4,472-byte PDF passed with 0 console errors.
+- Section-heading correction re-review passed with 0 blockers; final real-path PDF was 4,470 bytes.

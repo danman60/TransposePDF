@@ -63,6 +63,9 @@ class UIController {
       audioJobPercent: document.getElementById('audioJobPercent'),
       audioJobProgress: document.getElementById('audioJobProgress'),
       audioJobMessage: document.getElementById('audioJobMessage'),
+      audioLyricsInput: document.getElementById('audioLyricsInput'),
+      lyricsFileInput: document.getElementById('lyricsFileInput'),
+      lyricsSourceStatus: document.getElementById('lyricsSourceStatus'),
       
       // Export
       exportButton: document.getElementById('exportButton'),
@@ -100,6 +103,8 @@ class UIController {
     this.elements.cancelAuthorButton.addEventListener('click', () => this.closeAuthoring());
     this.elements.cancelAudioButton.addEventListener('click', () => this.cancelAudioAnalysis());
     this.elements.audioFileInput.addEventListener('change', event => this.handleAudioUpload(event));
+    this.elements.lyricsFileInput.addEventListener('change', event => this.handleLyricsFile(event));
+    this.elements.audioLyricsInput.addEventListener('input', () => this.updateLyricsSourceStatus());
     this.elements.saveChartButton.addEventListener('click', () => this.saveAuthoredSong());
     this.elements.authorContent.addEventListener('input', () => this.updateAuthorPreview());
     this.elements.authorTitle.addEventListener('input', () => this.updateAuthorPreview());
@@ -142,6 +147,8 @@ class UIController {
     try {
       const formData = new FormData();
       formData.append('audio', file);
+      const authoritativeLyrics = this.elements.audioLyricsInput.value;
+      if (authoritativeLyrics.trim()) formData.append('authoritativeLyrics', authoritativeLyrics);
       const response = await fetch('/api/audio-jobs', {
         method: 'POST', body: formData, signal: this.audioAbortController.signal
       });
@@ -154,6 +161,7 @@ class UIController {
       this.currentSongs.push(song);
       this.updateStatus(`Created draft for ${song.title}`, 'success');
       this.elements.audioFileInput.value = '';
+      this.clearAudioLyrics();
       this.elements.audioJob.style.display = 'none';
       this.openAuthoring(song.id);
     } catch (error) {
@@ -195,8 +203,40 @@ class UIController {
     }
     this.elements.audioJob.style.display = 'none';
     this.elements.audioFileInput.value = '';
+    this.clearAudioLyrics();
     this.updateStatus('Recording analysis cancelled', 'info');
     this.showStartView();
+  }
+
+  async handleLyricsFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.txt') && file.type !== 'text/plain') {
+      this.showError('Choose a plain-text (.txt) lyric sheet');
+      event.target.value = '';
+      return;
+    }
+    try {
+      this.elements.audioLyricsInput.value = await file.text();
+      this.updateLyricsSourceStatus(file.name);
+    } catch (error) {
+      this.showError(`Could not read lyric sheet: ${error.message}`);
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  updateLyricsSourceStatus(filename = '') {
+    const supplied = this.elements.audioLyricsInput.value.trim();
+    this.elements.lyricsSourceStatus.textContent = supplied
+      ? `${filename ? `${filename} loaded. ` : ''}Supplied lyrics will override recognized wording.`
+      : 'No lyric sheet supplied — recording transcription will be used.';
+  }
+
+  clearAudioLyrics() {
+    this.elements.audioLyricsInput.value = '';
+    this.elements.lyricsFileInput.value = '';
+    this.updateLyricsSourceStatus();
   }
 
   updateAudioProgress(stage, progress, message) {

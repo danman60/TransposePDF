@@ -17,7 +17,9 @@ class SongModel {
           confidence: chord.confidence ?? null
         })),
         startTime: line.startTime ?? null,
-        endTime: line.endTime ?? null
+        endTime: line.endTime ?? null,
+        lyricConfidence: line.lyricConfidence ?? null,
+        timedWords: line.timedWords || []
       }))
     }));
 
@@ -170,6 +172,8 @@ class SongModel {
       if (!oldLine) return;
       line.startTime = oldLine.startTime ?? null;
       line.endTime = oldLine.endTime ?? null;
+      line.lyricConfidence = oldLine.lyricConfidence ?? null;
+      line.timedWords = oldLine.timedWords || [];
       const available = [...(oldLine.chords || [])];
       for (const chord of line.chords || []) {
         if (!available.length) break;

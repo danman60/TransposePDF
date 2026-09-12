@@ -876,6 +876,66 @@ body {
   margin: 0.8rem 0;
 }
 
+.authoritative-lyrics {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--background);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.lyrics-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.lyrics-heading label:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lyrics-heading label > span,
+.lyrics-source-status {
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+}
+
+.optional-label {
+  margin-left: 0.35rem;
+  color: var(--primary-color) !important;
+  font-size: 0.75rem !important;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.text-file-button {
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.lyrics-input {
+  width: 100%;
+  min-height: 150px;
+  margin: 0.85rem 0 0.55rem;
+  padding: 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font: 0.95rem/1.55 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  resize: vertical;
+}
+
+.lyrics-input:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 195, 247, 0.13);
+}
+
 .author-header,
 .author-footer,
 .preview-heading {

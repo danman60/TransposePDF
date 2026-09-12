@@ -22,6 +22,24 @@ class ChordSegment:
     confidence: float
 
 
+@dataclass(frozen=True)
+class TimedLyricWord:
+    text: str
+    character_offset: int
+    start: float
+    end: float
+    confidence: float
+
+
+@dataclass(frozen=True)
+class TimedLyricLine:
+    text: str
+    start: float | None
+    end: float | None
+    confidence: float
+    words: list[TimedLyricWord] = field(default_factory=list)
+
+
 @dataclass
 class AudioAnalysis:
     title: str

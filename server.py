@@ -31,6 +31,7 @@ JOBS_LOCK = threading.Lock()
 EXECUTOR = ThreadPoolExecutor(max_workers=2, thread_name_prefix="transpose-audio")
 MAX_ACTIVE_JOBS = 4
 JOB_TTL_SECONDS = 3600
+MAX_LYRICS_CHARACTERS = 500_000
 
 
 def api_response(payload: Any, status_code: int = 200) -> JSONResponse:
@@ -60,6 +61,9 @@ async def create_audio_job(request) -> JSONResponse:
     suffix = Path(upload.filename or "recording").suffix.lower()
     if suffix not in ALLOWED_SUFFIXES:
         return api_response({"error": "Supported formats: MP3, WAV, M4A, AAC, FLAC, OGG"}, 400)
+    authoritative_lyrics = str(form.get("authoritativeLyrics") or "").replace("\r\n", "\n").replace("\r", "\n")
+    if len(authoritative_lyrics) > MAX_LYRICS_CHARACTERS:
+        return api_response({"error": "Lyric sheet exceeds 500,000 characters"}, 413)
 
     job_id = uuid.uuid4().hex
     temp_dir = Path(tempfile.mkdtemp(prefix="transposepdf-audio-"))
@@ -99,7 +103,7 @@ async def create_audio_job(request) -> JSONResponse:
             "result": None,
             "error": None,
         }
-    EXECUTOR.submit(process_audio_job, job_id, audio_path, title)
+    EXECUTOR.submit(process_audio_job, job_id, audio_path, title, authoritative_lyrics)
     return api_response({"jobId": job_id}, 202)
 
 
@@ -130,7 +134,7 @@ def job_cancelled(job_id: str) -> bool:
         return JOBS[job_id].get("status") == "cancelled"
 
 
-def process_audio_job(job_id: str, audio_path: Path, title: str) -> None:
+def process_audio_job(job_id: str, audio_path: Path, title: str, authoritative_lyrics: str = "") -> None:
     try:
         if job_cancelled(job_id):
             return
@@ -158,11 +162,13 @@ def process_audio_job(job_id: str, audio_path: Path, title: str) -> None:
             words=words,
             chords=chords,
         )
-        song = ChartBuilder().build(analysis)
+        song = ChartBuilder().build(analysis, authoritative_lyrics=authoritative_lyrics)
         song.setdefault("source", {}).update({
             "filename": f"{title}{audio_path.suffix}",
             "duration": duration,
             "transcriptText": transcript_text,
+            "authoritativeLyrics": authoritative_lyrics or None,
+            "lyricsMode": "authoritative" if authoritative_lyrics.strip() else "transcribed",
         })
         update_job(job_id, status="complete", stage="Draft ready", progress=100, result=song, finishedAt=time.time())
     except Exception as error:  # surfaced verbatim to the single requesting user

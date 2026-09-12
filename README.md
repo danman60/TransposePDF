@@ -5,6 +5,7 @@ Browser chord-sheet editor with three compatible entry paths:
 - Create a chart by typing or pasting alternating chord and lyric lines.
 - Import an existing PDF chord chart while retaining its extracted layout.
 - Import an audio recording to generate a timed, editable draft.
+- Optionally paste authoritative lyrics or load a `.txt` lyric sheet while importing audio.
 
 Every result uses the same song model. Charts can be edited, transposed, reset, combined, and exported as PDF.
 
@@ -21,6 +22,8 @@ python3 server.py
 Open `http://127.0.0.1:8000`.
 
 The server accepts recordings at `POST /api/audio-jobs`. Poll `GET /api/audio-jobs/{job_id}` for status. Uploads are limited to 100 MB and deleted after processing.
+
+Add optional multipart field `authoritativeLyrics` to preserve supplied wording and line breaks. Machine transcription remains stored as timing evidence; it does not replace supplied spelling, punctuation, or capitalization.
 
 ## Authoring format
 
