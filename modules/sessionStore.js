@@ -50,14 +50,15 @@ class SessionStore {
     return execution;
   }
 
-  async hydrate(sessionId = LibraryStore.DEFAULT_SESSION_ID) {
+  async hydrate(sessionId = null) {
     return this.serialize(async () => this.hydrateNow(sessionId));
   }
 
-  async hydrateNow(sessionId = LibraryStore.DEFAULT_SESSION_ID) {
+  async hydrateNow(sessionId = null) {
     await this.library.open();
-    const session = await this.library.getSession(sessionId);
-    if (!session) throw new Error(`Session ${sessionId} does not exist`);
+    const resolvedId = sessionId || await this.library.getActiveSessionId();
+    const session = await this.library.getSession(resolvedId);
+    if (!session) throw new Error(`Session ${resolvedId} does not exist`);
     const records = await Promise.all(session.items.map(item => this.library.getSong(item.songId)));
     this.activeSession = session;
     this.songRecords.clear();
@@ -91,9 +92,7 @@ class SessionStore {
 
   createSession(name = 'Untitled Session') {
     return this.serialize(async () => {
-      const saved = await this.library.saveSession({
-        id: this.library.createId(), name: String(name).trim() || 'Untitled Session', items: [], activeItemId: null
-      }, { expectedRevision: 0 });
+      const saved = await this.library.createSession(name);
       this.activeSession = saved;
       this.songRecords.clear();
       this.rebuildHydratedSongs();
@@ -103,7 +102,36 @@ class SessionStore {
   }
 
   selectSession(sessionId) {
-    return this.hydrate(sessionId);
+    return this.serialize(async () => {
+      await this.library.selectSession(sessionId);
+      return this.hydrateNow(sessionId);
+    });
+  }
+
+  listSessions() {
+    return this.library.listSessions();
+  }
+
+  duplicateSession(sessionId = this.activeSession?.id, options = {}) {
+    return this.serialize(async () => {
+      const saved = await this.library.duplicateSession(sessionId, options);
+      if (options.activate === false) return saved;
+      await this.hydrateNow(saved.id);
+      this.notify('session.duplicated', { sourceSessionId: sessionId, sessionId: saved.id });
+      return this.snapshot();
+    });
+  }
+
+  deleteSession(sessionId = this.activeSession?.id, options = {}) {
+    return this.serialize(async () => {
+      const deleted = await this.executeWithConflict('session', sessionId, () =>
+        this.library.deleteSession(sessionId, options));
+      if (!deleted) return false;
+      const activeId = await this.library.getActiveSessionId();
+      if (this.activeSession?.id === String(sessionId)) await this.hydrateNow(activeId);
+      this.notify('session.deleted', { sessionId: String(sessionId) });
+      return true;
+    });
   }
 
   renameSession(name) {
@@ -119,7 +147,12 @@ class SessionStore {
       if (!normalized.id || this.songRecords.has(String(normalized.id))) normalized.id = this.library.createId();
       normalized.id = String(normalized.id);
       const songRecord = await this.executeWithConflict('song', normalized.id, () =>
-        this.library.saveSong(normalized, { expectedRevision: options.expectedRevision ?? 0 }));
+        this.library.saveSong(normalized, {
+          expectedRevision: options.expectedRevision ?? 0,
+          checkpoint: true,
+          checkpointLabel: options.checkpointLabel || '',
+          checkpointReason: options.checkpointReason || 'add'
+        }));
       this.songRecords.set(songRecord.id, songRecord);
       const item = {
         id: this.library.createId(), songId: songRecord.id,
@@ -137,6 +170,20 @@ class SessionStore {
     });
   }
 
+  addExistingSong(songId, options = {}) {
+    return this.serialize(async () => {
+      this.requireSession();
+      const result = await this.executeWithConflict('session', this.activeSession.id, () =>
+        this.library.addExistingSong(this.activeSession.id, songId, options));
+      this.activeSession = result.session;
+      const record = await this.library.getSong(songId);
+      this.songRecords.set(String(songId), record);
+      this.rebuildHydratedSongs();
+      this.notify('song.added.existing', { songId: String(songId), itemId: result.item.id });
+      return this.songModel.create(this.hydratedSongs.find(song => song.sessionItemId === result.item.id));
+    });
+  }
+
   commitSong(song, options = {}) {
     return this.serialize(async () => {
       this.requireSession();
@@ -145,12 +192,44 @@ class SessionStore {
       if (!existing) throw new Error(`Song ${id} is not loaded in the active session`);
       const record = await this.executeWithConflict('song', id, () => this.library.saveSong(
         this.songModel.create({ ...song, id }),
-        { expectedRevision: options.expectedRevision ?? existing.revision }
+        {
+          expectedRevision: options.expectedRevision ?? existing.revision,
+          checkpoint: true,
+          checkpointLabel: options.checkpointLabel || '',
+          checkpointReason: options.checkpointReason || 'explicit-save'
+        }
       ));
       this.songRecords.set(id, record);
       this.rebuildHydratedSongs();
       this.notify('song.committed', { songId: id, revision: record.revision });
       return this.songModel.create(this.hydratedSongs.find(entry => String(entry.id) === id));
+    });
+  }
+
+  listSongVersions(songId) {
+    return this.library.listSongVersions(songId);
+  }
+
+  labelSongVersion(versionId, label) {
+    return this.library.labelSongVersion(versionId, label);
+  }
+
+  restoreSongVersion(versionId, options = {}) {
+    return this.serialize(async () => {
+      this.requireSession();
+      const versions = await this.library.getAllRecords('versions');
+      const version = versions.find(entry => entry.id === String(versionId));
+      if (!version) throw new Error(`Song version ${versionId} does not exist`);
+      const existing = this.songRecords.get(version.songId) || await this.library.getSong(version.songId);
+      const record = await this.executeWithConflict('song', version.songId, () =>
+        this.library.restoreSongVersion(versionId, {
+          ...options,
+          expectedRevision: options.expectedRevision ?? existing?.revision ?? null
+        }));
+      this.songRecords.set(record.id, record);
+      this.rebuildHydratedSongs();
+      this.notify('song.version.restored', { songId: record.id, versionId: String(versionId) });
+      return this.songModel.create(this.hydratedSongs.find(song => String(song.id) === record.id));
     });
   }
 
