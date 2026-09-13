@@ -12,6 +12,7 @@ class UIController {
     this.editingSongId = null;
     this.audioAbortController = null;
     this.audioJobId = null;
+    this.correctionMemory = new ChordCorrectionMemory();
     
     // Initialize UI elements
     this.initializeElements();
@@ -157,9 +158,24 @@ class UIController {
 
       this.audioJobId = payload.jobId;
       const result = await this.waitForAudioJob(payload.jobId, this.audioAbortController.signal);
-      const song = SongModel.create({ ...result, id: Date.now() });
+      const learned = this.correctionMemory.apply(result);
+      const analyzedSong = SongModel.create({ ...learned.song, id: Date.now() });
+      const editableSong = SongModel.fromManual({
+        title: analyzedSong.title,
+        originalKey: analyzedSong.originalKey,
+        content: SongModel.toEditorText(analyzedSong)
+      });
+      editableSong.id = analyzedSong.id;
+      editableSong.sourceType = 'audio';
+      editableSong.source = analyzedSong.source;
+      SongModel.retainAnalysisMetadata(editableSong, analyzedSong);
+      const visibleLearning = this.correctionMemory.apply(editableSong);
+      const song = SongModel.create({ ...visibleLearning.song, id: analyzedSong.id });
       this.currentSongs.push(song);
-      this.updateStatus(`Created draft for ${song.title}`, 'success');
+      const learnedStatus = learned.applied
+        ? ` · applied ${learned.applied} learned correction${learned.applied === 1 ? '' : 's'}`
+        : '';
+      this.updateStatus(`Created draft for ${song.title}${learnedStatus}`, 'success');
       this.elements.audioFileInput.value = '';
       this.clearAudioLyrics();
       this.elements.audioJob.style.display = 'none';
@@ -300,7 +316,27 @@ class UIController {
       authored.sourceType = previous.sourceType;
       authored.source = { ...(previous.source || {}), preserveLayout: false, edited: true };
       authored.textItems = previous.textItems || [];
+      const visibleBaseline = SongModel.fromManual({
+        title: previous.title,
+        originalKey: previous.originalKey,
+        content: SongModel.toEditorText(previous)
+      });
+      const rawSong = {
+        ...previous,
+        sections: previous.source?.rawAnalysis?.sections || previous.sections
+      };
+      const rawBaseline = SongModel.fromManual({
+        title: previous.title,
+        originalKey: previous.originalKey,
+        content: SongModel.toEditorText(rawSong)
+      });
+      SongModel.retainAnalysisMetadata(rawBaseline, rawSong);
+      const learning = this.correctionMemory.learn(previous, authored, {
+        visibleSections: visibleBaseline.sections,
+        rawSections: rawBaseline.sections
+      });
       SongModel.retainAnalysisMetadata(authored, previous);
+      authored.source.correctionsLearned = learning.learned;
       this.currentSongs[index] = authored;
     } else {
       this.currentSongs.push(authored);
@@ -308,7 +344,11 @@ class UIController {
 
     this.editingSongId = null;
     this.elements.authorSection.style.display = 'none';
-    this.updateStatus(`Saved ${authored.title}`, 'success');
+    const learnedCount = authored.source?.correctionsLearned || 0;
+    const learnedStatus = learnedCount
+      ? ` · learned ${learnedCount} correction${learnedCount === 1 ? '' : 's'}`
+      : '';
+    this.updateStatus(`Saved ${authored.title}${learnedStatus}`, 'success');
     this.displaySongs();
   }
 
