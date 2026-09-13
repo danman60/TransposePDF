@@ -268,16 +268,9 @@ class PDFGenerator {
       .forEach(chord => {
         const offset = Math.max(0, Number(chord.characterOffset) || 0);
         while (characters.length < offset) characters.push(' ');
-        const policy = song?.spellingPolicy || 'contextual';
-        const symbol = semitones === 0
-          ? (['flats', 'sharps'].includes(policy)
-            ? musicTheory.spellChordForKey(chord.symbol, song.currentKey || song.originalKey, { policy })
-            : chord.symbol)
-          : musicTheory.transposeChord(chord.symbol, semitones, song ? {
-            sourceKey: song.originalKey,
-            targetKey: song.currentKey,
-            policy
-          } : {});
+        const symbol = song
+          ? this.displayChord(chord.symbol, song, musicTheory)
+          : musicTheory.transposeChord(chord.symbol, semitones);
         for (let index = 0; index < symbol.length; index += 1) {
           characters[offset + index] = symbol[index];
         }
@@ -299,8 +292,6 @@ class PDFGenerator {
    */
   transposeChordsInLine(line, semitones, musicTheory, song = null) {
     const policy = song?.spellingPolicy || 'contextual';
-    if (semitones === 0 && !['flats', 'sharps'].includes(policy)) return line;
-    
     let result = line;
     const chords = musicTheory.extractChords(line);
     
@@ -308,19 +299,24 @@ class PDFGenerator {
     chords.sort((a, b) => b.position - a.position);
     
     chords.forEach(chord => {
-      const transposedChord = semitones === 0
-        ? musicTheory.spellChordForKey(chord.original, song.currentKey || song.originalKey, { policy })
-        : musicTheory.transposeChord(chord.original, semitones, song ? {
-          sourceKey: song.originalKey,
-          targetKey: song.currentKey,
-          policy
-        } : {});
+      const transposedChord = song
+        ? this.displayChord(chord.original, song, musicTheory)
+        : musicTheory.transposeChord(chord.original, semitones);
       result = result.substring(0, chord.position) + 
                transposedChord + 
                result.substring(chord.position + chord.original.length);
     });
     
     return result;
+  }
+
+  displayChord(symbol, song, musicTheory = new MusicTheory()) {
+    const view = { ...(song.sessionView || {}), spellingPolicy: song.spellingPolicy };
+    if (view.capo && (!view.spellingPolicy || view.spellingPolicy === 'contextual')) {
+      const shapeKey = musicTheory.transposeKey(song.currentKey || song.originalKey, -Number(view.capo), 'contextual');
+      view.spellingPolicy = shapeKey.includes('b') ? 'flats' : 'sharps';
+    }
+    return musicTheory.displayChord(symbol, song, view);
   }
 
   /**

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import asyncio
 import subprocess
 import tempfile
 import threading
@@ -10,12 +11,13 @@ import time
 import uuid
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 from pathlib import Path
 from typing import Any
 
 from starlette.applications import Starlette
 from starlette.datastructures import UploadFile
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
@@ -174,7 +176,23 @@ def purge_jobs() -> None:
 
 def update_job(job_id: str, **changes: Any) -> None:
     with JOBS_LOCK:
-        JOBS[job_id].update(changes)
+        job = JOBS[job_id]
+        job.update(changes)
+        job["version"] = int(job.get("version", 0)) + 1
+        event = {
+            "id": job["version"],
+            "status": job.get("status"),
+            "stage": job.get("stage"),
+            "progress": job.get("progress"),
+            "error": job.get("error"),
+            "updatedAt": time.time(),
+        }
+        job.setdefault("events", deque(maxlen=100)).append(event)
+        job["updatedAt"] = event["updatedAt"]
+
+
+def public_job(job: dict[str, Any]) -> dict[str, Any]:
+    return {key: value for key, value in job.items() if key != "events"}
 
 
 async def create_audio_job(request) -> JSONResponse:
@@ -228,7 +246,16 @@ async def create_audio_job(request) -> JSONResponse:
             "progress": 0,
             "result": None,
             "error": None,
+            "version": 0,
+            "events": deque(maxlen=100),
+            "updatedAt": time.time(),
         }
+        update = {
+            "id": 1, "status": "queued", "stage": "Queued", "progress": 0,
+            "error": None, "updatedAt": JOBS[job_id]["updatedAt"]
+        }
+        JOBS[job_id]["version"] = 1
+        JOBS[job_id]["events"].append(update)
     EXECUTOR.submit(process_audio_job, job_id, audio_path, title, authoritative_lyrics)
     return api_response({"jobId": job_id}, 202)
 
@@ -237,7 +264,7 @@ async def get_audio_job(request) -> JSONResponse:
     job_id = request.path_params["job_id"]
     with JOBS_LOCK:
         job = JOBS.get(job_id)
-        snapshot = dict(job) if job else None
+        snapshot = public_job(job) if job else None
     if snapshot is None:
         return api_response({"error": "Audio job not found"}, 404)
     return api_response(snapshot)
@@ -249,10 +276,52 @@ async def cancel_audio_job(request) -> JSONResponse:
         job = JOBS.get(job_id)
         if job is None:
             return api_response({"error": "Audio job not found"}, 404)
-        if job["status"] not in {"complete", "error"}:
-            job.update(status="cancelled", stage="Cancelled", finishedAt=time.time())
-        snapshot = dict(job)
+        terminal = job["status"] in {"complete", "error", "cancelled"}
+    if not terminal:
+        update_job(job_id, status="cancelled", stage="Cancelled", finishedAt=time.time())
+    with JOBS_LOCK:
+        snapshot = public_job(JOBS[job_id])
     return api_response(snapshot)
+
+
+async def stream_audio_job(request) -> StreamingResponse | JSONResponse:
+    job_id = request.path_params["job_id"]
+    try:
+        after = max(0, int(request.query_params.get("after") or request.headers.get("last-event-id") or 0))
+    except ValueError:
+        return api_response({"error": "after must be an integer"}, 400)
+    with JOBS_LOCK:
+        if job_id not in JOBS:
+            return api_response({"error": "Audio job not found"}, 404)
+
+    async def generate():
+        cursor = after
+        heartbeat_at = time.monotonic() + 15
+        while True:
+            if await request.is_disconnected():
+                return
+            with JOBS_LOCK:
+                job = JOBS.get(job_id)
+                events = list(job.get("events", ())) if job else []
+                status = job.get("status") if job else None
+            if job is None:
+                return
+            for event in events:
+                if int(event["id"]) <= cursor:
+                    continue
+                cursor = int(event["id"])
+                event_name = event["status"] if event["status"] in {"complete", "error", "cancelled"} else "progress"
+                yield f"id: {cursor}\nevent: {event_name}\ndata: {json.dumps(event)}\n\n"
+            if status in {"complete", "error", "cancelled"}:
+                return
+            if time.monotonic() >= heartbeat_at:
+                yield ": heartbeat\n\n"
+                heartbeat_at = time.monotonic() + 15
+            await asyncio.sleep(0.25)
+
+    return StreamingResponse(generate(), media_type="text/event-stream", headers={
+        "Cache-Control": "no-store", "X-Accel-Buffering": "no", "Connection": "keep-alive"
+    })
 
 
 def job_cancelled(job_id: str) -> bool:
@@ -427,6 +496,7 @@ routes = [
     Route("/api/audio-jobs", create_audio_job, methods=["POST"]),
     Route("/api/audio-jobs/{job_id}", get_audio_job, methods=["GET"]),
     Route("/api/audio-jobs/{job_id}", cancel_audio_job, methods=["DELETE"]),
+    Route("/api/audio-jobs/{job_id}/events", stream_audio_job, methods=["GET"]),
     Mount("/", StaticFiles(directory=ROOT, html=True), name="static"),
 ]
 app = Starlette(routes=routes)

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1012">
+  <title>TransposePDF Companion</title>
+  <link rel="stylesheet" href="styles/companion.css">
+</head>
+<body>
+  <main class="companion" id="companion" aria-labelledby="songTitle">
+    <header class="topbar">
+      <div class="identity">
+        <span class="brand">TransposePDF</span>
+        <span class="session" id="sessionName">Live companion</span>
+      </div>
+      <div class="utilities">
+        <div class="connection" id="connection" role="status" aria-live="polite">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span id="connectionText">Connecting</span>
+        </div>
+        <button class="utility-button" id="wakeButton" type="button" aria-pressed="false">Keep awake</button>
+        <button class="utility-button" id="fullscreenButton" type="button">Fullscreen</button>
+      </div>
+    </header>
+
+    <section class="waiting" id="waiting" aria-live="polite">
+      <p class="waiting-kicker">Waiting for live session</p>
+      <h1>Open a chart on the main screen.</h1>
+      <p>This display updates automatically when telemetry arrives.</p>
+    </section>
+
+    <section class="stage" id="stage" hidden>
+      <div class="song-heading">
+        <div>
+          <p class="section-label" id="sectionLabel">Current section</p>
+          <h1 id="songTitle">Untitled Song</h1>
+        </div>
+        <div class="key" aria-label="Current key">
+          <span>Key</span>
+          <strong id="songKey">C</strong>
+        </div>
+      </div>
+
+      <div class="line-stack" aria-live="polite" aria-atomic="true">
+        <article class="line-card current-line" id="currentLine">
+          <p class="line-role">Now</p>
+          <pre class="chords" id="currentChords" aria-label="Current chords"></pre>
+          <p class="lyrics" id="currentLyrics"></p>
+        </article>
+        <article class="line-card next-line" id="nextLine">
+          <p class="line-role">Next</p>
+          <pre class="chords" id="nextChords" aria-label="Next chords"></pre>
+          <p class="lyrics" id="nextLyrics"></p>
+        </article>
+      </div>
+    </section>
+  </main>
+  <script src="modules/companionView.js"></script>
+</body>
+</html>

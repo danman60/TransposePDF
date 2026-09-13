@@ -56,6 +56,10 @@
   }
 
   .session-name { flex: 1; width: auto; }
+  .session-identity { flex-wrap: wrap; }
+  .session-identity select { flex: 1 1 45%; }
+  .session-actions { width: 100%; }
+  .session-actions button { flex: 1; }
 
   .recovery-banner {
     width: calc(100% - 1rem);
@@ -67,6 +71,8 @@
 
   .session-workspace { display: block; }
   .song-library-sidebar { display: none; }
+  .transpose-controls { align-items: end; }
+  .transpose-controls label { min-width: 88px; }
 
   .mobile-song-selector {
     display: flex;
@@ -546,6 +552,7 @@
 
 /* Accessibility improvements */
 @media (prefers-reduced-motion: reduce) {
+  .song-selector-row, .history-drawer, .lead-sheet-content { transition: none !important; scroll-behavior: auto !important; }
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

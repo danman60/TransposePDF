@@ -67,15 +67,27 @@ class UIController {
       activeSongSelect: document.getElementById('activeSongSelect'),
       librarySongCount: document.getElementById('librarySongCount'),
       sessionName: document.getElementById('sessionName'),
+      sessionSelect: document.getElementById('sessionSelect'),
+      newSessionButton: document.getElementById('newSessionButton'),
+      duplicateSessionButton: document.getElementById('duplicateSessionButton'),
+      deleteSessionButton: document.getElementById('deleteSessionButton'),
       sessionSaveState: document.getElementById('sessionSaveState'),
       recoveryBanner: document.getElementById('recoveryBanner'),
       recoveryMessage: document.getElementById('recoveryMessage'),
       restoreDraftButton: document.getElementById('restoreDraftButton'),
       discardDraftButton: document.getElementById('discardDraftButton'),
+      librarySearch: document.getElementById('librarySearch'),
+      librarySearchResults: document.getElementById('librarySearchResults'),
+      historyDrawer: document.getElementById('historyDrawer'),
+      historyList: document.getElementById('historyList'),
+      historyPreview: document.getElementById('historyPreview'),
+      closeHistoryButton: document.getElementById('closeHistoryButton'),
 
       // Authoring
       createChartButton: document.getElementById('createChartButton'),
       importPdfButton: document.getElementById('importPdfButton'),
+      importChordProButton: document.getElementById('importChordProButton'),
+      chordProFileInput: document.getElementById('chordProFileInput'),
       cancelImportButton: document.getElementById('cancelImportButton'),
       cancelAuthorButton: document.getElementById('cancelAuthorButton'),
       saveChartButton: document.getElementById('saveChartButton'),
@@ -112,6 +124,7 @@ class UIController {
       exportButton: document.getElementById('exportButton'),
       exportFilename: document.getElementById('exportFilename'),
       exportFinalButton: document.getElementById('exportFinalButton'),
+      exportChordProButton: document.getElementById('exportChordProButton'),
       exportProgress: document.getElementById('exportProgress'),
       exportProgressFill: document.getElementById('exportProgressFill'),
       exportProgressText: document.getElementById('exportProgressText'),
@@ -182,6 +195,7 @@ class UIController {
     // Export buttons
     this.elements.exportButton.addEventListener('click', this.showExportSection.bind(this));
     this.elements.exportFinalButton.addEventListener('click', this.handleExport.bind(this));
+    this.elements.exportChordProButton?.addEventListener('click', () => this.exportChordPro());
     
     // Filename input
     this.elements.exportFilename.addEventListener('input', (e) => {
@@ -189,6 +203,14 @@ class UIController {
     });
     this.elements.activeSongSelect?.addEventListener('change', event => this.selectActiveSong(event.target.value));
     this.elements.sessionName?.addEventListener('input', () => this.scheduleSessionSave());
+    this.elements.sessionSelect?.addEventListener('change', event => this.switchSession(event.target.value));
+    this.elements.newSessionButton?.addEventListener('click', () => this.createNamedSession());
+    this.elements.duplicateSessionButton?.addEventListener('click', () => this.duplicateCurrentSession());
+    this.elements.deleteSessionButton?.addEventListener('click', () => this.deleteCurrentSession());
+    this.elements.librarySearch?.addEventListener('input', event => this.searchLibrary(event.target.value));
+    this.elements.closeHistoryButton?.addEventListener('click', () => { this.elements.historyDrawer.hidden = true; });
+    this.elements.importChordProButton?.addEventListener('click', () => this.elements.chordProFileInput.click());
+    this.elements.chordProFileInput?.addEventListener('change', event => this.importChordPro(event));
     this.elements.restoreDraftButton?.addEventListener('click', () => this.restoreRecoveryDraft());
     this.elements.discardDraftButton?.addEventListener('click', () => this.discardRecoveryDraft());
     ['input', 'change'].forEach(name => {
@@ -208,6 +230,8 @@ class UIController {
       await this.sessionStore.hydrate();
       this.syncFromSessionStore();
       this.elements.sessionName.value = this.activeSession?.name || 'My songs';
+      await this.refreshSessionList();
+      await this.searchLibrary('');
       if (this.currentSongs.length) this.displaySongs();
       await this.offerNewestRecoveryDraft();
       this.setSaveState('Saved');
@@ -224,13 +248,83 @@ class UIController {
     this.activeSession = this.sessionStore?.activeSession || null;
     this.currentSongs = (this.sessionStore?.songs || []).map(song => {
       const runtime = prior.get(String(song.id));
-      return runtime?.source?.rawAnalysis
+      const hydrated = runtime?.source?.rawAnalysis
         ? SongModel.create({ ...song, source: runtime.source })
         : SongModel.create(song);
+      hydrated.sessionView = { ...(song.sessionView || {}) };
+      hydrated.sessionItemId = song.sessionItemId;
+      hydrated.libraryRevision = song.libraryRevision;
+      return hydrated;
     });
     this.activeSongId = this.sessionStore?.currentSong?.id || this.currentSongs[0]?.id || null;
     this.songRevisions = new Map([...(this.sessionStore?.songRecords || new Map()).entries()]
       .map(([id, record]) => [id, record.revision]));
+  }
+
+  async refreshSessionList() {
+    const sessions = await this.sessionStore.listSessions();
+    this.elements.sessionSelect.innerHTML = sessions.map(session =>
+      `<option value="${this.escapeHtml(session.id)}"${session.id === this.activeSession?.id ? ' selected' : ''}>${this.escapeHtml(session.name)}</option>`
+    ).join('');
+    this.elements.deleteSessionButton.disabled = sessions.length < 2;
+  }
+
+  async switchSession(sessionId) {
+    try {
+      await this.sessionStore.selectSession(sessionId);
+      this.syncFromSessionStore();
+      this.elements.sessionName.value = this.activeSession.name;
+      await this.refreshSessionList();
+      await this.searchLibrary(this.elements.librarySearch.value);
+      this.currentSongs.length ? this.displaySongs() : this.showStartView();
+    } catch (error) { this.handleSessionStoreError(error, 'session.select'); }
+  }
+
+  async createNamedSession() {
+    const name = window.prompt('Name this session', 'New Session');
+    if (name === null) return;
+    try {
+      await this.sessionStore.createSession(name);
+      this.syncFromSessionStore();
+      this.elements.sessionName.value = this.activeSession.name;
+      await this.refreshSessionList();
+      this.showStartView();
+    } catch (error) { this.handleSessionStoreError(error, 'session.create'); }
+  }
+
+  async duplicateCurrentSession() {
+    try {
+      await this.sessionStore.duplicateSession();
+      this.syncFromSessionStore();
+      this.elements.sessionName.value = this.activeSession.name;
+      await this.refreshSessionList();
+      this.currentSongs.length ? this.displaySongs() : this.showStartView();
+    } catch (error) { this.handleSessionStoreError(error, 'session.duplicate'); }
+  }
+
+  async deleteCurrentSession() {
+    if (!window.confirm(`Delete session “${this.activeSession?.name}”? Songs remain in your library.`)) return;
+    try {
+      await this.sessionStore.deleteSession(this.activeSession.id, { expectedRevision: this.activeSession.revision });
+      this.syncFromSessionStore();
+      this.elements.sessionName.value = this.activeSession.name;
+      await this.refreshSessionList();
+      this.currentSongs.length ? this.displaySongs() : this.showStartView();
+    } catch (error) { this.handleSessionStoreError(error, 'session.delete'); }
+  }
+
+  async searchLibrary(query = '') {
+    const records = await this.libraryStore.searchSongs(query, { limit: 30 });
+    const present = new Set(this.activeSession?.items.map(item => item.songId) || []);
+    this.elements.librarySearchResults.innerHTML = records.filter(record => !present.has(record.id)).map(record =>
+      `<button type="button" data-library-song="${this.escapeHtml(record.id)}"><span>${this.escapeHtml(record.song.title)}</span><small>${this.escapeHtml(record.song.originalKey)}</small></button>`
+    ).join('') || '<p class="empty-note">No other saved songs</p>';
+    this.elements.librarySearchResults.querySelectorAll('[data-library-song]').forEach(button => button.addEventListener('click', async () => {
+      try {
+        await this.sessionStore.addExistingSong(button.dataset.librarySong);
+        this.syncFromSessionStore(); this.displaySongs(); await this.searchLibrary(this.elements.librarySearch.value);
+      } catch (error) { this.handleSessionStoreError(error, 'library.add'); }
+    }));
   }
 
   handleSessionStoreError(error, operation) {
@@ -278,9 +372,7 @@ class UIController {
     this.elements.uploadSection.style.display = mode === 'pdf' ? 'block' : 'none';
     this.elements.audioSection.style.display = mode === 'audio' ? 'block' : 'none';
     this.elements.authorSection.style.display = 'none';
-    if (mode === 'start' && this.currentSongs.length) {
-      this.elements.songsSection.style.display = 'block';
-    }
+    this.elements.songsSection.style.display = mode === 'start' && this.currentSongs.length ? 'block' : 'none';
     const telemetryScreen = mode === 'audio' ? 'audio-import' : mode === 'pdf' ? 'pdf-import' : 'start';
     this.setScreen(telemetryScreen);
   }
@@ -290,7 +382,11 @@ class UIController {
     this.setSaveState('Saving…');
     try {
       const exists = this.sessionStore.songRecords.has(String(song.id));
-      if (addToSession && !exists) await this.sessionStore.addSong(song);
+      if (addToSession && !exists) await this.sessionStore.addSong(song, {
+        transpose: song.transposition,
+        spellingPolicy: song.spellingPolicy,
+        view: song.sessionView || song.view || {}
+      });
       else await this.sessionStore.commitSong(song);
       this.syncFromSessionStore([song]);
       this.setSaveState('Saved');
@@ -309,6 +405,7 @@ class UIController {
     try {
       await this.sessionStore.renameSession(this.elements.sessionName?.value.trim() || 'My songs');
       this.syncFromSessionStore();
+      await this.refreshSessionList();
       this.setSaveState('Saved');
       this.updateTelemetrySnapshot();
     } catch (error) {
@@ -1136,11 +1233,34 @@ class UIController {
     if (this.elements.songSelectorList) {
       this.elements.songSelectorList.innerHTML = this.currentSongs.map(song => {
         const active = String(song.id) === String(this.activeSongId);
-        return `<button type="button" class="song-selector-item${active ? ' active' : ''}" data-song-id="${this.escapeHtml(String(song.id))}" aria-current="${active ? 'true' : 'false'}"><strong>${this.escapeHtml(song.title)}</strong><span>${this.escapeHtml(song.currentKey)}</span></button>`;
+        return `<div class="song-selector-row" draggable="true" data-reorder-id="${this.escapeHtml(String(song.id))}"><button type="button" class="song-selector-item${active ? ' active' : ''}" data-song-id="${this.escapeHtml(String(song.id))}" aria-current="${active ? 'true' : 'false'}"><strong>${this.escapeHtml(song.title)}</strong><span>${this.escapeHtml(song.currentKey)}</span></button><button type="button" class="song-row-action" data-move-song="up" aria-label="Move ${this.escapeHtml(song.title)} up">↑</button><button type="button" class="song-row-action" data-move-song="down" aria-label="Move ${this.escapeHtml(song.title)} down">↓</button><button type="button" class="song-row-action danger" data-remove-song aria-label="Remove ${this.escapeHtml(song.title)} from session">×</button></div>`;
       }).join('');
       this.elements.songSelectorList.querySelectorAll('[data-song-id]').forEach(button =>
         button.addEventListener('click', () => this.selectActiveSong(button.dataset.songId)));
+      this.elements.songSelectorList.querySelectorAll('[data-reorder-id]').forEach(row => {
+        row.addEventListener('dragstart', event => event.dataTransfer.setData('text/song-id', row.dataset.reorderId));
+        row.addEventListener('dragover', event => event.preventDefault());
+        row.addEventListener('drop', event => { event.preventDefault(); this.reorderSessionSong(event.dataTransfer.getData('text/song-id'), [...row.parentElement.children].indexOf(row)); });
+        row.querySelectorAll('[data-move-song]').forEach(button => button.addEventListener('click', () => {
+          const index = [...row.parentElement.children].indexOf(row) + (button.dataset.moveSong === 'up' ? -1 : 1);
+          this.reorderSessionSong(row.dataset.reorderId, index);
+        }));
+        row.querySelector('[data-remove-song]').addEventListener('click', () => this.removeSessionSong(row.dataset.reorderId));
+      });
     }
+  }
+
+  async reorderSessionSong(songId, index) {
+    try { await this.sessionStore.reorderSong(songId, index); this.syncFromSessionStore(); this.displaySongs(); }
+    catch (error) { this.handleSessionStoreError(error, 'song.reorder'); }
+  }
+
+  async removeSessionSong(songId) {
+    try {
+      await this.sessionStore.removeSong(songId); this.syncFromSessionStore();
+      await this.searchLibrary(this.elements.librarySearch.value);
+      this.currentSongs.length ? this.displaySongs() : this.showStartView();
+    } catch (error) { this.handleSessionStoreError(error, 'song.remove'); }
   }
 
   async selectActiveSong(songId) {
@@ -1188,6 +1308,10 @@ class UIController {
               <option value="preserve"${song.spellingPolicy === 'preserve' ? ' selected' : ''}>Preserve</option>
             </select>
           </label>
+          <label>Notation<select class="view-notation" onchange='window.transposeApp.setChartView(${songIdArgument}, "notation", this.value)'><option value="chords"${(song.sessionView?.notation || 'chords') === 'chords' ? ' selected' : ''}>Chords</option><option value="nashville"${song.sessionView?.notation === 'nashville' ? ' selected' : ''}>Nashville</option></select></label>
+          <label>Capo<select class="view-capo" onchange='window.transposeApp.setChartView(${songIdArgument}, "capo", this.value)'>${Array.from({length: 12}, (_, value) => `<option value="${value}"${Number(song.sessionView?.capo || 0) === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label>
+          <label>Instrument<select class="view-instrument" onchange='window.transposeApp.setChartView(${songIdArgument}, "instrument", this.value)'>${[['concert','Concert'],['bb','B♭'],['eb','E♭'],['f','F']].map(([value,label]) => `<option value="${value}"${(song.sessionView?.instrument || 'concert') === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
+          <button class="secondary-button history-button" onclick='window.transposeApp.openHistory(${songIdArgument})' type="button">History</button>
           <button class="transpose-button" onclick='window.transposeApp.transposeSong(${songIdArgument}, -1)' title="Transpose down" aria-label="Transpose ${this.escapeHtml(song.title)} down one semitone">−</button>
           <div class="transpose-display">
             <div class="transpose-value" id="transposeValue-${song.id}">${song.transposition > 0 ? `+${song.transposition}` : song.transposition}</div>
@@ -1239,7 +1363,7 @@ class UIController {
         
         // Transpose chords if this item contains them
         let displayText = item.text;
-        if (isChordLine && song.transposition !== 0) {
+        if (isChordLine) {
           displayText = this.transposeTextItem(item.text, song.transposition, musicTheory, song);
         }
         
@@ -1310,17 +1434,59 @@ class UIController {
   }
 
   transposeForSong(symbol, song, musicTheory = new MusicTheory()) {
-    const policy = song.spellingPolicy || 'contextual';
-    if (!song.transposition) {
-      return ['flats', 'sharps'].includes(policy)
-        ? musicTheory.spellChordForKey(symbol, song.currentKey || song.originalKey, { policy })
-        : symbol;
+    const view = { ...(song.sessionView || {}), spellingPolicy: song.spellingPolicy };
+    if (view.capo && (!view.spellingPolicy || view.spellingPolicy === 'contextual')) {
+      const shapeKey = musicTheory.transposeKey(song.currentKey || song.originalKey, -Number(view.capo), 'contextual');
+      view.spellingPolicy = shapeKey.includes('b') ? 'flats' : 'sharps';
     }
-    return musicTheory.transposeChord(symbol, song.transposition, {
-      sourceKey: song.originalKey,
-      targetKey: song.currentKey,
-      policy
+    return musicTheory.displayChord(symbol, song, view);
+  }
+
+  async setChartView(songId, field, value) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return;
+    const view = { ...(song.sessionView || {}) };
+    if (field === 'notation') view.notation = value === 'nashville' ? 'nashville' : 'chords';
+    if (field === 'capo') {
+      view.capo = Math.max(0, Math.min(11, Number(value) || 0));
+      if (view.capo) view.instrument = 'concert';
+    }
+    if (field === 'instrument') {
+      view.instrument = ['concert', 'bb', 'eb', 'f'].includes(value) ? value : 'concert';
+      if (view.instrument !== 'concert') view.capo = 0;
+    }
+    try {
+      await this.sessionStore.updateSongOverrides(song.id, { view }); this.syncFromSessionStore(); this.displaySongs();
+      this.track('view.changed', { field, value }, song);
+    } catch (error) { this.handleSessionStoreError(error, 'view.change'); }
+  }
+
+  async openHistory(songId) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return;
+    const versions = await this.sessionStore.listSongVersions(song.id);
+    this.elements.historyDrawer.hidden = false;
+    this.elements.historyList.innerHTML = versions.map(version => `<article class="history-item" data-version-id="${this.escapeHtml(version.id)}"><button type="button" data-preview-version><strong>${this.escapeHtml(version.label || `Revision ${version.revision}`)}</strong><span>${new Date(version.createdAt).toLocaleString()}</span></button><button type="button" data-label-version>Label</button><button type="button" data-restore-version>Restore</button></article>`).join('') || '<p>No saved versions yet.</p>';
+    this.elements.historyList.querySelectorAll('.history-item').forEach(item => {
+      const version = versions.find(entry => entry.id === item.dataset.versionId);
+      item.querySelector('[data-preview-version]').addEventListener('click', () => this.previewHistory(song, version));
+      item.querySelector('[data-label-version]').addEventListener('click', async () => {
+        const label = window.prompt('Version label', version.label || ''); if (label === null) return;
+        await this.sessionStore.labelSongVersion(version.id, label); await this.openHistory(song.id);
+      });
+      item.querySelector('[data-restore-version]').addEventListener('click', async () => {
+        if (!window.confirm(`Restore ${version.label || `revision ${version.revision}`}? Current chart becomes a new history entry.`)) return;
+        try { await this.sessionStore.restoreSongVersion(version.id); this.syncFromSessionStore(); this.displaySongs(); await this.openHistory(song.id); }
+        catch (error) { this.handleSessionStoreError(error, 'history.restore'); }
+      });
     });
+  }
+
+  previewHistory(current, version) {
+    const before = SongModel.toEditorText(current).split('\n');
+    const after = SongModel.toEditorText(version.song).split('\n');
+    const changed = Math.max(before.length, after.length) - before.filter((line, index) => line === after[index]).length;
+    this.elements.historyPreview.innerHTML = `<strong>${this.escapeHtml(version.label || `Revision ${version.revision}`)}</strong><p>${changed} changed line${changed === 1 ? '' : 's'} · ${after.length} total lines</p><pre>${this.escapeHtml(SongModel.toEditorText(version.song))}</pre>`;
   }
 
   async setSpellingPolicy(songId, policy) {
@@ -1422,8 +1588,6 @@ class UIController {
    * Transpose chords within a text item
    */
   transposeTextItem(text, transposition, musicTheory, song = null) {
-    if (transposition === 0) return text;
-    
     const chords = musicTheory.extractChords(text);
     if (chords.length === 0) return text;
     
@@ -1433,9 +1597,7 @@ class UIController {
     chords.sort((a, b) => b.position - a.position);
     
     chords.forEach(chord => {
-      const transposedChord = song
-        ? this.transposeForSong(chord.original, song, musicTheory)
-        : musicTheory.transposeChord(chord.original, transposition);
+      const transposedChord = song ? this.transposeForSong(chord.original, song, musicTheory) : musicTheory.transposeChord(chord.original, transposition);
       result = result.substring(0, chord.position) + 
                transposedChord + 
                result.substring(chord.position + chord.original.length);
@@ -1663,6 +1825,37 @@ class UIController {
     this.elements.exportSection.style.display = 'block';
     this.elements.exportSection.scrollIntoView({ behavior: 'smooth' });
     this.setScreen('export');
+  }
+
+  async importChordPro(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const songs = ChordPro.parse(await file.text());
+      if (!songs.length) throw new Error('No songs found in ChordPro file');
+      for (const parsed of songs) {
+        parsed.id = this.libraryStore.createId();
+        await this.persistSong(parsed);
+      }
+      this.syncFromSessionStore(songs); this.displaySongs();
+      this.updateStatus(`Imported ${songs.length} ChordPro song${songs.length === 1 ? '' : 's'}`, 'success');
+    } catch (error) { this.showError(`ChordPro import failed: ${error.message}`); }
+    finally { event.target.value = ''; }
+  }
+
+  exportChordPro() {
+    if (!this.currentSongs.length) return;
+    const musicTheory = new MusicTheory();
+    const content = this.currentSongs.map(song => ChordPro.serialize(song, {
+      chordDisplay: symbol => this.transposeForSong(symbol, song, musicTheory)
+    }).trimEnd()).join('\n{new_song}\n');
+    const blob = new Blob([`${content}\n`], { type: 'text/plain;charset=utf-8' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${new PDFGenerator().sanitizeFilename(this.exportFilename)}.cho`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    this.track('export.completed', { format: 'chordpro', songCount: this.currentSongs.length });
   }
 
   /**
