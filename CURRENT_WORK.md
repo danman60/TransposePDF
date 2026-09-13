@@ -2,7 +2,7 @@
 
 ## Last Session Summary
 
-Extended browser-local learning from chord symbols to the entire accepted audio chart. Saved title, key, lyrics, sections, chord additions/deletions, placement, and timing now return on reimport of the same recording. Added draggable and keyboard chord placement plus explicit timing controls.
+Extended browser-local learning across the accepted audio chart and added songwide, key-aware chord spelling with authoritative per-song user overrides. Drag placement remains free horizontally at character-column granularity and snaps only to lyric-line chord baselines.
 
 ## What Changed
 
@@ -13,10 +13,12 @@ Extended browser-local learning from chord symbols to the entire accepted audio 
 - Correction storage migrates v1 rules into v2 state while retaining the legacy storage key.
 - Exact-recording snapshot uses immutable filename, duration, and original supplied/transcribed words; generalized chord rules remain available across recordings.
 - Chord IDs persist through drag operations; placement changes derive timing unless the user set an explicit time.
+- Contextual spelling now follows major/minor key grammar, retains functional chromatic alterations, handles slash bass independently, preserves suffix alterations and `N.C.`, and avoids double accidentals by default.
+- Per-song spelling control: Contextual, Prefer flats, Prefer sharps, Preserve. Typed source symbols remain unchanged; rendering/export use the selected policy.
 
 ## Build Status
 
-PASSING. JavaScript syntax, diff integrity, deterministic snapshot checks, full real-browser Armor of God E2E, and FIRMAMENT HTTP/composited-browser verification passed.
+PASSING locally. JavaScript syntax, 28 focused theory checks, real-browser spelling/UI/PDF parity, and full Armor of God E2E passed. FIRMAMENT update pending this commit.
 
 ## Known Bugs & Issues
 
@@ -26,7 +28,7 @@ PASSING. JavaScript syntax, diff integrity, deterministic snapshot checks, full 
 
 ## Incomplete Work
 
-- None for requested all-edit learning scope.
+- Commit/push and FIRMAMENT runtime-file update for songwide spelling rules.
 
 ## Tests
 
@@ -35,12 +37,13 @@ PASSING. JavaScript syntax, diff integrity, deterministic snapshot checks, full 
 - Deterministic review passed insertion/deletion isolation, shifted-token matching, overlapping-anchor collapse, reversal, repeated confirmation, same-song placement, cross-song context isolation, and raw-analysis preservation.
 - 2026-09-13 09:29 Eastern: full all-edit Armor E2E passed. Two real analyses completed in 16.61s and 15.52s; exact editor text/title/key/timing returned; transpose/reset passed; PDF was 18,356 bytes; raw analyzer evidence stayed unchanged across both saves; fresh profile isolated; zero console errors.
 - 2026-09-13 09:33 Eastern: commit `9750b51` pushed. Eight runtime files copied to FIRMAMENT; live app returned HTTP 200, served cache v6, and Chrome produced a 66,765-byte composited screenshot.
+- 2026-09-13: songwide spelling browser checks passed: source `A#` preserved, flat override rendered `Bb`, contextual F→F# rendered `F# B C#7 N.C.`, screen/PDF parity exact, zero console errors. Full Armor regression passed 12/12 with two real analyses (15.61s/13.56s), 18,333-byte PDF, exact edits/timing/policy persistence, and raw-analysis preservation.
 
 ## Next Steps (priority order)
 
-1. Use FIRMAMENT desktop shortcut and make real musical corrections; verify learned behavior against additional songs.
-2. Add account/cloud synchronization if corrections must follow a user between browser profiles or machines.
-3. Add audio feature fingerprints and a reviewed training pipeline before attempting acoustic-model learning.
+1. Commit, push, and copy runtime files to FIRMAMENT.
+2. Use FIRMAMENT desktop shortcut and make real musical corrections; verify learned behavior against additional songs.
+3. Add account/cloud synchronization if corrections must follow a user between browser profiles or machines.
 
 ## Gotchas for Next Session
 
@@ -49,6 +52,8 @@ PASSING. JavaScript syntax, diff integrity, deterministic snapshot checks, full 
 - Same-recording harmonic corrections use song fingerprint plus lyric line/position; cross-song harmonic corrections require exact key and neighboring-chord context. Enharmonic preferences apply globally in that browser profile.
 - Learning occurs only on explicit **Save changes**. Cancel never writes correction state.
 - Exact saved chart overlays fresh analysis for deterministic reimport; fresh analyzer output remains preserved in `source.rawAnalysis`.
+- Automatic key normalization runs on machine-analyzed chords before learned user corrections. Manual/PDF source spelling is authoritative at zero transposition.
+- Enharmonic learned rules are key-scoped; a flat correction in one key no longer leaks into a sharp-key song.
 - FIRMAMENT server intentionally binds loopback only. Desktop shortcut starts it and opens `http://127.0.0.1:8000`.
 
 ## Files Touched This Session
@@ -57,10 +62,12 @@ PASSING. JavaScript syntax, diff integrity, deterministic snapshot checks, full 
 - `modules/uiController.js`
 - `modules/songModel.js`
 - `modules/musicTheory.js`
+- `modules/pdfGenerator.js`
 - `index.html`
 - `styles/main.css`
 - `service-worker.js`
 - `tests/agent/flow-correction-learning.md`
 - `tests/e2e_all_edits.py`
 - `docs/plans/2026-09-13-all-edit-learning.md`
+- `docs/plans/2026-09-13-songwide-spelling-rules.md`
 - `CURRENT_WORK.md`

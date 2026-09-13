@@ -73,6 +73,7 @@ def main():
         accepted_text = page.locator("#authorContent").input_value()
         page.screenshot(path=SHOT, full_page=True)
         page.locator("#saveChartButton").click()
+        page.locator(".spelling-policy").select_option("flats")
         state = page.evaluate("JSON.parse(localStorage.getItem('transposepdf.chord-corrections.v1'))")
         if state["version"] != 2 or len(state["songEdits"]) != 1:
             raise AssertionError("v2 recording snapshot was not stored")
@@ -87,6 +88,7 @@ def main():
         results["exact_editor_text"] = returned_text == accepted_text
         results["title"] = page.locator("#authorTitle").input_value() == title
         results["key"] = page.locator("#authorKey").input_value() == "C"
+        results["spelling_policy_persisted"] = page.evaluate("window.transposeApp.currentSongs[0].spellingPolicy") == "flats"
         returned_token = page.locator("#authorPreview button.chord-token").first
         returned_token.focus()
         results["timing"] = abs(float(page.locator("#chordTimingInput").input_value()) - new_time) <= 0.1
@@ -117,7 +119,7 @@ def main():
         context.close()
         browser.close()
 
-    required = ["raw_immutable_after_save", "exact_editor_text", "title", "key", "timing", "raw_immutable_after_reimport", "transpose", "reset", "fresh_profile_isolated"]
+    required = ["raw_immutable_after_save", "exact_editor_text", "title", "key", "spelling_policy_persisted", "timing", "raw_immutable_after_reimport", "transpose", "reset", "fresh_profile_isolated"]
     failed = [name for name in required if not results.get(name)]
     results["failed"] = failed
     print(json.dumps(results, indent=2))

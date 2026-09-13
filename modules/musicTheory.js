@@ -57,6 +57,44 @@ class MusicTheory {
     this.ENHARMONIC_PREFERENCES = {
       'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#'
     };
+
+    this.NOTE_PITCHES = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+    this.NOTE_LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+    this.FLAT_CHROMATIC_SCALE = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+    this.MAJOR_KEY_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+    this.MINOR_KEY_NAMES = ['Cm', 'C#m', 'Dm', 'Ebm', 'Em', 'Fm', 'F#m', 'Gm', 'G#m', 'Am', 'Bbm', 'Bm'];
+    this.KEY_SCALES = {
+      C: ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
+      'C#': ['C#', 'D#', 'E#', 'F#', 'G#', 'A#', 'B#'],
+      Cb: ['Cb', 'Db', 'Eb', 'Fb', 'Gb', 'Ab', 'Bb'],
+      Db: ['Db', 'Eb', 'F', 'Gb', 'Ab', 'Bb', 'C'],
+      D: ['D', 'E', 'F#', 'G', 'A', 'B', 'C#'],
+      Eb: ['Eb', 'F', 'G', 'Ab', 'Bb', 'C', 'D'],
+      E: ['E', 'F#', 'G#', 'A', 'B', 'C#', 'D#'],
+      F: ['F', 'G', 'A', 'Bb', 'C', 'D', 'E'],
+      'F#': ['F#', 'G#', 'A#', 'B', 'C#', 'D#', 'E#'],
+      Gb: ['Gb', 'Ab', 'Bb', 'Cb', 'Db', 'Eb', 'F'],
+      G: ['G', 'A', 'B', 'C', 'D', 'E', 'F#'],
+      Ab: ['Ab', 'Bb', 'C', 'Db', 'Eb', 'F', 'G'],
+      A: ['A', 'B', 'C#', 'D', 'E', 'F#', 'G#'],
+      Bb: ['Bb', 'C', 'D', 'Eb', 'F', 'G', 'A'],
+      B: ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#'],
+      Cm: ['C', 'D', 'Eb', 'F', 'G', 'Ab', 'Bb'],
+      'C#m': ['C#', 'D#', 'E', 'F#', 'G#', 'A', 'B'],
+      Dm: ['D', 'E', 'F', 'G', 'A', 'Bb', 'C'],
+      'D#m': ['D#', 'E#', 'F#', 'G#', 'A#', 'B', 'C#'],
+      Ebm: ['Eb', 'F', 'Gb', 'Ab', 'Bb', 'Cb', 'Db'],
+      Em: ['E', 'F#', 'G', 'A', 'B', 'C', 'D'],
+      Fm: ['F', 'G', 'Ab', 'Bb', 'C', 'Db', 'Eb'],
+      'F#m': ['F#', 'G#', 'A', 'B', 'C#', 'D', 'E'],
+      Gm: ['G', 'A', 'Bb', 'C', 'D', 'Eb', 'F'],
+      'G#m': ['G#', 'A#', 'B', 'C#', 'D#', 'E', 'F#'],
+      Abm: ['Ab', 'Bb', 'Cb', 'Db', 'Eb', 'Fb', 'Gb'],
+      Am: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+      'A#m': ['A#', 'B#', 'C#', 'D#', 'E#', 'F#', 'G#'],
+      Bbm: ['Bb', 'C', 'Db', 'Eb', 'F', 'Gb', 'Ab'],
+      Bm: ['B', 'C#', 'D', 'E', 'F#', 'G', 'A']
+    };
   }
 
   /**
@@ -114,19 +152,19 @@ class MusicTheory {
   /**
    * Transpose a chord by semitones
    */
-  transposeChord(chord, semitones) {
+  transposeChord(chord, semitones, context = null) {
     try {
-      if (!chord || semitones === 0) return chord;
+      if (!chord || semitones === 0 || chord === 'N.C.') return chord;
       
       // Handle slash chords
       if (chord.includes('/')) {
         const parts = chord.split('/');
-        const mainChord = this.transposeSimpleChord(parts[0], semitones);
-        const bassNote = this.transposeSimpleChord(parts[1], semitones);
+        const mainChord = this.transposeSimpleChord(parts[0], semitones, context);
+        const bassNote = this.transposeSimpleChord(parts[1], semitones, context);
         return `${mainChord}/${bassNote}`;
       }
       
-      return this.transposeSimpleChord(chord, semitones);
+      return this.transposeSimpleChord(chord, semitones, context);
     } catch (error) {
       logger.error(`Failed to transpose chord: ${chord}`, { error: error.message });
       return chord; // Return original on error
@@ -136,7 +174,7 @@ class MusicTheory {
   /**
    * Transpose a simple chord (no slash)
    */
-  transposeSimpleChord(chord, semitones) {
+  transposeSimpleChord(chord, semitones, context = null) {
     if (!chord) return chord;
     
     // Extract root note and extension
@@ -182,12 +220,121 @@ class MusicTheory {
     let newIndex = (currentIndex + semitones) % 12;
     if (newIndex < 0) newIndex += 12;
     
-    const newRoot = this.CHROMATIC_SCALE[newIndex];
+    const policy = context?.policy || 'contextual';
+    if (policy === 'preserve' && accidental) {
+      const preservedScale = accidental.includes('b') ? this.FLAT_CHROMATIC_SCALE : this.CHROMATIC_SCALE;
+      return preservedScale[newIndex] + extension;
+    }
+    if (context && (policy === 'contextual' || policy === 'preserve')) {
+      const contextualRoot = this.transposeRootByDegree(rootWithAccidental, semitones, context);
+      if (contextualRoot) {
+        if (!context.allowDoubleAccidentals && /##|bb/.test(contextualRoot)) {
+          const practicalScale = String(context.targetKey || '').includes('b')
+            ? this.FLAT_CHROMATIC_SCALE
+            : this.CHROMATIC_SCALE;
+          return practicalScale[newIndex] + extension;
+        }
+        return contextualRoot + extension;
+      }
+    }
+
+    const scale = policy === 'flats' ? this.FLAT_CHROMATIC_SCALE : this.CHROMATIC_SCALE;
+    const newRoot = scale[newIndex];
     
     // Apply enharmonic preference
-    const preferredRoot = this.ENHARMONIC_PREFERENCES[newRoot] || newRoot;
+    const preferredRoot = policy === 'flats'
+      ? newRoot
+      : (this.ENHARMONIC_PREFERENCES[newRoot] || newRoot);
     
     return preferredRoot + extension;
+  }
+
+  /** Transpose a major/minor key to its canonical readable spelling. */
+  transposeKey(key, semitones, policy = 'contextual') {
+    if (!key || key === 'N.C.') return key;
+    const parsed = this.parseKey(key);
+    if (!parsed) return key;
+    const pitch = (parsed.pitch + semitones % 12 + 12) % 12;
+    if (policy === 'flats') return `${this.FLAT_CHROMATIC_SCALE[pitch]}${parsed.minor ? 'm' : ''}`;
+    if (policy === 'sharps') return `${this.CHROMATIC_SCALE[pitch]}${parsed.minor ? 'm' : ''}`;
+    if (semitones === 0) return key;
+    return (parsed.minor ? this.MINOR_KEY_NAMES : this.MAJOR_KEY_NAMES)[pitch];
+  }
+
+  /** Spell a machine-analyzed chord consistently with a known key. */
+  spellChordForKey(chord, key, { policy = 'contextual' } = {}) {
+    if (!chord || chord === 'N.C.') return chord;
+    const parts = String(chord).split('/');
+    const mainChord = this.spellSimpleChordForKey(parts[0], key, policy);
+    if (parts.length === 1) return mainChord;
+    const bassNote = this.spellSimpleChordForKey(parts[1], key, policy);
+    return `${mainChord}/${bassNote}`;
+  }
+
+  spellSimpleChordForKey(chord, key, policy) {
+    const match = String(chord || '').match(/^([A-G])([#b]{0,2})(.*)$/);
+    if (!match) return chord;
+    const root = `${match[1]}${match[2]}`;
+    const suffix = match[3] || '';
+    const pitch = this.notePitch(root);
+    if (pitch < 0) return chord;
+
+    if (policy === 'flats') return this.FLAT_CHROMATIC_SCALE[pitch] + suffix;
+    if (policy === 'sharps') return this.CHROMATIC_SCALE[pitch] + suffix;
+
+    const parsedKey = this.parseKey(key);
+    const scale = parsedKey && this.KEY_SCALES[parsedKey.name];
+    if (!scale || (policy !== 'contextual' && policy !== 'preserve')) return chord;
+    const diatonic = scale.find(note => this.notePitch(note) === pitch);
+    return (diatonic || root) + suffix;
+  }
+
+  parseKey(key) {
+    const match = String(key || '').trim().match(/^([A-G])([#b]{0,2})(m)?$/);
+    if (!match) return null;
+    return {
+      name: `${match[1]}${match[2]}${match[3] || ''}`,
+      root: `${match[1]}${match[2]}`,
+      letter: match[1],
+      minor: Boolean(match[3]),
+      pitch: this.notePitch(`${match[1]}${match[2]}`)
+    };
+  }
+
+  notePitch(note) {
+    const match = String(note || '').match(/^([A-G])([#b]{0,2})$/);
+    if (!match) return -1;
+    const offset = [...match[2]].reduce((total, mark) => total + (mark === '#' ? 1 : -1), 0);
+    return (this.NOTE_PITCHES[match[1]] + offset + 24) % 12;
+  }
+
+  transposeRootByDegree(root, semitones, context) {
+    const sourceKey = this.parseKey(context.sourceKey);
+    const targetName = context.targetKey || this.transposeKey(context.sourceKey, semitones);
+    const targetKey = this.parseKey(targetName);
+    const sourceScale = sourceKey && this.KEY_SCALES[sourceKey.name];
+    const targetScale = targetKey && this.KEY_SCALES[targetKey.name];
+    const rootMatch = String(root).match(/^([A-G])([#b]{0,2})$/);
+    if (!sourceKey || !targetKey || !sourceScale || !targetScale || !rootMatch) return null;
+
+    const degree = (this.NOTE_LETTERS.indexOf(rootMatch[1])
+      - this.NOTE_LETTERS.indexOf(sourceKey.letter) + 7) % 7;
+    const actualPitch = this.notePitch(root);
+    const diatonicPitch = this.notePitch(sourceScale[degree]);
+    let alteration = (actualPitch - diatonicPitch + 12) % 12;
+    if (alteration > 6) alteration -= 12;
+    if (Math.abs(alteration) > 2) return null;
+
+    return this.applyAlteration(targetScale[degree], alteration);
+  }
+
+  applyAlteration(note, alteration) {
+    const match = String(note).match(/^([A-G])([#b]{0,2})$/);
+    if (!match) return null;
+    const baseOffset = [...match[2]].reduce((total, mark) => total + (mark === '#' ? 1 : -1), 0);
+    const finalOffset = baseOffset + alteration;
+    if (Math.abs(finalOffset) > 2) return null;
+    return match[1] + (finalOffset > 0 ? '#'.repeat(finalOffset) : 'b'.repeat(-finalOffset));
   }
 
   /**

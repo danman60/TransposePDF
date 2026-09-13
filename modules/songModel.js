@@ -34,6 +34,7 @@ class SongModel {
       tempo: input.tempo ?? null,
       timeSignature: input.timeSignature || '',
       sourceType: input.sourceType || 'manual',
+      spellingPolicy: input.spellingPolicy || 'contextual',
       sections,
       source: input.source || {},
       textItems: input.textItems || [],
@@ -118,7 +119,7 @@ class SongModel {
   static isChordRow(row) {
     const tokens = String(row).trim().split(/\s+/).filter(Boolean);
     if (!tokens.length) return false;
-    const chordPattern = /^[A-G](?:#{1,2}|b{1,2})?(?:maj|min|m|dim|aug|sus|add)?\d*(?:\([^)]*\))?(?:\/[A-G](?:#{1,2}|b{1,2})?)?$/i;
+    const chordPattern = /^(?:N\.C\.|[A-G](?:#{1,2}|b{1,2})?(?:(?:maj|min|m|dim|aug|sus|add|omit|no|alt|[+°ø])?\d*(?:[#b]\d+|add\d+|no\d+|omit\d+|sus\d*)*)?(?:\/[A-G](?:#{1,2}|b{1,2})?)?)$/i;
     return tokens.every(token => chordPattern.test(token));
   }
 
@@ -227,6 +228,7 @@ class SongModel {
     edited.tempo = previous.tempo ?? edited.tempo;
     edited.timeSignature = previous.timeSignature || edited.timeSignature;
     edited.keyConfidence = previous.keyConfidence ?? edited.keyConfidence;
+    edited.spellingPolicy = previous.spellingPolicy || edited.spellingPolicy || 'contextual';
     edited.chords = previous.chords || [];
     edited.songText = this.toSongText(edited);
     return edited;

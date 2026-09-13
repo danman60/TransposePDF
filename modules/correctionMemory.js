@@ -66,7 +66,7 @@ class ChordCorrectionMemory {
       const existingIndexes = state.records
         .map((record, recordIndex) => {
           const matches = record.kind === 'enharmonic'
-            ? this.sameEnharmonicSource(record.guessed, guess.symbol)
+            ? record.key === context.key && this.sameEnharmonicSource(record.guessed, guess.symbol)
             : this.sameContext(record, guess.symbol, context);
           return matches ? recordIndex : -1;
         })
@@ -98,7 +98,7 @@ class ChordCorrectionMemory {
       };
       const matchingIndex = state.records.findIndex(item => item.kind === kind && (
         kind === 'enharmonic'
-          ? this.sameEnharmonicSource(item.guessed, guess.symbol)
+          ? item.key === context.key && this.sameEnharmonicSource(item.guessed, guess.symbol)
           : this.sameContext(item, guess.symbol, context)
       ));
       if (matchingIndex >= 0) {
@@ -117,6 +117,7 @@ class ChordCorrectionMemory {
       title: edited.title,
       artist: edited.artist || '',
       originalKey: edited.originalKey,
+      spellingPolicy: edited.spellingPolicy || 'contextual',
       sections: this.clone(edited.sections || []),
       updatedAt: new Date().toISOString()
     };
@@ -192,7 +193,8 @@ class ChordCorrectionMemory {
         record.kind === 'harmonic' && this.sameContext(record, anchor.symbol, context)
       );
       const enharmonic = state.records.find(record =>
-        record.kind === 'enharmonic' && this.sameEnharmonicSource(record.guessed, anchor.symbol)
+        record.kind === 'enharmonic' && record.key === context.key
+          && this.sameEnharmonicSource(record.guessed, anchor.symbol)
       );
       const rule = harmonic || enharmonic;
       if (rule && rule.corrected !== anchor.symbol) {
@@ -205,6 +207,7 @@ class ChordCorrectionMemory {
       output.title = saved.title || output.title;
       output.artist = saved.artist || '';
       output.originalKey = saved.originalKey || output.originalKey;
+      output.spellingPolicy = saved.spellingPolicy || output.spellingPolicy || 'contextual';
       output.currentKey = output.originalKey;
       output.transposition = 0;
       output.sections = this.clone(saved.sections || []);

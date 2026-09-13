@@ -162,7 +162,7 @@ class PDFGenerator {
     lines.forEach(line => {
       if (this.lineContainsChords(line)) {
         // Transpose chords in this line
-        const transposedLine = this.transposeChordsInLine(line, song.transposition, musicTheory);
+        const transposedLine = this.transposeChordsInLine(line, song.transposition, musicTheory, song);
         processedLines.push({
           type: 'chords',
           content: transposedLine,
@@ -205,7 +205,7 @@ class PDFGenerator {
           if (segment.chords.length) {
             processedLines.push({
               type: 'chords',
-              content: this.buildChordRow(segment.chords, song.transposition, musicTheory),
+              content: this.buildChordRow(segment.chords, song.transposition, musicTheory, song),
               originalLine: SongModel.buildChordRow(segment),
               structured: true
             });
@@ -261,16 +261,23 @@ class PDFGenerator {
     return segments;
   }
 
-  buildChordRow(chords, semitones, musicTheory) {
+  buildChordRow(chords, semitones, musicTheory, song = null) {
     const characters = [];
     [...chords]
       .sort((a, b) => a.characterOffset - b.characterOffset)
       .forEach(chord => {
         const offset = Math.max(0, Number(chord.characterOffset) || 0);
         while (characters.length < offset) characters.push(' ');
+        const policy = song?.spellingPolicy || 'contextual';
         const symbol = semitones === 0
-          ? chord.symbol
-          : musicTheory.transposeChord(chord.symbol, semitones);
+          ? (['flats', 'sharps'].includes(policy)
+            ? musicTheory.spellChordForKey(chord.symbol, song.currentKey || song.originalKey, { policy })
+            : chord.symbol)
+          : musicTheory.transposeChord(chord.symbol, semitones, song ? {
+            sourceKey: song.originalKey,
+            targetKey: song.currentKey,
+            policy
+          } : {});
         for (let index = 0; index < symbol.length; index += 1) {
           characters[offset + index] = symbol[index];
         }
@@ -290,8 +297,9 @@ class PDFGenerator {
   /**
    * Transpose chords in a text line
    */
-  transposeChordsInLine(line, semitones, musicTheory) {
-    if (semitones === 0) return line;
+  transposeChordsInLine(line, semitones, musicTheory, song = null) {
+    const policy = song?.spellingPolicy || 'contextual';
+    if (semitones === 0 && !['flats', 'sharps'].includes(policy)) return line;
     
     let result = line;
     const chords = musicTheory.extractChords(line);
@@ -300,7 +308,13 @@ class PDFGenerator {
     chords.sort((a, b) => b.position - a.position);
     
     chords.forEach(chord => {
-      const transposedChord = musicTheory.transposeChord(chord.original, semitones);
+      const transposedChord = semitones === 0
+        ? musicTheory.spellChordForKey(chord.original, song.currentKey || song.originalKey, { policy })
+        : musicTheory.transposeChord(chord.original, semitones, song ? {
+          sourceKey: song.originalKey,
+          targetKey: song.currentKey,
+          policy
+        } : {});
       result = result.substring(0, chord.position) + 
                transposedChord + 
                result.substring(chord.position + chord.original.length);

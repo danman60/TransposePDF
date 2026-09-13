@@ -115,7 +115,7 @@ class UIController {
     this.elements.lyricsFileInput.addEventListener('change', event => this.handleLyricsFile(event));
     this.elements.audioLyricsInput.addEventListener('input', () => this.updateLyricsSourceStatus());
     this.elements.saveChartButton.addEventListener('click', () => this.saveAuthoredSong());
-    this.elements.authorContent.addEventListener('input', () => this.updateAuthorPreview());
+    this.elements.authorContent.addEventListener('input', () => this.updateAuthorPreview(true));
     this.elements.authorTitle.addEventListener('input', () => this.updateAuthorPreview());
     this.elements.authorKey.addEventListener('change', () => this.updateAuthorPreview());
     this.elements.authorPreview.addEventListener('click', event => this.selectAuthorChord(event));
@@ -175,7 +175,15 @@ class UIController {
 
       this.audioJobId = payload.jobId;
       const result = await this.waitForAudioJob(payload.jobId, this.audioAbortController.signal);
-      const learned = this.correctionMemory.apply(result);
+      const normalizedResult = this.normalizeAnalyzedSongSpellings(result);
+      normalizedResult.source = {
+        ...(normalizedResult.source || {}),
+        rawAnalysis: result.source?.rawAnalysis || {
+          sections: JSON.parse(JSON.stringify(result.sections || [])),
+          chords: JSON.parse(JSON.stringify(result.chords || []))
+        }
+      };
+      const learned = this.correctionMemory.apply(normalizedResult);
       const analyzedSong = SongModel.create({ ...learned.song, id: Date.now() });
       const editableSong = SongModel.fromManual({
         title: analyzedSong.title,
@@ -282,12 +290,25 @@ class UIController {
     this.elements.audioJobMessage.textContent = message;
   }
 
+  normalizeAnalyzedSongSpellings(song) {
+    const output = SongModel.create(song);
+    const musicTheory = new MusicTheory();
+    (output.sections || []).forEach(section => (section.lines || []).forEach(line => {
+      (line.chords || []).forEach(chord => {
+        chord.symbol = musicTheory.spellChordForKey(chord.symbol, output.originalKey, { policy: 'contextual' });
+      });
+    }));
+    output.songText = SongModel.toSongText(output);
+    return output;
+  }
+
   openAuthoring(songId = null) {
     const song = songId === null ? null : this.currentSongs.find(item => item.id === songId);
     this.editingSongId = song?.id ?? null;
     this.selectedAuthorChord = null;
     this.authorTimingOverrides.clear();
-    this.authorDraft = null;
+    this.authorDraft = song ? SongModel.create(song) : null;
+    this.authorLastSerializedText = song ? SongModel.toEditorText(song) : '';
     this.elements.chordEditBar.hidden = true;
     this.elements.authorHeading.textContent = song ? 'Edit chord sheet' : 'Create a chord sheet';
     this.elements.saveChartButton.textContent = song ? 'Save changes' : 'Add chord sheet';
@@ -379,18 +400,23 @@ class UIController {
     this.displaySongs();
   }
 
-  updateAuthorPreview() {
-    const draft = SongModel.fromManual({
+  updateAuthorPreview(forceParse = false) {
+    const canReuseDraft = !forceParse && this.authorDraft
+      && this.elements.authorContent.value === this.authorLastSerializedText;
+    const draft = canReuseDraft ? this.authorDraft : SongModel.fromManual({
       title: this.elements.authorTitle.value || 'Untitled Song',
       originalKey: this.elements.authorKey.value,
       content: this.elements.authorContent.value
     });
+    draft.title = this.elements.authorTitle.value || 'Untitled Song';
+    draft.originalKey = this.elements.authorKey.value;
     if (this.editingSongId !== null) {
       const previous = this.currentSongs.find(song => song.id === this.editingSongId);
       if (previous) SongModel.retainAnalysisMetadata(draft, previous);
     }
     this.applyAuthorTimingOverrides(draft);
     this.authorDraft = draft;
+    this.authorLastSerializedText = this.elements.authorContent.value;
     const populated = draft.sections.some(section => section.lines.some(line => line.lyrics || line.chords.length));
     this.elements.authorPreview.innerHTML = populated ? this.renderStructuredContent(draft, { interactive: true }) : '';
     this.elements.authorPreviewStatus.textContent = populated ? 'Drag chords to place them, or focus one and use arrow keys' : 'Start typing to preview your chart';
@@ -478,6 +504,10 @@ class UIController {
     event.dataTransfer.dropEffect = 'move';
     this.elements.authorPreview.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
     line.classList.add('author-drop-target');
+    const rect = line.getBoundingClientRect();
+    const characterWidth = this.measureAuthorCharacterWidth(line);
+    const offset = Math.max(0, Math.round((event.clientX - rect.left) / characterWidth));
+    line.style.setProperty('--drop-caret-left', `${offset * characterWidth}px`);
   }
 
   handleAuthorChordDragLeave(event) {
@@ -546,6 +576,7 @@ class UIController {
     destinationLine.chords.sort((a, b) => a.characterOffset - b.characterOffset);
     const chordIndex = destinationLine.chords.indexOf(chord);
     this.elements.authorContent.value = SongModel.toEditorText(draft);
+    this.authorLastSerializedText = this.elements.authorContent.value;
     this.selectedAuthorChord = { ...destination, chordIndex, chordId: chord.id };
     this.authorDraft = draft;
     const populated = draft.sections.some(section => section.lines.some(line => line.lyrics || line.chords.length));
@@ -564,7 +595,7 @@ class UIController {
     while (sorted.some(chord => {
       const start = Number(chord.characterOffset) || 0;
       const end = start + String(chord.symbol || '').length;
-      return offset < end + 1 && offset + String(symbol || '').length >= start;
+      return offset < end && offset + String(symbol || '').length > start;
     })) offset += 1;
     return offset;
   }
@@ -580,6 +611,7 @@ class UIController {
     this.authorDrag = null;
     this.elements.authorPreview.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
       item.classList.remove('dragging', 'author-drop-target');
+      item.style.removeProperty('--drop-caret-left');
     });
   }
 
@@ -753,6 +785,14 @@ class UIController {
         
         <div class="transpose-controls">
           <button class="secondary-button edit-song-button" onclick="window.transposeApp.openAuthoring(${song.id})" title="Edit chord sheet">Edit</button>
+          <label class="spelling-policy-label">Spelling
+            <select class="spelling-policy" onchange="window.transposeApp.setSpellingPolicy(${song.id}, this.value)" aria-label="Chord spelling for ${this.escapeHtml(song.title)}">
+              <option value="contextual"${(song.spellingPolicy || 'contextual') === 'contextual' ? ' selected' : ''}>Contextual</option>
+              <option value="flats"${song.spellingPolicy === 'flats' ? ' selected' : ''}>Prefer flats</option>
+              <option value="sharps"${song.spellingPolicy === 'sharps' ? ' selected' : ''}>Prefer sharps</option>
+              <option value="preserve"${song.spellingPolicy === 'preserve' ? ' selected' : ''}>Preserve</option>
+            </select>
+          </label>
           <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, -1)" title="Transpose down">-</button>
           <div class="transpose-display">
             <div class="transpose-value" id="transposeValue-${song.id}">0</div>
@@ -805,7 +845,7 @@ class UIController {
         // Transpose chords if this item contains them
         let displayText = item.text;
         if (isChordLine && song.transposition !== 0) {
-          displayText = this.transposeTextItem(item.text, song.transposition, musicTheory);
+          displayText = this.transposeTextItem(item.text, song.transposition, musicTheory, song);
         }
         
         // Calculate position with scaling factor to fit display
@@ -844,9 +884,7 @@ class UIController {
         const chords = (line.chords || []).map((chord, chordIndex) => ({
           ...chord,
           chordIndex,
-          displaySymbol: song.transposition === 0
-            ? chord.symbol
-            : musicTheory.transposeChord(chord.symbol, song.transposition)
+          displaySymbol: this.transposeForSong(chord.symbol, song, musicTheory)
         }));
         return `<div class="chart-line">
           <div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex })}</div>
@@ -874,6 +912,31 @@ class UIController {
       cursor = offset + String(chord.displaySymbol || chord.symbol).length;
     });
     return output.join('');
+  }
+
+  transposeForSong(symbol, song, musicTheory = new MusicTheory()) {
+    const policy = song.spellingPolicy || 'contextual';
+    if (!song.transposition) {
+      return ['flats', 'sharps'].includes(policy)
+        ? musicTheory.spellChordForKey(symbol, song.currentKey || song.originalKey, { policy })
+        : symbol;
+    }
+    return musicTheory.transposeChord(symbol, song.transposition, {
+      sourceKey: song.originalKey,
+      targetKey: song.currentKey,
+      policy
+    });
+  }
+
+  setSpellingPolicy(songId, policy) {
+    const song = this.currentSongs.find(item => item.id === songId);
+    if (!song || !['contextual', 'flats', 'sharps', 'preserve'].includes(policy)) return;
+    const previous = SongModel.create(song);
+    song.spellingPolicy = policy;
+    song.currentKey = new MusicTheory().transposeKey(song.originalKey, song.transposition, policy);
+    if (song.sourceType === 'audio') this.correctionMemory.learn(previous, song);
+    this.updateLeadSheetDisplay(song);
+    this.updateStatus(`Chord spelling set to ${policy}`, 'success');
   }
   
   /**
@@ -954,7 +1017,7 @@ class UIController {
   /**
    * Transpose chords within a text item
    */
-  transposeTextItem(text, transposition, musicTheory) {
+  transposeTextItem(text, transposition, musicTheory, song = null) {
     if (transposition === 0) return text;
     
     const chords = musicTheory.extractChords(text);
@@ -966,7 +1029,9 @@ class UIController {
     chords.sort((a, b) => b.position - a.position);
     
     chords.forEach(chord => {
-      const transposedChord = musicTheory.transposeChord(chord.original, transposition);
+      const transposedChord = song
+        ? this.transposeForSong(chord.original, song, musicTheory)
+        : musicTheory.transposeChord(chord.original, transposition);
       result = result.substring(0, chord.position) + 
                transposedChord + 
                result.substring(chord.position + chord.original.length);
@@ -1056,7 +1121,7 @@ class UIController {
       
       // Calculate new key
       const musicTheory = new MusicTheory();
-      song.currentKey = musicTheory.transposeChord(song.originalKey, song.transposition);
+      song.currentKey = musicTheory.transposeKey(song.originalKey, song.transposition, song.spellingPolicy || 'contextual');
       
       // Update the lead sheet display in real-time
       this.updateLeadSheetDisplay(song);
@@ -1082,7 +1147,7 @@ class UIController {
     try {
       // Reset to original state
       song.transposition = 0;
-      song.currentKey = song.originalKey;
+      song.currentKey = new MusicTheory().transposeKey(song.originalKey, 0, song.spellingPolicy || 'contextual');
       
       // Update the lead sheet display
       this.updateLeadSheetDisplay(song);
@@ -1165,8 +1230,8 @@ class UIController {
     const chordPreview = document.getElementById(`chordPreview-${song.id}`);
     if (chordPreview && song.transposition !== 0) {
       const musicTheory = new MusicTheory();
-      const transposedChords = song.chords.slice(0, 10).map(chord => 
-        musicTheory.transposeChord(chord.original, song.transposition)
+      const transposedChords = song.chords.slice(0, 10).map(chord =>
+        this.transposeForSong(chord.original, song, musicTheory)
       );
       chordPreview.textContent = transposedChords.join(' ');
     } else if (chordPreview) {
