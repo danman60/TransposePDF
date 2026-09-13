@@ -2,7 +2,7 @@
 
 ## Last Session Summary
 
-Extended browser-local learning across the accepted audio chart and added songwide, key-aware chord spelling with authoritative per-song user overrides. Drag placement remains free horizontally at character-column granularity and snaps only to lyric-line chord baselines.
+Completed visual, accessibility, and functional authoring audit. Desktop now uses a bounded source/preview workspace; mobile uses Source/Preview tabs and touch-sized chord movement controls. Drag placement remains free horizontally at character-column granularity and snaps only to lyric-line chord baselines.
 
 ## What Changed
 
@@ -15,10 +15,15 @@ Extended browser-local learning across the accepted audio chart and added songwi
 - Chord IDs persist through drag operations; placement changes derive timing unless the user set an explicit time.
 - Contextual spelling now follows major/minor key grammar, retains functional chromatic alterations, handles slash bass independently, preserves suffix alterations and `N.C.`, and avoids double accidentals by default.
 - Per-song spelling control: Contextual, Prefer flats, Prefer sharps, Preserve. Typed source symbols remain unchanged; rendering/export use the selected policy.
+- Authoring workspace keeps Save visible, presents independent source/preview scrolling on desktop, and switches between panes on mobile.
+- Touch/pen chord placement and four directional fallback controls preserve blank-space and cross-line placement.
+- File pickers, progress, busy states, error focus, transpose labels, contrast, and editable-field shortcut suppression received accessibility fixes.
+- Section parsing recognizes Final Chorus, Tag, Interlude, Vamp, Refrain, and bracketed custom headings.
+- PDF validation accepts MIME, filename extension, or `%PDF-` signature and refuses partial imports when any page cannot be read.
 
 ## Build Status
 
-PASSING. JavaScript syntax, 28 focused theory checks, real-browser spelling/UI/PDF parity, full Armor of God E2E, and FIRMAMENT runtime verification passed.
+PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function browser checks, full Armor of God E2E, and PDF export passed. FIRMAMENT audit deployment pending this commit.
 
 ## Known Bugs & Issues
 
@@ -28,7 +33,7 @@ PASSING. JavaScript syntax, 28 focused theory checks, real-browser spelling/UI/P
 
 ## Incomplete Work
 
-- None for requested songwide spelling and freeform placement scope.
+- Copy audit runtime files to FIRMAMENT and verify composited live surface.
 
 ## Tests
 
@@ -39,6 +44,7 @@ PASSING. JavaScript syntax, 28 focused theory checks, real-browser spelling/UI/P
 - 2026-09-13 09:33 Eastern: commit `9750b51` pushed. Eight runtime files copied to FIRMAMENT; live app returned HTTP 200, served cache v6, and Chrome produced a 66,765-byte composited screenshot.
 - 2026-09-13: songwide spelling browser checks passed: source `A#` preserved, flat override rendered `Bb`, contextual F→F# rendered `F# B C#7 N.C.`, screen/PDF parity exact, zero console errors. Full Armor regression passed 12/12 with two real analyses (15.61s/13.56s), 18,333-byte PDF, exact edits/timing/policy persistence, and raw-analysis preservation.
 - 2026-09-13: commit `a10a73d` pushed and runtime files copied to FIRMAMENT. Live server returned HTTP 200 and served `spellChordForKey` plus offline cache v7.
+- 2026-09-13 10:31 Eastern: visual/function audit passed 30/30 checks at desktop, mobile, and 200%-equivalent reflow. Blank-space and cross-line chord placement, mobile tabs/nudges, keyboard file pickers, progress semantics, error focus restoration, and sticky Save passed with zero console errors and zero failed requests. Full Armor regression passed 12/12; two analyses completed in 19.62s and 21.57s; PDF was 18,039 bytes.
 
 ## Next Steps (priority order)
 

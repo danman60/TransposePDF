@@ -3,7 +3,7 @@
  * Handles caching for offline functionality
  */
 
-const CACHE_NAME = 'transpose-app-v7';
+const CACHE_NAME = 'transpose-app-v8';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -23,6 +23,7 @@ const CACHE_FILES = [
 // CDN resources to cache
 const CDN_RESOURCES = [
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
   'https://cdn.jsdelivr.net/npm/tonal@5.0.0/browser/tonal.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
 ];

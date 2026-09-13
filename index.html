@@ -29,9 +29,10 @@
         <!-- Header -->
         <header class="app-header">
             <h1>Chord Transposer Pro</h1>
-            <div class="status-indicator" id="statusIndicator">Ready</div>
+            <div class="status-indicator" id="statusIndicator" role="status" aria-live="polite" aria-atomic="true">Ready</div>
         </header>
 
+        <main id="mainContent">
         <!-- Creation choices -->
         <section class="start-section" id="startSection">
             <div class="start-copy">
@@ -74,26 +75,24 @@
                         <strong>Lyrics <span class="optional-label">Optional · authoritative</span></strong>
                         <span>Paste lyrics here or load a plain-text file. Supplied words and line breaks override transcription.</span>
                     </label>
-                    <label class="secondary-button text-file-button" for="lyricsFileInput">
-                        Load .txt
-                        <input type="file" id="lyricsFileInput" accept="text/plain,.txt" hidden>
-                    </label>
+                    <button class="secondary-button text-file-button" id="lyricsFileButton" type="button">Load .txt</button>
+                    <input class="visually-hidden-file" type="file" id="lyricsFileInput" accept="text/plain,.txt">
                 </div>
                 <textarea id="audioLyricsInput" class="lyrics-input" spellcheck="true" placeholder="Verse 1&#10;Amazing grace, how sweet the sound&#10;That saved a wretch like me"></textarea>
                 <div class="lyrics-source-status" id="lyricsSourceStatus">No lyric sheet supplied — recording transcription will be used.</div>
             </div>
-            <label class="audio-drop" for="audioFileInput">
+            <button class="audio-drop" id="audioFileButton" type="button">
                 <span class="start-card-icon">♪</span>
                 <strong>Choose a recording</strong>
                 <span>MP3, WAV, M4A, AAC, FLAC, or OGG · up to 100 MB</span>
-                <input type="file" id="audioFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg" hidden>
-            </label>
+            </button>
+            <input class="visually-hidden-file" type="file" id="audioFileInput" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg">
             <div class="audio-job" id="audioJob" style="display: none;">
                 <div class="preview-heading">
                     <strong id="audioJobStage">Uploading recording</strong>
                     <span id="audioJobPercent">0%</span>
                 </div>
-                <div class="progress-bar"><div class="progress-fill" id="audioJobProgress"></div></div>
+                <div class="progress-bar" id="audioJobProgressTrack" role="progressbar" aria-label="Recording analysis" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="progress-fill" id="audioJobProgress"></div></div>
                 <p id="audioJobMessage">Keep this page open while the draft is created. Cancel stops after the current analysis step.</p>
             </div>
         </section>
@@ -126,24 +125,39 @@
                     </select>
                 </label>
             </div>
-            <label class="chart-input-label" for="authorContent">
-                <span>Chords and lyrics</span>
-                <small>Put a chord line directly above its lyric line. Section labels such as Verse 1 and Chorus are recognized.</small>
-            </label>
-            <textarea id="authorContent" class="chart-input" spellcheck="true" placeholder="Verse 1&#10;G              C&#10;Amazing grace, how sweet the sound&#10;G                   D&#10;That saved a soul like me"></textarea>
-            <div class="author-preview-wrap">
-                <div class="preview-heading">
-                    <strong>Live preview</strong>
-                    <span id="authorPreviewStatus">Start typing to preview your chart</span>
+            <div class="author-pane-tabs" role="tablist" aria-label="Editor view">
+                <button id="authorSourceTab" class="author-pane-tab active" type="button" role="tab" aria-selected="true" aria-controls="authorSourcePane">Source</button>
+                <button id="authorPreviewTab" class="author-pane-tab" type="button" role="tab" aria-selected="false" aria-controls="authorPreviewPane">Preview</button>
+            </div>
+            <div class="author-workspace">
+                <div class="author-source-pane author-pane active" id="authorSourcePane" role="tabpanel" aria-labelledby="authorSourceTab">
+                    <label class="chart-input-label" for="authorContent">
+                        <span>Chords and lyrics</span>
+                        <small>Put each chord row directly above its lyric row. Use labels such as Verse 1, Chorus, Tag, or [Custom section].</small>
+                    </label>
+                    <textarea id="authorContent" class="chart-input" spellcheck="true" placeholder="Verse 1&#10;G              C&#10;Amazing grace, how sweet the sound&#10;G                   D&#10;That saved a soul like me"></textarea>
                 </div>
-                <div class="chord-edit-bar" id="chordEditBar" hidden>
-                    <strong id="selectedChordLabel">Selected chord</strong>
-                    <label for="chordTimingInput">Time (seconds)</label>
-                    <input id="chordTimingInput" type="number" min="0" step="0.05" inputmode="decimal">
-                    <small>Drag to place. Arrow keys move; Shift moves four columns.</small>
+                <div class="author-preview-wrap author-pane" id="authorPreviewPane" role="tabpanel" aria-labelledby="authorPreviewTab">
+                    <div class="preview-heading">
+                        <strong>Live preview</strong>
+                        <span id="authorPreviewStatus">Start typing to preview your chart</span>
+                    </div>
+                    <div class="chord-edit-bar" id="chordEditBar" hidden>
+                        <strong id="selectedChordLabel">Selected chord</strong>
+                        <div class="chord-nudge-controls" aria-label="Move selected chord">
+                            <button type="button" data-chord-move="left" aria-label="Move chord left">←</button>
+                            <button type="button" data-chord-move="up" aria-label="Move chord to previous lyric line">↑</button>
+                            <button type="button" data-chord-move="down" aria-label="Move chord to next lyric line">↓</button>
+                            <button type="button" data-chord-move="right" aria-label="Move chord right">→</button>
+                        </div>
+                        <label for="chordTimingInput">Audio time</label>
+                        <input id="chordTimingInput" type="number" min="0" step="0.05" inputmode="decimal" aria-describedby="chordTimingHelp">
+                        <small id="chordTimingHelp">Optional seconds</small>
+                    </div>
+                    <p class="drag-guidance">Drag chords anywhere above the lyric line. Horizontal placement stays free; only the baseline snaps.</p>
+                    <div class="author-preview" id="authorPreview"></div>
+                    <div class="sr-only" id="authorAnnouncement" aria-live="polite"></div>
                 </div>
-                <div class="author-preview" id="authorPreview"></div>
-                <div class="sr-only" id="authorAnnouncement" aria-live="polite"></div>
             </div>
             <div class="author-footer">
                 <button class="primary-button" id="saveChartButton" type="button">Add chord sheet</button>
@@ -163,7 +177,7 @@
                 <button class="secondary-button" id="cancelImportButton" type="button">Back</button>
             </div>
             <div class="upload-progress" id="uploadProgress" style="display: none;">
-                <div class="progress-bar">
+                <div class="progress-bar" id="uploadProgressTrack" role="progressbar" aria-label="PDF import" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
                 <div class="progress-text" id="progressText">Processing...</div>
@@ -187,25 +201,26 @@
                 <button class="export-final-button" id="exportFinalButton">Generate PDF</button>
             </div>
             <div class="export-progress" id="exportProgress" style="display: none;">
-                <div class="progress-bar">
+                <div class="progress-bar" id="exportProgressTrack" role="progressbar" aria-label="PDF export" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
                     <div class="progress-fill" id="exportProgressFill"></div>
                 </div>
                 <div class="progress-text" id="exportProgressText">Generating PDF...</div>
             </div>
         </section>
+        </main>
 
         <!-- Error Display -->
-        <div class="error-panel" id="errorPanel" style="display: none;">
-            <div class="error-content">
-                <h3>Error</h3>
+        <div class="error-panel" id="errorPanel" role="alertdialog" aria-modal="true" aria-labelledby="errorHeading" aria-describedby="errorMessage" style="display: none;">
+            <div class="error-content" tabindex="-1">
+                <h3 id="errorHeading">Couldn’t complete that action</h3>
                 <p id="errorMessage"></p>
-                <button class="error-close" onclick="closeError()">Close</button>
+                <button class="error-close" id="errorClose" onclick="closeError()">Close</button>
                 <button class="error-retry" id="errorRetry" onclick="retryOperation()" style="display: none;">Retry</button>
             </div>
         </div>
 
         <!-- Loading Overlay -->
-        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite" aria-busy="true" style="display: none;">
             <div class="loading-content">
                 <div class="loading-spinner"></div>
                 <div class="loading-text" id="loadingText">Processing...</div>

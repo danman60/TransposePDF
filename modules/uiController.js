@@ -17,6 +17,8 @@ class UIController {
     this.selectedAuthorChord = null;
     this.authorTimingOverrides = new Map();
     this.authorDraft = null;
+    this.authorPointerDrag = null;
+    this.lastFocusedElement = null;
     
     // Initialize UI elements
     this.initializeElements();
@@ -35,6 +37,7 @@ class UIController {
       uploadProgress: document.getElementById('uploadProgress'),
       progressFill: document.getElementById('progressFill'),
       progressText: document.getElementById('progressText'),
+      uploadProgressTrack: document.getElementById('uploadProgressTrack'),
       
       // Sections
       startSection: document.getElementById('startSection'),
@@ -64,16 +67,23 @@ class UIController {
       selectedChordLabel: document.getElementById('selectedChordLabel'),
       chordTimingInput: document.getElementById('chordTimingInput'),
       authorAnnouncement: document.getElementById('authorAnnouncement'),
+      authorSourceTab: document.getElementById('authorSourceTab'),
+      authorPreviewTab: document.getElementById('authorPreviewTab'),
+      authorSourcePane: document.getElementById('authorSourcePane'),
+      authorPreviewPane: document.getElementById('authorPreviewPane'),
       importAudioButton: document.getElementById('importAudioButton'),
       cancelAudioButton: document.getElementById('cancelAudioButton'),
+      audioFileButton: document.getElementById('audioFileButton'),
       audioFileInput: document.getElementById('audioFileInput'),
       audioJob: document.getElementById('audioJob'),
       audioJobStage: document.getElementById('audioJobStage'),
       audioJobPercent: document.getElementById('audioJobPercent'),
       audioJobProgress: document.getElementById('audioJobProgress'),
+      audioJobProgressTrack: document.getElementById('audioJobProgressTrack'),
       audioJobMessage: document.getElementById('audioJobMessage'),
       audioLyricsInput: document.getElementById('audioLyricsInput'),
       lyricsFileInput: document.getElementById('lyricsFileInput'),
+      lyricsFileButton: document.getElementById('lyricsFileButton'),
       lyricsSourceStatus: document.getElementById('lyricsSourceStatus'),
       
       // Export
@@ -83,12 +93,14 @@ class UIController {
       exportProgress: document.getElementById('exportProgress'),
       exportProgressFill: document.getElementById('exportProgressFill'),
       exportProgressText: document.getElementById('exportProgressText'),
+      exportProgressTrack: document.getElementById('exportProgressTrack'),
       
       // Status and errors
       statusIndicator: document.getElementById('statusIndicator'),
       errorPanel: document.getElementById('errorPanel'),
       errorMessage: document.getElementById('errorMessage'),
       errorRetry: document.getElementById('errorRetry'),
+      errorClose: document.getElementById('errorClose'),
       loadingOverlay: document.getElementById('loadingOverlay'),
       loadingText: document.getElementById('loadingText'),
       
@@ -111,6 +123,8 @@ class UIController {
     this.elements.cancelImportButton.addEventListener('click', () => this.showStartView());
     this.elements.cancelAuthorButton.addEventListener('click', () => this.closeAuthoring());
     this.elements.cancelAudioButton.addEventListener('click', () => this.cancelAudioAnalysis());
+    this.elements.audioFileButton.addEventListener('click', () => this.elements.audioFileInput.click());
+    this.elements.lyricsFileButton.addEventListener('click', () => this.elements.lyricsFileInput.click());
     this.elements.audioFileInput.addEventListener('change', event => this.handleAudioUpload(event));
     this.elements.lyricsFileInput.addEventListener('change', event => this.handleLyricsFile(event));
     this.elements.audioLyricsInput.addEventListener('input', () => this.updateLyricsSourceStatus());
@@ -126,7 +140,17 @@ class UIController {
     this.elements.authorPreview.addEventListener('dragleave', event => this.handleAuthorChordDragLeave(event));
     this.elements.authorPreview.addEventListener('drop', event => this.handleAuthorChordDrop(event));
     this.elements.authorPreview.addEventListener('dragend', () => this.clearAuthorDragState());
+    this.elements.authorPreview.addEventListener('pointerdown', event => this.handleAuthorPointerDown(event));
+    this.elements.authorPreview.addEventListener('pointermove', event => this.handleAuthorPointerMove(event));
+    this.elements.authorPreview.addEventListener('pointerup', event => this.handleAuthorPointerUp(event));
+    this.elements.authorPreview.addEventListener('pointercancel', () => this.clearAuthorPointerDrag());
     this.elements.chordTimingInput.addEventListener('change', () => this.saveAuthorTimingOverride());
+    this.elements.authorSourceTab.addEventListener('click', () => this.setAuthorPane('source'));
+    this.elements.authorPreviewTab.addEventListener('click', () => this.setAuthorPane('preview'));
+    this.elements.chordEditBar.addEventListener('click', event => {
+      const direction = event.target.closest('[data-chord-move]')?.dataset.chordMove;
+      if (direction) this.nudgeSelectedAuthorChord(direction);
+    });
     
     // Upload area click
     this.elements.uploadArea.addEventListener('click', () => {
@@ -287,6 +311,7 @@ class UIController {
     this.elements.audioJobStage.textContent = stage;
     this.elements.audioJobPercent.textContent = `${percent}%`;
     this.elements.audioJobProgress.style.width = `${percent}%`;
+    this.elements.audioJobProgressTrack.setAttribute('aria-valuenow', String(percent));
     this.elements.audioJobMessage.textContent = message;
   }
 
@@ -384,6 +409,7 @@ class UIController {
       });
       authored.source.correctionsLearned = learning.learned;
       authored.source.savedEditsLearned = learning.savedEdits;
+      authored.source.correctionsPersisted = learning.persisted;
       this.currentSongs[index] = authored;
     } else {
       this.currentSongs.push(authored);
@@ -396,7 +422,10 @@ class UIController {
     const learnedStatus = learnedCount
       ? ` · learned ${learnedCount} correction${learnedCount === 1 ? '' : 's'}`
       : '';
-    this.updateStatus(`Saved ${authored.title}${learnedStatus}`, 'success');
+    const persistenceWarning = authored.source?.correctionsPersisted === false
+      ? ' · chart saved for this session, but learning could not be stored in this browser'
+      : '';
+    this.updateStatus(`Saved ${authored.title}${learnedStatus}${persistenceWarning}`, persistenceWarning ? 'warning' : 'success');
     this.displaySongs();
   }
 
@@ -421,6 +450,89 @@ class UIController {
     this.elements.authorPreview.innerHTML = populated ? this.renderStructuredContent(draft, { interactive: true }) : '';
     this.elements.authorPreviewStatus.textContent = populated ? 'Drag chords to place them, or focus one and use arrow keys' : 'Start typing to preview your chart';
     if (this.selectedAuthorChord) this.restoreAuthorChordSelection();
+  }
+
+  setAuthorPane(pane) {
+    const preview = pane === 'preview';
+    this.elements.authorSourceTab.classList.toggle('active', !preview);
+    this.elements.authorPreviewTab.classList.toggle('active', preview);
+    this.elements.authorSourceTab.setAttribute('aria-selected', String(!preview));
+    this.elements.authorPreviewTab.setAttribute('aria-selected', String(preview));
+    this.elements.authorSourcePane.classList.toggle('active', !preview);
+    this.elements.authorPreviewPane.classList.toggle('active', preview);
+    if (preview) this.updateAuthorPreview();
+  }
+
+  nudgeSelectedAuthorChord(direction) {
+    const selection = this.selectedAuthorChord;
+    if (!selection) return;
+    const token = this.elements.authorPreview.querySelector(`button.chord-token[data-chord-id="${CSS.escape(selection.chordId)}"]`);
+    if (!token) return;
+    const source = { ...selection };
+    const destination = { sectionIndex: source.sectionIndex, lineIndex: source.lineIndex };
+    let offset = Number(token.dataset.characterOffset) || 0;
+    if (direction === 'left') offset = Math.max(0, offset - 1);
+    if (direction === 'right') offset += 1;
+    if (direction === 'up') destination.lineIndex = Math.max(0, destination.lineIndex - 1);
+    if (direction === 'down') destination.lineIndex += 1;
+    this.moveAuthorChord(source, destination, offset, true);
+  }
+
+  handleAuthorPointerDown(event) {
+    const token = event.target.closest('button.chord-token');
+    if (!token || event.pointerType === 'mouse') return;
+    this.authorPointerDrag = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      active: false,
+      source: {
+        sectionIndex: Number(token.dataset.sectionIndex),
+        lineIndex: Number(token.dataset.lineIndex),
+        chordIndex: Number(token.dataset.chordIndex),
+        chordId: token.dataset.chordId
+      }
+    };
+    token.setPointerCapture(event.pointerId);
+  }
+
+  handleAuthorPointerMove(event) {
+    const drag = this.authorPointerDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 6) return;
+    drag.active = true;
+    event.preventDefault();
+    const line = document.elementFromPoint(event.clientX, event.clientY)?.closest('.chord-line[data-section-index]');
+    if (!line) return;
+    this.elements.authorPreview.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
+    line.classList.add('author-drop-target');
+    const rect = line.getBoundingClientRect();
+    const width = this.measureAuthorCharacterWidth(line);
+    const offset = Math.max(0, Math.round((event.clientX - rect.left) / width));
+    line.style.setProperty('--drop-caret-left', `${offset * width}px`);
+  }
+
+  handleAuthorPointerUp(event) {
+    const drag = this.authorPointerDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (drag.active) {
+      event.preventDefault();
+      const line = document.elementFromPoint(event.clientX, event.clientY)?.closest('.chord-line[data-section-index]');
+      if (line) {
+        const rect = line.getBoundingClientRect();
+        const width = this.measureAuthorCharacterWidth(line);
+        this.moveAuthorChord(drag.source, {
+          sectionIndex: Number(line.dataset.sectionIndex),
+          lineIndex: Number(line.dataset.lineIndex)
+        }, Math.max(0, Math.round((event.clientX - rect.left) / width)));
+      }
+    }
+    this.clearAuthorPointerDrag();
+  }
+
+  clearAuthorPointerDrag() {
+    this.authorPointerDrag = null;
+    this.clearAuthorDragState();
   }
 
   authorChordKey(chordId) {
@@ -687,7 +799,7 @@ class UIController {
       this.showUploadProgress(0);
       
       // Validate file
-      if (!file || file.type !== 'application/pdf') {
+      if (!await PDFProcessor.isPDFFile(file)) {
         throw new Error('Please select a valid PDF file');
       }
       
@@ -771,6 +883,8 @@ class UIController {
     const sheet = document.createElement('div');
     sheet.className = 'lead-sheet';
     sheet.setAttribute('data-song-id', song.id);
+    sheet.setAttribute('role', 'article');
+    sheet.setAttribute('aria-label', `${song.title} chord sheet`);
     
     // Create transpose controls bar
     const controlsBar = `
@@ -793,13 +907,13 @@ class UIController {
               <option value="preserve"${song.spellingPolicy === 'preserve' ? ' selected' : ''}>Preserve</option>
             </select>
           </label>
-          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, -1)" title="Transpose down">-</button>
+          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, -1)" title="Transpose down" aria-label="Transpose ${this.escapeHtml(song.title)} down one semitone">−</button>
           <div class="transpose-display">
             <div class="transpose-value" id="transposeValue-${song.id}">0</div>
             <div class="transpose-label">semitones</div>
           </div>
-          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, 1)" title="Transpose up">+</button>
-          <button class="reset-button" onclick="window.transposeApp.resetSong(${song.id})" title="Reset to original key">↺</button>
+          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, 1)" title="Transpose up" aria-label="Transpose ${this.escapeHtml(song.title)} up one semitone">+</button>
+          <button class="reset-button" onclick="window.transposeApp.resetSong(${song.id})" title="Reset to original key" aria-label="Reset ${this.escapeHtml(song.title)} to original key">↺</button>
         </div>
       </div>
     `;
@@ -934,9 +1048,11 @@ class UIController {
     const previous = SongModel.create(song);
     song.spellingPolicy = policy;
     song.currentKey = new MusicTheory().transposeKey(song.originalKey, song.transposition, policy);
-    if (song.sourceType === 'audio') this.correctionMemory.learn(previous, song);
+    const learning = song.sourceType === 'audio' ? this.correctionMemory.learn(previous, song) : null;
     this.updateLeadSheetDisplay(song);
-    this.updateStatus(`Chord spelling set to ${policy}`, 'success');
+    this.updateStatus(learning?.persisted === false
+      ? `Chord spelling set to ${policy} for this session; browser storage is unavailable`
+      : `Chord spelling set to ${policy}`, learning?.persisted === false ? 'warning' : 'success');
   }
   
   /**
@@ -1291,10 +1407,12 @@ class UIController {
   showLoading(message = 'Processing...') {
     this.elements.loadingText.textContent = message;
     this.elements.loadingOverlay.style.display = 'flex';
+    document.getElementById('mainContent')?.setAttribute('aria-busy', 'true');
   }
 
   hideLoading() {
     this.elements.loadingOverlay.style.display = 'none';
+    document.getElementById('mainContent')?.removeAttribute('aria-busy');
   }
 
   /**
@@ -1303,6 +1421,7 @@ class UIController {
   showUploadProgress(percentage) {
     this.elements.uploadProgress.style.display = 'block';
     this.elements.progressFill.style.width = `${percentage}%`;
+    this.elements.uploadProgressTrack?.setAttribute('aria-valuenow', String(percentage));
     this.elements.progressText.textContent = `Processing... ${percentage}%`;
   }
 
@@ -1316,6 +1435,7 @@ class UIController {
   showExportProgress(percentage) {
     this.elements.exportProgress.style.display = 'block';
     this.elements.exportProgressFill.style.width = `${percentage}%`;
+    this.elements.exportProgressTrack?.setAttribute('aria-valuenow', String(percentage));
     this.elements.exportProgressText.textContent = `Generating PDF... ${percentage}%`;
   }
 
@@ -1335,9 +1455,11 @@ class UIController {
    * Show error dialog
    */
   showError(message, allowRetry = false) {
+    this.lastFocusedElement = document.activeElement;
     this.elements.errorMessage.textContent = message;
     this.elements.errorRetry.style.display = allowRetry ? 'inline-block' : 'none';
     this.elements.errorPanel.style.display = 'flex';
+    this.elements.errorClose.focus();
   }
 
   /**
@@ -1345,6 +1467,8 @@ class UIController {
    */
   hideError() {
     this.elements.errorPanel.style.display = 'none';
+    this.lastFocusedElement?.focus?.();
+    this.lastFocusedElement = null;
   }
 
   /**
@@ -1415,6 +1539,8 @@ class UIController {
    * Handle keyboard shortcuts
    */
   handleKeyboardShortcuts(e) {
+    const editable = e.target.closest?.('input, textarea, select, [contenteditable="true"]');
+    if (editable && e.key !== 'Escape') return;
     // Ctrl/Cmd + O: Open file
     if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
       e.preventDefault();

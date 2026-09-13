@@ -27,11 +27,13 @@ class ChordCorrectionMemory {
   }
 
   write(value) {
-    if (!this.storage) return;
+    if (!this.storage) return false;
     try {
       this.storage.setItem(ChordCorrectionMemory.STORAGE_KEY, JSON.stringify(value));
+      return true;
     } catch (_) {
       // Private browsing and storage quotas may deny writes.
+      return false;
     }
   }
 
@@ -121,8 +123,8 @@ class ChordCorrectionMemory {
       sections: this.clone(edited.sections || []),
       updatedAt: new Date().toISOString()
     };
-    this.write(state);
-    return { learned, removed, savedEdits };
+    const persisted = this.write(state);
+    return { learned, removed, savedEdits, persisted };
   }
 
   apply(song) {

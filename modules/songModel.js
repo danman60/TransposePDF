@@ -84,14 +84,21 @@ class SongModel {
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
       const trimmed = row.trim();
-      const header = trimmed.match(/^\[?(verse|chorus|bridge|pre-chorus|intro|outro|instrumental)(?:\s+\d+)?\]?:?$/i);
+      const bracketedHeader = trimmed.match(/^\[([^\]\r\n]+)\]\s*:?$/);
+      const knownHeader = trimmed.match(/^(?:(final)\s+)?(verse|chorus|bridge|pre-chorus|intro|outro|instrumental|tag|interlude|vamp|refrain)(?:\s+\d+)?\s*:?$/i);
+      const headerLabel = bracketedHeader?.[1]?.trim() || (knownHeader ? trimmed.replace(/:$/, '').trim() : '');
+      const recognizedHeader = Boolean(
+        bracketedHeader
+        || (knownHeader && (!knownHeader[1] || knownHeader[2].toLowerCase() === 'chorus'))
+      );
 
-      if (header) {
+      if (recognizedHeader) {
         pushSection();
+        const typeMatch = headerLabel.match(/^(?:final\s+)?(verse|chorus|bridge|pre-chorus|intro|outro|instrumental|tag|interlude|vamp|refrain)/i);
         current = {
           id: `section-${sections.length + 1}`,
-          type: header[1].toLowerCase(),
-          label: trimmed.replace(/^\[|\]$|:$/g, ''),
+          type: typeMatch ? typeMatch[1].toLowerCase() : 'section',
+          label: headerLabel,
           lines: []
         };
         continue;

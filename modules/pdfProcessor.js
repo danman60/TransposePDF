@@ -9,6 +9,17 @@ class PDFProcessor {
     this.textItems = [];
   }
 
+  static async isPDFFile(file) {
+    if (!file) return false;
+    if (file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '')) return true;
+    try {
+      const header = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+      return String.fromCharCode(...header) === '%PDF-';
+    } catch (_) {
+      return false;
+    }
+  }
+
   /**
    * Load PDF file and extract text with coordinates
    */
@@ -18,7 +29,7 @@ class PDFProcessor {
       logger.startTimer('pdfLoad');
 
       // Validate file
-      if (!file || file.type !== 'application/pdf') {
+      if (!await PDFProcessor.isPDFFile(file)) {
         throw new Error('Please select a valid PDF file');
       }
 
@@ -68,6 +79,7 @@ class PDFProcessor {
    */
   async extractTextWithCoordinates(pdf) {
     const allTextItems = [];
+    const failedPages = [];
     
     for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
       try {
@@ -101,8 +113,13 @@ class PDFProcessor {
         
       } catch (error) {
         logger.error(`Failed to process page ${pageNum}`, { error: error.message });
-        // Continue processing other pages
+        failedPages.push(pageNum);
       }
+    }
+
+    if (failedPages.length > 0) {
+      const pages = failedPages.join(', ');
+      throw new Error(`Could not read PDF page${failedPages.length === 1 ? '' : 's'} ${pages}. No partial chart was imported.`);
     }
     
     // Sort by page, then by Y position (top to bottom), then by X position
