@@ -37,8 +37,15 @@
                 </div>
             </div>
             <div class="status-indicator" id="statusIndicator" role="status" aria-live="polite" aria-atomic="true">Ready</div>
+            <span class="offline-badge" id="offlineBadge" role="status" hidden>Offline</span>
+            <button class="icon-action sync-entry" id="teamSyncButton" data-state="local" type="button">Local only</button>
             <button class="icon-action" id="companionButton" type="button">Companion</button>
         </header>
+
+        <aside class="update-banner" id="updateBanner" aria-live="polite" hidden>
+            <div><strong>Update ready</strong><p id="updateMessage">A newer version is ready. Reload when convenient.</p></div>
+            <div><button class="primary-button" id="reloadUpdateButton" type="button">Reload now</button><button class="secondary-button" id="laterUpdateButton" type="button">Later</button></div>
+        </aside>
 
         <main id="mainContent">
         <aside class="recovery-banner" id="recoveryBanner" role="status" aria-live="polite" hidden>
@@ -244,6 +251,16 @@
 
         <aside class="control-drawer" id="controlDrawer" hidden aria-labelledby="controlHeading"><div class="drawer-header"><h2 id="controlHeading">Hands-free controls</h2><button id="closeControlsButton" type="button">Close</button></div><p id="midiStatus">MIDI not connected</p><button id="connectMidiButton" type="button">Connect MIDI</button><div id="bindingList" class="binding-list"></div><div id="bindingConflict" role="alert" hidden><span></span><button id="replaceBindingButton" type="button">Replace binding</button></div></aside>
 
+        <aside class="team-sync-drawer" id="teamSyncDrawer" hidden aria-labelledby="teamSyncHeading">
+            <div class="drawer-header"><div><span class="eyebrow">Optional collaboration</span><h2 id="teamSyncHeading">Team sync</h2></div><button class="secondary-button" id="closeTeamSyncButton" type="button">Close</button></div>
+            <p class="sync-privacy">Charts stay on this device until you connect a dedicated Supabase project. TransposePDF never supplies or reuses project credentials.</p>
+            <div class="sync-status" id="teamSyncStatus" data-state="local" role="status">Local only. Nothing leaves this device.</div>
+            <section class="sync-local-panel" id="syncLocalPanel"><strong>Connect dedicated project</strong><label>Project URL<input id="syncProjectUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://your-project.supabase.co"></label><label>Publishable key<input id="syncPublishableKey" type="password" autocomplete="off" placeholder="sb_publishable_…"></label><small>Use only this app’s dedicated project. Stored in this browser and never included in exports.</small><button class="primary-button" id="saveSyncConfigButton" type="button">Connect project</button></section>
+            <section class="sync-auth-panel" id="syncAuthPanel" hidden><strong>Sign in</strong><label>Email<input id="syncEmail" type="email" autocomplete="email" placeholder="musician@example.com"></label><div class="sync-button-row"><button class="primary-button" id="syncEmailSignIn" type="button">Email me a link</button><button class="secondary-button" id="syncGoogleSignIn" type="button">Continue with Google</button></div></section>
+            <section class="sync-team-panel" id="syncTeamPanel" hidden><div class="sync-user-row"><span id="syncUser"></span><button class="secondary-button" id="syncSignOut" type="button">Sign out</button></div><label>Team<select id="syncTeamSelect"></select></label><div class="sync-metrics"><div><strong id="syncOutboxCount">0</strong><span>Waiting to send</span></div><div><strong id="syncConflictCountLabel">0</strong><span>Conflicts</span></div></div><div class="sync-button-row"><button class="primary-button" id="syncNowButton" type="button">Sync now</button><button class="secondary-button" id="shareTeamButton" type="button" hidden>Copy team link</button></div><input id="shareTeamOutput" class="share-output" readonly hidden aria-label="Team share link"><div class="sync-conflicts"><strong>Conflicts</strong><ul id="syncConflictList"><li class="empty-state">No conflicts</li></ul></div></section>
+            <button class="text-danger-button" id="disconnectSyncButton" type="button" hidden>Disconnect project from this device</button>
+        </aside>
+
         <aside class="review-rail" id="reviewRail" hidden aria-labelledby="reviewHeading"><div class="drawer-header"><h2 id="reviewHeading">Review uncertain results</h2><button id="closeReviewButton" type="button">Close</button></div><div id="reviewItem"></div><div class="review-actions"><button id="reviewAccept" type="button">Accept</button><button id="reviewEdit" type="button">Edit</button><button id="reviewRemove" type="button">Remove</button><button id="reviewUndo" type="button">Undo</button></div></aside>
 
         <section class="performance-shell" id="performanceShell" hidden aria-label="Performance mode"><div class="performance-top"><strong id="performanceTitle">Performance</strong><button id="performanceExit" type="button">Exit</button></div><div id="performanceChart"></div><div class="performance-dock"><button id="performancePrev" type="button">Previous</button><label>Text <input id="performanceFont" type="range" min="0.7" max="2" step="0.1" value="1"></label><label>Columns <select id="performanceColumns"><option>1</option><option>2</option><option>3</option></select></label><label><input id="performanceAutoscroll" type="checkbox"> Auto-scroll</label><button id="performanceNext" type="button">Next</button></div></section>
@@ -314,6 +331,14 @@
     <script src="modules/reviewQueue.js"></script>
     <script src="modules/rehearsalController.js"></script>
     <script src="modules/audioJobClient.js"></script>
+    <script src="modules/supabaseBrowserClient.js"></script>
+    <script src="modules/authClient.js"></script>
+    <script src="modules/syncStore.js"></script>
+    <script src="modules/teamSyncController.js"></script>
+    <script src="modules/serviceWorkerController.js"></script>
+    <script src="modules/chartRenderer.js"></script>
+    <script src="modules/authoringController.js"></script>
+    <script src="modules/workspaceController.js"></script>
     <script src="modules/uiController.js"></script>
     <script src="app.js"></script>
 

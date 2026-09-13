@@ -3,7 +3,7 @@
  * Handles caching for offline functionality
  */
 
-const CACHE_NAME = 'transpose-app-v13';
+const CACHE_NAME = 'transpose-app-v16';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -26,6 +26,14 @@ const CACHE_FILES = [
   '/modules/reviewQueue.js',
   '/modules/rehearsalController.js',
   '/modules/audioJobClient.js',
+  '/modules/supabaseBrowserClient.js',
+  '/modules/authClient.js',
+  '/modules/syncStore.js',
+  '/modules/teamSyncController.js',
+  '/modules/serviceWorkerController.js',
+  '/modules/chartRenderer.js',
+  '/modules/authoringController.js',
+  '/modules/workspaceController.js',
   '/companion.html',
   '/modules/companionView.js',
   '/modules/pdfGenerator.js',
@@ -58,11 +66,7 @@ self.addEventListener('install', event => {
         const cache = await caches.open(CACHE_NAME);
         return cache.addAll(files.map(file => `/vendor/pdfjs/3.11.174/cmaps/${file}`));
       })
-      .then(() => {
-        console.log('[SW] Service worker installed successfully');
-        // Force activation
-        return self.skipWaiting();
-      })
+      .then(() => console.log('[SW] Service worker installed successfully'))
       .catch(error => {
         console.error('[SW] Installation failed:', error);
         throw error;
@@ -254,53 +258,6 @@ function shouldCacheResponse(request) {
 }
 
 /**
- * Handle background sync for offline actions
- */
-self.addEventListener('sync', event => {
-  console.log('[SW] Background sync:', event.tag);
-  
-  if (event.tag === 'export-pdf') {
-    event.waitUntil(handleOfflineExport());
-  }
-});
-
-/**
- * Handle offline PDF export
- */
-async function handleOfflineExport() {
-  try {
-    console.log('[SW] Handling offline export...');
-    // Implementation would depend on storing export data in IndexedDB
-    // For now, just log the event
-  } catch (error) {
-    console.error('[SW] Offline export failed:', error);
-  }
-}
-
-/**
- * Handle push notifications (future feature)
- */
-self.addEventListener('push', event => {
-  console.log('[SW] Push event received');
-  
-  // Future implementation for notifications
-});
-
-/**
- * Handle notification clicks
- */
-self.addEventListener('notificationclick', event => {
-  console.log('[SW] Notification clicked');
-  
-  event.notification.close();
-  
-  // Open app
-  event.waitUntil(
-    clients.openWindow('/')
-  );
-});
-
-/**
  * Handle messages from main thread
  */
 self.addEventListener('message', event => {
@@ -312,38 +269,11 @@ self.addEventListener('message', event => {
         self.skipWaiting();
         break;
         
-      case 'GET_VERSION':
-        event.ports[0].postMessage({ version: CACHE_NAME });
-        break;
-        
-      case 'CLEAR_CACHE':
-        clearCache().then(result => {
-          event.ports[0].postMessage({ success: result });
-        });
-        break;
-        
       default:
         console.log('[SW] Unknown message type:', event.data.type);
     }
   }
 });
-
-/**
- * Clear all caches
- */
-async function clearCache() {
-  try {
-    const cacheNames = await caches.keys();
-    await Promise.all(
-      cacheNames.map(cacheName => caches.delete(cacheName))
-    );
-    console.log('[SW] All caches cleared');
-    return true;
-  } catch (error) {
-    console.error('[SW] Failed to clear caches:', error);
-    return false;
-  }
-}
 
 // Log service worker startup
 console.log('[SW] Service Worker script loaded');

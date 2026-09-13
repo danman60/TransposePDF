@@ -1,5 +1,37 @@
 # Current Work - TransposePDF
 
+## Active Task — 2026-09-13 Ten-and-Ten Release
+
+All 20 selected feature/streamline items implemented in local release tree. Dedicated team sync is configuration-ready but intentionally unbound until a TransposePDF Supabase project is provisioned.
+
+## Recent Changes
+
+- Named setlists/library search, history with readable line diffs, ChordPro, Nashville/capo/instrument views.
+- Performance mode, swipe/keyboard/MIDI controls, timed rehearsal, low-confidence review, companion view.
+- Serialized SessionStore, delegated workspace actions, extracted chart/authoring controllers, unified observability.
+- SSE audio progress/cancellation, deterministic self-hosted runtime, safe service-worker update/offline UI.
+- Team sync settings/auth/team/outbox/conflict/share-link surface with local-only default.
+- SoloTranscribe moved to sibling `../SoloTranscribeCLI` commit `111257a`.
+- 462 tracked dependency files and 204 obsolete generated/debug files removed from release tree; canonical PDF fixture retained.
+
+## Verification
+
+- Persistent lifecycle: 17/17, zero console/page/telemetry errors.
+- UX gaps: 6/6.
+- Team sync contract: 10/10; mocked dedicated-endpoint browser smoke: 10/10.
+- Armor of God lifecycle: 3 consecutive clean post-fix runs. Startup import now waits for IndexedDB/session hydration.
+- Syntax, Python compile, and `git diff --check`: pass.
+
+## Blockers
+
+- Live team-sync acceptance requires a dedicated TransposePDF Supabase project, migration, auth provider/redirect configuration, and two-account RLS/push/pull testing. No credentials embedded or borrowed.
+
+## Next Steps
+
+1. Commit/push release tree.
+2. Deploy to FIRMAMENT and rerun full remote lifecycle.
+3. Provision dedicated Supabase project when live cross-device sync is desired.
+
 ## Last Session Summary
 
 Persistent multi-song library/session workspace, immediately reachable editing, recovery autosave, and FIRMAMENT-local live telemetry shipped and passed full lifecycle testing. Plan: `docs/plans/2026-09-13-persistent-library-live-session.md`.

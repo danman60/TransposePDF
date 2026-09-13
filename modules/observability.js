@@ -12,6 +12,23 @@ class Observability {
     return this;
   }
 
+  get screen() { return this.telemetry?.screen || 'start'; }
+  get snapshot() { return this.telemetry?.snapshot || null; }
+
+  setScreen(screen, data = {}) {
+    try {
+      this.telemetry?.setScreen?.(screen, this.cleanContext(data));
+      return true;
+    } catch (_) { return false; }
+  }
+
+  updateSnapshot(snapshot = {}) {
+    try {
+      this.telemetry?.updateSnapshot?.(snapshot);
+      return true;
+    } catch (_) { return false; }
+  }
+
   status(message, type = 'info', context = {}) {
     const level = ['info', 'success', 'warning', 'error'].includes(type) ? type : 'info';
     const entry = { timestamp: Date.now(), level, type: level, message: this.cleanText(message), context: this.cleanContext(context) };

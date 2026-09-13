@@ -17,6 +17,9 @@ class PerformanceController {
     this.wakeLock = null;
     this.frame = null;
     this.lastFrameAt = 0;
+    this.gestureSurface = null;
+    this.gestureStart = null;
+    this.swipeThreshold = Math.max(48, Number(options.swipeThreshold) || 64);
     this.state = {
       active: false,
       fontScale: 1,
@@ -29,6 +32,9 @@ class PerformanceController {
     };
     this.handleVisibility = this.handleVisibility.bind(this);
     this.handleFullscreen = this.handleFullscreen.bind(this);
+    this.handleTouchStart = this.handleTouchStart.bind(this);
+    this.handleTouchEnd = this.handleTouchEnd.bind(this);
+    this.handleTouchCancel = this.handleTouchCancel.bind(this);
     this.document?.addEventListener?.('visibilitychange', this.handleVisibility);
     this.document?.addEventListener?.('fullscreenchange', this.handleFullscreen);
   }
@@ -94,6 +100,53 @@ class PerformanceController {
   previous() {
     const index = this.activeIndex();
     return this.selectAt(index < 0 ? 0 : index - 1);
+  }
+
+  bindGestureSurface(element) {
+    if (this.gestureSurface === element) return;
+    this.unbindGestureSurface();
+    this.gestureSurface = element || null;
+    this.gestureSurface?.addEventListener?.('touchstart', this.handleTouchStart, { passive: true });
+    this.gestureSurface?.addEventListener?.('touchend', this.handleTouchEnd, { passive: true });
+    this.gestureSurface?.addEventListener?.('touchcancel', this.handleTouchCancel, { passive: true });
+  }
+
+  unbindGestureSurface() {
+    this.gestureSurface?.removeEventListener?.('touchstart', this.handleTouchStart);
+    this.gestureSurface?.removeEventListener?.('touchend', this.handleTouchEnd);
+    this.gestureSurface?.removeEventListener?.('touchcancel', this.handleTouchCancel);
+    this.gestureSurface = null;
+    this.gestureStart = null;
+  }
+
+  isGestureExcluded(target) {
+    return Boolean(target?.closest?.('button, input, select, textarea, a, [contenteditable="true"], [draggable="true"], .chord-marker, .draggable-chord'));
+  }
+
+  handleTouchStart(event) {
+    const touch = event.changedTouches?.[0];
+    if (!touch || event.changedTouches.length !== 1 || this.isGestureExcluded(event.target)) {
+      this.gestureStart = null;
+      return;
+    }
+    this.gestureStart = { x: touch.clientX, y: touch.clientY, identifier: touch.identifier };
+  }
+
+  handleTouchEnd(event) {
+    const start = this.gestureStart;
+    this.gestureStart = null;
+    if (!start || this.isGestureExcluded(event.target)) return;
+    const touch = [...(event.changedTouches || [])].find(item => item.identifier === start.identifier);
+    if (!touch) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < this.swipeThreshold || Math.abs(dx) < Math.abs(dy) * 1.35) return;
+    if (dx < 0) this.next();
+    else this.previous();
+  }
+
+  handleTouchCancel() {
+    this.gestureStart = null;
   }
 
   scrollTarget() {
@@ -198,6 +251,7 @@ class PerformanceController {
 
   destroy() {
     this.stopAutoscroll();
+    this.unbindGestureSurface();
     this.releaseWakeLock().catch(() => undefined);
     this.document?.removeEventListener?.('visibilitychange', this.handleVisibility);
     this.document?.removeEventListener?.('fullscreenchange', this.handleFullscreen);

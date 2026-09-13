@@ -37,6 +37,7 @@ class TransposeApp {
   constructor(observability = logger) {
     this.logger = observability;
     this.uiController = null;
+    this.serviceWorkerController = null;
     this.initialized = false;
   }
 
@@ -52,9 +53,30 @@ class TransposeApp {
       await this.runHealthChecks();
       
       // Initialize UI Controller
-      this.uiController = new UIController();
+      this.uiController = new UIController(this.logger);
       window.transposeApp = this.uiController;
-      this.logger.setTelemetry(this.uiController.telemetry);
+      this.teamSyncController = new TeamSyncController({
+        library: this.uiController.libraryStore,
+        elements: {
+          open: document.getElementById('teamSyncButton'), drawer: document.getElementById('teamSyncDrawer'), close: document.getElementById('closeTeamSyncButton'),
+          status: document.getElementById('teamSyncStatus'), localPanel: document.getElementById('syncLocalPanel'), authPanel: document.getElementById('syncAuthPanel'), teamPanel: document.getElementById('syncTeamPanel'),
+          url: document.getElementById('syncProjectUrl'), key: document.getElementById('syncPublishableKey'), save: document.getElementById('saveSyncConfigButton'), disconnect: document.getElementById('disconnectSyncButton'),
+          email: document.getElementById('syncEmail'), emailSignIn: document.getElementById('syncEmailSignIn'), googleSignIn: document.getElementById('syncGoogleSignIn'), signOut: document.getElementById('syncSignOut'),
+          user: document.getElementById('syncUser'), team: document.getElementById('syncTeamSelect'), syncNow: document.getElementById('syncNowButton'), outbox: document.getElementById('syncOutboxCount'), conflictCount: document.getElementById('syncConflictCountLabel'), conflicts: document.getElementById('syncConflictList'),
+          share: document.getElementById('shareTeamButton'), shareOutput: document.getElementById('shareTeamOutput')
+        }
+      }).attach();
+      this.serviceWorkerController = new ServiceWorkerController({
+        banner: document.getElementById('updateBanner'),
+        message: document.getElementById('updateMessage'),
+        reloadButton: document.getElementById('reloadUpdateButton'),
+        laterButton: document.getElementById('laterUpdateButton'),
+        offlineBadge: document.getElementById('offlineBadge'),
+        isDraftDirty: () => this.isEditorDraftDirty()
+      });
+      this.serviceWorkerController.start().then(registration => {
+        if (registration) this.logger.status('Service worker registered', 'success', { scope: registration.scope });
+      }).catch(error => this.logger.error('Service worker registration failed', { code: 'SW_REGISTER', error: error.message }));
       
       // Initialize keyboard shortcuts
       this.uiController.initializeKeyboardShortcuts();
@@ -75,6 +97,18 @@ class TransposeApp {
       this.logger.error('Failed to initialize app', { error: error.message });
       this.showInitError(error.message);
     }
+  }
+
+  isEditorDraftDirty() {
+    const ui = this.uiController;
+    if (!ui || ui.elements.authorSection?.style.display === 'none') return false;
+    const title = ui.elements.authorTitle.value;
+    const key = ui.elements.authorKey.value;
+    const content = ui.elements.authorContent.value;
+    if (!ui.editingSongId) return Boolean(title.trim() || content.trim());
+    return content !== ui.authorLastSerializedText
+      || title !== (ui.authorDraft?.title || '')
+      || key !== (ui.authorDraft?.originalKey || 'C');
   }
 
   /**
@@ -262,11 +296,6 @@ window.addEventListener('unhandledrejection', (e) => {
 
 // Performance monitoring
 window.addEventListener('load', () => {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(registration => logger.status('Service worker registered', 'success', { scope: registration.scope }))
-      .catch(error => logger.error('Service worker registration failed', { code: 'SW_REGISTER', error: error.message }));
-  }
   // Log performance metrics after page load
   setTimeout(() => {
     if (performance.timing) {

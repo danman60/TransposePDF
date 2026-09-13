@@ -49,6 +49,8 @@
 /* Tablet Portrait and Large Phones */
 @media (max-width: 768px) {
   .app-header { flex-wrap: wrap; }
+  .team-sync-drawer { padding: 1rem; }
+  .sync-button-row { flex-direction: column; align-items: stretch; }
 
   .session-identity {
     order: 3;
@@ -60,6 +62,8 @@
   .session-identity select { flex: 1 1 45%; }
   .session-actions { width: 100%; }
   .session-actions button { flex: 1; }
+  .update-banner { align-items: stretch; flex-direction: column; }
+  .update-banner > div:last-child button { flex: 1; }
 
   .recovery-banner {
     width: calc(100% - 1rem);
@@ -559,6 +563,7 @@
 @media (prefers-reduced-motion: reduce) {
   .song-selector-row, .history-drawer, .lead-sheet-content { transition: none !important; scroll-behavior: auto !important; }
   .performance-shell *, .control-drawer, .review-rail { transition: none !important; scroll-behavior: auto !important; }
+  .update-banner { transition: none !important; }
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

@@ -31,7 +31,7 @@ class ChartRenderer {
         const isChordLine = this.containsChords(item.text);
         const className = this.getPDFItemClass(item, isChordLine);
         let displayText = item.text;
-        if (isChordLine && song.transposition !== 0) {
+        if (isChordLine) {
           displayText = this.transposeTextItem(item.text, song.transposition, musicTheory, song);
         }
         const scaleFactor = 0.8;
@@ -98,17 +98,12 @@ class ChartRenderer {
   }
 
   transposeForSong(symbol, song, musicTheory = this.musicTheory()) {
-    const policy = song.spellingPolicy || 'contextual';
-    if (!song.transposition) {
-      return ['flats', 'sharps'].includes(policy)
-        ? musicTheory.spellChordForKey(symbol, song.currentKey || song.originalKey, { policy })
-        : symbol;
+    const view = { ...(song.sessionView || {}), spellingPolicy: song.spellingPolicy };
+    if (view.capo && (!view.spellingPolicy || view.spellingPolicy === 'contextual')) {
+      const shapeKey = musicTheory.transposeKey(song.currentKey || song.originalKey, -Number(view.capo), 'contextual');
+      view.spellingPolicy = shapeKey.includes('b') ? 'flats' : 'sharps';
     }
-    return musicTheory.transposeChord(symbol, song.transposition, {
-      sourceKey: song.originalKey,
-      targetKey: song.currentKey,
-      policy
-    });
+    return musicTheory.displayChord(symbol, song, view);
   }
 
   groupTextItemsByPage(textItems = []) {
@@ -158,7 +153,7 @@ class ChartRenderer {
   }
 
   transposeTextItem(text, transposition, musicTheory = this.musicTheory(), song = null) {
-    if (transposition === 0) return text;
+    if (transposition === 0 && !song) return text;
     const chords = musicTheory.extractChords(text);
     if (!chords.length) return text;
     let result = text;

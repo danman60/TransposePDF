@@ -16,6 +16,12 @@ __pycache__/
 /test_results/
 /test_downloads/
 /*_screenshots/
+/*.png
+/*.jpg
+/*.jpeg
+/*.pdf
+/*report*.json
+/test_report.json
 
 # Local task-runner output
 /tasks/

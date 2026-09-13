@@ -43,6 +43,6 @@ Current analysis detects major/minor triads locally. Lyrics use OpenAI word time
 
 This is a local MVP. Production needs an FFmpeg-capable worker, durable job storage, authentication/rate limiting, and managed secrets.
 
-## Legacy CLI
+## Related project
 
-`src/solotranscribe` is a separate URL-transcription CLI built around AssemblyAI. The chord-sheet web app does not use it.
+The standalone AssemblyAI URL-transcription CLI now lives in the sibling [SoloTranscribeCLI](../SoloTranscribeCLI/README.md) project. Its package and dependencies are independent from this chord-sheet app.
