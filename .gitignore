@@ -1,0 +1,26 @@
+# Installed dependencies
+/node_modules/
+/.venv/
+
+# Python/runtime caches
+__pycache__/
+*.py[cod]
+/.pytest_cache/
+
+# Browser and QA runtime output
+/.playwright-cli/
+/artifacts/
+/test-results/
+/tests/reports/
+/screenshots/
+/test_results/
+/test_downloads/
+/*_screenshots/
+
+# Local task-runner output
+/tasks/
+
+# Local secrets and environment
+/.env
+/.env.*
+!/.env.example

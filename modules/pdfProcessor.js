@@ -43,7 +43,7 @@ class PDFProcessor {
       // Load PDF with PDF.js
       const pdf = await pdfjsLib.getDocument({
         data: arrayBuffer,
-        cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
+        cMapUrl: '/vendor/pdfjs/3.11.174/cmaps/',
         cMapPacked: true,
       }).promise;
 

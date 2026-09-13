@@ -7,7 +7,9 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "bash scripts/run-qa.sh",
+    "qa": "bash scripts/run-qa.sh",
+    "check:syntax": "node --check app.js && node --check service-worker.js && node --check modules/musicTheory.js && node --check modules/songModel.js && node --check modules/correctionMemory.js && node --check modules/pdfProcessor.js && node --check modules/songSeparator.js && node --check modules/pdfGenerator.js && node --check modules/libraryStore.js && node --check modules/sessionTelemetry.js && node --check modules/uiController.js"
   },
   "keywords": [],
   "author": "",

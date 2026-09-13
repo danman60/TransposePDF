@@ -3,7 +3,7 @@
  * Handles caching for offline functionality
  */
 
-const CACHE_NAME = 'transpose-app-v9';
+const CACHE_NAME = 'transpose-app-v10';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -19,15 +19,12 @@ const CACHE_FILES = [
   '/modules/libraryStore.js',
   '/modules/sessionTelemetry.js',
   '/modules/pdfGenerator.js',
-  '/modules/uiController.js'
-];
-
-// CDN resources to cache
-const CDN_RESOURCES = [
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
-  'https://cdn.jsdelivr.net/npm/tonal@5.0.0/browser/tonal.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+  '/modules/uiController.js',
+  '/vendor/pdfjs/3.11.174/pdf.min.js',
+  '/vendor/pdfjs/3.11.174/pdf.worker.min.js',
+  '/vendor/pdfjs/3.11.174/cmaps/manifest.json',
+  '/vendor/tonal/5.0.0/tonal.min.js',
+  '/vendor/jspdf/2.5.1/jspdf.umd.min.js'
 ];
 
 /**
@@ -44,18 +41,12 @@ self.addEventListener('install', event => {
         // Cache app files first
         return cache.addAll(CACHE_FILES);
       })
-      .then(() => {
-        // Cache CDN resources separately (don't fail if CDN is down)
-        return caches.open(CACHE_NAME)
-          .then(cache => {
-            return Promise.allSettled(
-              CDN_RESOURCES.map(url => 
-                cache.add(url).catch(err => {
-                  console.warn(`[SW] Failed to cache CDN resource: ${url}`, err);
-                })
-              )
-            );
-          });
+      .then(async () => {
+        const manifestResponse = await fetch('/vendor/pdfjs/3.11.174/cmaps/manifest.json');
+        if (!manifestResponse.ok) throw new Error('PDF.js CMap manifest unavailable');
+        const files = await manifestResponse.json();
+        const cache = await caches.open(CACHE_NAME);
+        return cache.addAll(files.map(file => `/vendor/pdfjs/3.11.174/cmaps/${file}`));
       })
       .then(() => {
         console.log('[SW] Service worker installed successfully');
@@ -64,6 +55,7 @@ self.addEventListener('install', event => {
       })
       .catch(error => {
         console.error('[SW] Installation failed:', error);
+        throw error;
       })
   );
 });
@@ -136,8 +128,8 @@ self.addEventListener('fetch', event => {
  */
 async function handleFetchRequest(request, url) {
   try {
-    // For app files and CDN resources: Cache-first strategy
-    if (isAppResource(url) || isCDNResource(url)) {
+    // App and pinned vendor resources use cache-first strategy.
+    if (isAppResource(url)) {
       return await cacheFirstStrategy(request);
     }
     
@@ -174,23 +166,12 @@ function isAppResource(url) {
     '/app.js',
     '/styles/',
     '/modules/',
-    '/icons/'
+    '/icons/',
+    '/vendor/'
   ];
   
   return url.origin === location.origin && 
          appResources.some(resource => url.pathname.startsWith(resource));
-}
-
-/**
- * Check if URL is a CDN resource
- */
-function isCDNResource(url) {
-  const cdnHosts = [
-    'cdnjs.cloudflare.com',
-    'cdn.jsdelivr.net'
-  ];
-  
-  return cdnHosts.includes(url.hostname);
 }
 
 /**

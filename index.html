@@ -15,13 +15,10 @@
     <link rel="stylesheet" href="styles/main.css">
     <link rel="stylesheet" href="styles/mobile.css">
     
-    <!-- Core Libraries with fallbacks -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" 
-            onerror="this.onerror=null; this.src='./lib/pdf.min.js'"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tonal@5.0.0/browser/tonal.min.js"
-            onerror="this.onerror=null; this.src='./lib/tonal.min.js'"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
-            onerror="this.onerror=null; this.src='./lib/jspdf.min.js'"></script>
+    <!-- Pinned, first-party-served runtime libraries -->
+    <script src="vendor/pdfjs/3.11.174/pdf.min.js"></script>
+    <script src="vendor/tonal/5.0.0/tonal.min.js"></script>
+    <script src="vendor/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <div id="app">
@@ -267,7 +264,7 @@
     <script>
         // Initialize PDF.js worker
         if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/3.11.174/pdf.worker.min.js';
         }
     </script>
     
