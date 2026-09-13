@@ -18,7 +18,7 @@ Extended browser-local learning across the accepted audio chart and added songwi
 
 ## Build Status
 
-PASSING locally. JavaScript syntax, 28 focused theory checks, real-browser spelling/UI/PDF parity, and full Armor of God E2E passed. FIRMAMENT update pending this commit.
+PASSING. JavaScript syntax, 28 focused theory checks, real-browser spelling/UI/PDF parity, full Armor of God E2E, and FIRMAMENT runtime verification passed.
 
 ## Known Bugs & Issues
 
@@ -28,7 +28,7 @@ PASSING locally. JavaScript syntax, 28 focused theory checks, real-browser spell
 
 ## Incomplete Work
 
-- Commit/push and FIRMAMENT runtime-file update for songwide spelling rules.
+- None for requested songwide spelling and freeform placement scope.
 
 ## Tests
 
@@ -38,12 +38,13 @@ PASSING locally. JavaScript syntax, 28 focused theory checks, real-browser spell
 - 2026-09-13 09:29 Eastern: full all-edit Armor E2E passed. Two real analyses completed in 16.61s and 15.52s; exact editor text/title/key/timing returned; transpose/reset passed; PDF was 18,356 bytes; raw analyzer evidence stayed unchanged across both saves; fresh profile isolated; zero console errors.
 - 2026-09-13 09:33 Eastern: commit `9750b51` pushed. Eight runtime files copied to FIRMAMENT; live app returned HTTP 200, served cache v6, and Chrome produced a 66,765-byte composited screenshot.
 - 2026-09-13: songwide spelling browser checks passed: source `A#` preserved, flat override rendered `Bb`, contextual F→F# rendered `F# B C#7 N.C.`, screen/PDF parity exact, zero console errors. Full Armor regression passed 12/12 with two real analyses (15.61s/13.56s), 18,333-byte PDF, exact edits/timing/policy persistence, and raw-analysis preservation.
+- 2026-09-13: commit `a10a73d` pushed and runtime files copied to FIRMAMENT. Live server returned HTTP 200 and served `spellChordForKey` plus offline cache v7.
 
 ## Next Steps (priority order)
 
-1. Commit, push, and copy runtime files to FIRMAMENT.
-2. Use FIRMAMENT desktop shortcut and make real musical corrections; verify learned behavior against additional songs.
-3. Add account/cloud synchronization if corrections must follow a user between browser profiles or machines.
+1. Use FIRMAMENT desktop shortcut and make real musical corrections; verify learned behavior against additional songs.
+2. Add account/cloud synchronization if corrections must follow a user between browser profiles or machines.
+3. Add audio feature fingerprints and a reviewed training pipeline before attempting acoustic-model learning.
 
 ## Gotchas for Next Session
 
