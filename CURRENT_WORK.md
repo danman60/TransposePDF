@@ -23,7 +23,7 @@ Completed visual, accessibility, and functional authoring audit. Desktop now use
 
 ## Build Status
 
-PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function browser checks, full Armor of God E2E, and PDF export passed. FIRMAMENT audit deployment pending this commit.
+PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function browser checks, full Armor of God E2E, PDF export, and FIRMAMENT runtime verification passed.
 
 ## Known Bugs & Issues
 
@@ -33,7 +33,7 @@ PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function brow
 
 ## Incomplete Work
 
-- Copy audit runtime files to FIRMAMENT and verify composited live surface.
+- None for requested visual/function audit scope.
 
 ## Tests
 
@@ -45,6 +45,7 @@ PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function brow
 - 2026-09-13: songwide spelling browser checks passed: source `A#` preserved, flat override rendered `Bb`, contextual F→F# rendered `F# B C#7 N.C.`, screen/PDF parity exact, zero console errors. Full Armor regression passed 12/12 with two real analyses (15.61s/13.56s), 18,333-byte PDF, exact edits/timing/policy persistence, and raw-analysis preservation.
 - 2026-09-13: commit `a10a73d` pushed and runtime files copied to FIRMAMENT. Live server returned HTTP 200 and served `spellChordForKey` plus offline cache v7.
 - 2026-09-13 10:31 Eastern: visual/function audit passed 30/30 checks at desktop, mobile, and 200%-equivalent reflow. Blank-space and cross-line chord placement, mobile tabs/nudges, keyboard file pickers, progress semantics, error focus restoration, and sticky Save passed with zero console errors and zero failed requests. Full Armor regression passed 12/12; two analyses completed in 19.62s and 21.57s; PDF was 18,039 bytes.
+- 2026-09-13 10:34 Eastern: commit `dda8565` pushed and audited runtime files copied to FIRMAMENT. Live server returned HTTP 200, served cache v8 and new authoring/accessibility markup, and Chrome produced a 67,937-byte composited screenshot.
 
 ## Next Steps (priority order)
 
