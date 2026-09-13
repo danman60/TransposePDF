@@ -29,7 +29,8 @@ def main():
     results = {}
     with tempfile.TemporaryDirectory(prefix="transposepdf-inline-") as profile, sync_playwright() as pw:
         context = pw.chromium.launch_persistent_context(
-            profile, headless=True, viewport={"width": 1440, "height": 900}, chromium_sandbox=False
+            profile, headless=True, viewport={"width": 1440, "height": 900}, chromium_sandbox=False,
+            has_touch=True,
         )
         page = context.pages[0]
         page.goto(URL, wait_until="domcontentloaded")
@@ -58,6 +59,15 @@ def main():
         page.wait_for_function("() => document.querySelector('#sessionSaveState')?.textContent.includes('Saved')")
         results["chord_replace"] = page.locator(chord).text_content() == "Dm7"
 
+        # A normal click must remain an edit gesture; the drag threshold must not eat it.
+        chord_box = page.locator(chord).bounding_box()
+        page.mouse.click(chord_box["x"] + chord_box["width"] / 2, chord_box["y"] + chord_box["height"] / 2)
+        page.keyboard.press("End")
+        page.keyboard.type("sus2")
+        page.locator(".song-title").click()
+        page.wait_for_function("() => document.querySelector('#sessionSaveState')?.textContent.includes('Saved')")
+        results["click_then_type"] = page.locator(chord).text_content() == "Dm7sus2"
+
         anchor = page.locator(chord).locator('xpath=..')
         original_offset = anchor.get_attribute("data-character-offset")
         moved_id = anchor.get_attribute("data-chord-id")
@@ -68,8 +78,20 @@ def main():
                 .map(chord => [String(chord.id), sectionIndex, lineIndex, chord.characterOffset])))""",
             moved_id,
         )
+        # Drag the visible symbol body within its current line first.
+        handle_box = anchor.locator('.inline-chord-edit').bounding_box()
+        same_line_box = page.locator('.lead-sheet .chord-line[data-line-index="0"]').bounding_box()
+        page.mouse.move(handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
+        page.mouse.down()
+        page.mouse.move(same_line_box["x"] + 260, same_line_box["y"] + 8, steps=8)
+        page.mouse.up()
+        page.wait_for_timeout(250)
+        same_line_offset = page.locator(f'.lead-sheet .inline-chord-anchor[data-chord-id="{moved_id}"]').get_attribute("data-character-offset")
+        results["same_line_body_drag"] = same_line_offset != original_offset
+
         page.locator('.lead-sheet .chord-line[data-line-index="1"]').scroll_into_view_if_needed()
-        handle_box = anchor.locator('.inline-chord-drag-handle').bounding_box()
+        anchor = page.locator(f'.lead-sheet .inline-chord-anchor[data-chord-id="{moved_id}"]')
+        handle_box = anchor.locator('.inline-chord-edit').bounding_box()
         line_box = page.locator('.lead-sheet .chord-line[data-line-index="1"]').bounding_box()
         page.mouse.move(handle_box["x"] + handle_box["width"] / 2, handle_box["y"] + handle_box["height"] / 2)
         page.mouse.down()
@@ -86,9 +108,23 @@ def main():
         )
         results["freeform_drag"] = (
             moved.count() == 1
-            and moved.get_attribute("data-character-offset") != original_offset
+            and moved.get_attribute("data-character-offset") != same_line_offset
             and untouched_after == untouched_before
         )
+
+        # Real Chromium touch input follows the same visible-symbol path.
+        touch_anchor = page.locator(f'.lead-sheet .inline-chord-anchor[data-chord-id="{moved_id}"]')
+        touch_box = touch_anchor.locator('.inline-chord-edit').bounding_box()
+        touch_line = page.locator('.lead-sheet .chord-line[data-line-index="1"]').bounding_box()
+        before_touch = touch_anchor.get_attribute("data-character-offset")
+        cdp = context.new_cdp_session(page)
+        start = {"x": touch_box["x"] + touch_box["width"] / 2, "y": touch_box["y"] + touch_box["height"] / 2}
+        finish = {"x": touch_line["x"] + 360, "y": touch_line["y"] + 8}
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [start]})
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [finish]})
+        cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+        page.wait_for_timeout(250)
+        results["touch_body_drag"] = touch_anchor.get_attribute("data-character-offset") != before_touch
 
         page.reload(wait_until="domcontentloaded")
         page.wait_for_function("() => window.transposeApp?.currentSongs?.length === 1")

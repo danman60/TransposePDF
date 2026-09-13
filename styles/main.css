@@ -708,10 +708,13 @@ body {
   top: 0;
   display: inline-flex;
   align-items: center;
+  cursor: grab;
+  touch-action: none;
 }
 .lead-sheet .inline-chord-edit {
-  cursor: text;
+  cursor: grab;
 }
+.lead-sheet .inline-chord-edit:focus { cursor: text; }
 .lead-sheet .inline-chord-drag-handle {
   width: 0.65rem;
   margin-left: 0.08rem;

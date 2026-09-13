@@ -166,21 +166,24 @@ class WorkspaceController {
   }
 
   handlePointerDown(event) {
-    const handle = event.target.closest?.('.inline-chord-drag-handle');
-    const chord = handle?.closest('.inline-chord-anchor');
+    const chord = event.target.closest?.('.inline-chord-anchor');
     if (!chord || !this.root.contains(chord)) return;
-    event.preventDefault();
     this.pointerDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false,
+      element: chord,
       source: { songId: chord.closest('.lead-sheet[data-song-id]')?.dataset.songId,
         sectionIndex: Number(chord.dataset.sectionIndex), lineIndex: Number(chord.dataset.lineIndex), chordId: chord.dataset.chordId } };
-    handle.setPointerCapture?.(event.pointerId);
   }
 
   handlePointerMove(event) {
     const drag = this.pointerDrag;
     if (!drag || drag.pointerId !== event.pointerId) return;
     if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 5) return;
-    drag.active = true;
+    if (!drag.active) {
+      drag.active = true;
+      drag.element?.setPointerCapture?.(event.pointerId);
+      drag.element?.classList.add('dragging');
+      window.getSelection?.()?.removeAllRanges();
+    }
     event.preventDefault();
     const line = document.elementFromPoint(event.clientX, event.clientY)?.closest('.lead-sheet .chord-line[data-section-index]');
     if (!line) return;
@@ -196,7 +199,7 @@ class WorkspaceController {
     if (!drag || drag.pointerId !== event.pointerId) return;
     const line = document.elementFromPoint(event.clientX, event.clientY)?.closest('.lead-sheet .chord-line[data-section-index]');
     this.pointerDrag = null;
-    this.root.querySelectorAll('.author-drop-target').forEach(item => { item.classList.remove('author-drop-target'); item.style.removeProperty('--drop-caret-left'); });
+    this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => { item.classList.remove('dragging', 'author-drop-target'); item.style.removeProperty('--drop-caret-left'); });
     if (!drag.active || !line) return;
     event.preventDefault();
     const width = this.ui.authoringController.measureAuthorCharacterWidth(line);
