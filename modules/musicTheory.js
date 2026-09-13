@@ -150,6 +150,13 @@ class MusicTheory {
     // Get current position in chromatic scale
     const rootWithAccidental = rootLetter + accidental;
     let currentIndex = this.CHROMATIC_SCALE.indexOf(rootWithAccidental);
+
+    // Normalize theoretical spellings such as B#, Cb, E#, Fb, and double accidentals.
+    if (currentIndex === -1) {
+      const naturalIndex = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[rootLetter];
+      const accidentalOffset = [...accidental].reduce((total, mark) => total + (mark === '#' ? 1 : -1), 0);
+      currentIndex = (naturalIndex + accidentalOffset + 24) % 12;
+    }
     
     // Handle enharmonic equivalents if not found
     if (currentIndex === -1) {

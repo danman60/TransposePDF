@@ -1041,6 +1041,25 @@ body {
   overflow-x: auto;
 }
 
+.chord-edit-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--text-secondary);
+}
+
+.chord-edit-bar[hidden] { display: none; }
+
+.chord-edit-bar input {
+  width: 7rem;
+  padding: 0.45rem 0.55rem;
+}
+
+.chord-edit-bar small { margin-left: auto; }
+
 .author-footer {
   justify-content: flex-end;
   margin-top: 1.25rem;
@@ -1078,6 +1097,11 @@ body {
   white-space: pre;
 }
 
+.chord-line.author-drop-target {
+  background: rgba(25, 118, 210, 0.12);
+  outline: 1px dashed var(--primary-color);
+}
+
 .lyric-line {
   color: var(--text-primary);
   line-height: 1.45;
@@ -1086,6 +1110,46 @@ body {
 
 .chord-token {
   color: var(--primary-color);
+}
+
+button.chord-token {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-color);
+  font: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  cursor: grab;
+}
+
+button.chord-token:hover,
+button.chord-token:focus-visible,
+button.chord-token[aria-pressed="true"] {
+  border-radius: 0.2rem;
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+  background: rgba(25, 118, 210, 0.12);
+}
+
+button.chord-token.dragging { opacity: 0.45; cursor: grabbing; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 700px) {
+  .chord-edit-bar { align-items: flex-start; flex-wrap: wrap; }
+  .chord-edit-bar small { flex-basis: 100%; margin-left: 0; }
 }
 
 .edit-song-button {

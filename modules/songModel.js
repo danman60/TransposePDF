@@ -10,7 +10,8 @@ class SongModel {
       lines: (section.lines || []).map((line, lineIndex) => ({
         id: line.id || `line-${sectionIndex + 1}-${lineIndex + 1}`,
         lyrics: line.lyrics || '',
-        chords: (line.chords || []).map(chord => ({
+        chords: (line.chords || []).map((chord, chordIndex) => ({
+          id: chord.id || `chord-${sectionIndex + 1}-${lineIndex + 1}-${chordIndex + 1}`,
           symbol: chord.symbol || '',
           characterOffset: Math.max(0, Number(chord.characterOffset) || 0),
           timestamp: chord.timestamp ?? null,
@@ -167,32 +168,61 @@ class SongModel {
   static retainAnalysisMetadata(edited, previous) {
     const oldLines = (previous.sections || []).flatMap(section => section.lines || []);
     const newLines = (edited.sections || []).flatMap(section => section.lines || []);
+    const matchedOldLines = new Set();
+
+    (edited.sections || []).forEach((section, sectionIndex) => {
+      const oldSection = previous.sections?.[sectionIndex];
+      if (oldSection?.id) section.id = oldSection.id;
+    });
+
     newLines.forEach((line, lineIndex) => {
-      const oldLine = oldLines[lineIndex];
+      const normalizedLyrics = this.normalizeLyrics(line.lyrics);
+      let oldLineIndex = oldLines.findIndex((candidate, candidateIndex) =>
+        !matchedOldLines.has(candidateIndex)
+        && this.normalizeLyrics(candidate.lyrics) === normalizedLyrics
+      );
+      if (oldLineIndex < 0 && oldLines[lineIndex] && !matchedOldLines.has(lineIndex)) {
+        oldLineIndex = lineIndex;
+      }
+      const oldLine = oldLineIndex >= 0 ? oldLines[oldLineIndex] : null;
       if (!oldLine) return;
+      matchedOldLines.add(oldLineIndex);
+      if (oldLine.id) line.id = oldLine.id;
       line.startTime = oldLine.startTime ?? null;
       line.endTime = oldLine.endTime ?? null;
       line.lyricConfidence = oldLine.lyricConfidence ?? null;
       line.timedWords = oldLine.timedWords || [];
       const available = [...(oldLine.chords || [])];
-      for (const chord of line.chords || []) {
-        if (!available.length) break;
-        let bestIndex = 0;
-        let bestScore = Infinity;
-        available.forEach((candidate, candidateIndex) => {
-          const symbolPenalty = candidate.symbol === chord.symbol ? 0 : 4;
-          const score = Math.abs(candidate.characterOffset - chord.characterOffset) + symbolPenalty;
-          if (score < bestScore) {
-            bestScore = score;
-            bestIndex = candidateIndex;
-          }
-        });
-        const [match] = available.splice(bestIndex, 1);
-        if (match.timestamp !== null || match.confidence !== null) {
-          chord.timestamp = match.timestamp;
-          chord.confidence = match.confidence;
+      (line.chords || []).forEach((chord, chordIndex) => {
+        const explicitTimestamp = chord.timestamp !== null && chord.timestamp !== undefined;
+        let bestIndex = available.findIndex(candidate =>
+          candidate.symbol === chord.symbol
+          && Number(candidate.characterOffset) === Number(chord.characterOffset)
+        );
+        if (bestIndex < 0) {
+          bestIndex = available.findIndex(candidate =>
+            Number(candidate.characterOffset) === Number(chord.characterOffset)
+          );
         }
-      }
+        if (bestIndex < 0) {
+          bestIndex = available.findIndex(candidate => candidate.symbol === chord.symbol);
+        }
+        if (bestIndex < 0 && chordIndex < available.length) bestIndex = chordIndex;
+        const match = bestIndex >= 0 ? available.splice(bestIndex, 1)[0] : null;
+        const unchanged = Boolean(match
+          && match.symbol === chord.symbol
+          && Number(match.characterOffset) === Number(chord.characterOffset));
+
+        if (match?.id) chord.id = match.id;
+        if (explicitTimestamp) return;
+        if (unchanged) {
+          chord.timestamp = match.timestamp ?? null;
+          chord.confidence = match.confidence ?? null;
+          return;
+        }
+        chord.timestamp = this.timestampForCharacterOffset(line, chord.characterOffset, match?.timestamp);
+        chord.confidence = null;
+      });
     });
     edited.tempo = previous.tempo ?? edited.tempo;
     edited.timeSignature = previous.timeSignature || edited.timeSignature;
@@ -200,6 +230,45 @@ class SongModel {
     edited.chords = previous.chords || [];
     edited.songText = this.toSongText(edited);
     return edited;
+  }
+
+  static normalizeLyrics(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  static timestampForCharacterOffset(line, characterOffset, fallback = null) {
+    const offset = Math.max(0, Number(characterOffset) || 0);
+    const words = (line.timedWords || [])
+      .map(word => ({
+        offset: Number(word.character_offset ?? word.characterOffset),
+        start: Number(word.start),
+        end: word.end === null || word.end === undefined ? null : Number(word.end)
+      }))
+      .filter(word => Number.isFinite(word.offset) && Number.isFinite(word.start))
+      .sort((left, right) => left.offset - right.offset);
+
+    if (words.length) {
+      if (offset <= words[0].offset) return words[0].start;
+      for (let index = 0; index < words.length - 1; index += 1) {
+        const left = words[index];
+        const right = words[index + 1];
+        if (offset > right.offset) continue;
+        const distance = right.offset - left.offset;
+        if (!distance) return left.start;
+        const ratio = (offset - left.offset) / distance;
+        return left.start + ((right.start - left.start) * ratio);
+      }
+      const last = words[words.length - 1];
+      return Number.isFinite(last.end) ? last.end : last.start;
+    }
+
+    const start = line.startTime === null || line.startTime === undefined ? NaN : Number(line.startTime);
+    const end = line.endTime === null || line.endTime === undefined ? NaN : Number(line.endTime);
+    if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {
+      const lyricLength = Math.max(1, String(line.lyrics || '').length);
+      return start + ((end - start) * Math.min(offset, lyricLength) / lyricLength);
+    }
+    return fallback ?? null;
   }
 }
 

@@ -131,7 +131,14 @@
                     <strong>Live preview</strong>
                     <span id="authorPreviewStatus">Start typing to preview your chart</span>
                 </div>
+                <div class="chord-edit-bar" id="chordEditBar" hidden>
+                    <strong id="selectedChordLabel">Selected chord</strong>
+                    <label for="chordTimingInput">Time (seconds)</label>
+                    <input id="chordTimingInput" type="number" min="0" step="0.05" inputmode="decimal">
+                    <small>Drag to place. Arrow keys move; Shift moves four columns.</small>
+                </div>
                 <div class="author-preview" id="authorPreview"></div>
+                <div class="sr-only" id="authorAnnouncement" aria-live="polite"></div>
             </div>
             <div class="author-footer">
                 <button class="primary-button" id="saveChartButton" type="button">Add chord sheet</button>

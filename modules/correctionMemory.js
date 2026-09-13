@@ -10,14 +10,20 @@ class ChordCorrectionMemory {
   }
 
   read() {
-    if (!this.storage) return { version: 1, records: [] };
+    if (!this.storage) return { version: 2, records: [], songEdits: {} };
     try {
       const value = JSON.parse(this.storage.getItem(ChordCorrectionMemory.STORAGE_KEY) || 'null');
-      if (value?.version === 1 && Array.isArray(value.records)) return value;
+      if (value?.version === 2 && Array.isArray(value.records) && value.songEdits
+        && typeof value.songEdits === 'object' && !Array.isArray(value.songEdits)) return value;
+      if (value?.version === 1 && Array.isArray(value.records)) {
+        const migrated = { version: 2, records: value.records, songEdits: {} };
+        this.write(migrated);
+        return migrated;
+      }
     } catch (_) {
       // A damaged preference must never stop chart editing.
     }
-    return { version: 1, records: [] };
+    return { version: 2, records: [], songEdits: {} };
   }
 
   write(value) {
@@ -38,7 +44,7 @@ class ChordCorrectionMemory {
   }
 
   learn(previous, edited, baselines = {}) {
-    if (previous?.sourceType !== 'audio') return { learned: 0, removed: 0 };
+    if (previous?.sourceType !== 'audio') return { learned: 0, removed: 0, savedEdits: 0 };
     const rawSections = baselines.rawSections
       || previous.source?.rawAnalysis?.sections
       || previous.sections
@@ -56,7 +62,7 @@ class ChordCorrectionMemory {
       const guess = this.matchEditedAnchor(visibleGuess, baseline) || visibleGuess;
       const index = Math.max(0, baseline.indexOf(guess));
       const context = this.contextFor(baseline, index, previous.originalKey);
-      const songFingerprint = this.songFingerprint(previous);
+      const songFingerprint = this.recordingFingerprint(previous);
       const existingIndexes = state.records
         .map((record, recordIndex) => {
           const matches = record.kind === 'enharmonic'
@@ -105,8 +111,17 @@ class ChordCorrectionMemory {
       learned += 1;
     });
 
+    const recordingFingerprint = this.recordingFingerprint(previous);
+    const savedEdits = this.countSavedEdits(previous, edited);
+    state.songEdits[recordingFingerprint] = {
+      title: edited.title,
+      artist: edited.artist || '',
+      originalKey: edited.originalKey,
+      sections: this.clone(edited.sections || []),
+      updatedAt: new Date().toISOString()
+    };
     this.write(state);
-    return { learned, removed };
+    return { learned, removed, savedEdits };
   }
 
   apply(song) {
@@ -122,7 +137,7 @@ class ChordCorrectionMemory {
     const state = this.read();
     const anchors = this.flatten(output.sections || []);
     const rawSymbols = anchors.map(anchor => anchor.symbol);
-    const songFingerprint = this.songFingerprint(output);
+    const songFingerprint = this.recordingFingerprint(output);
     let applied = 0;
     const appliedAnchors = new Set();
 
@@ -185,8 +200,18 @@ class ChordCorrectionMemory {
         applied += 1;
       }
     });
+    const saved = state.songEdits[this.recordingFingerprint(output)];
+    if (saved) {
+      output.title = saved.title || output.title;
+      output.artist = saved.artist || '';
+      output.originalKey = saved.originalKey || output.originalKey;
+      output.currentKey = output.originalKey;
+      output.transposition = 0;
+      output.sections = this.clone(saved.sections || []);
+      output.source.savedEditsApplied = true;
+    }
     output.source.learnedCorrectionsApplied = applied;
-    return { song: output, applied };
+    return { song: output, applied, savedEditsApplied: Boolean(saved) };
   }
 
   flatten(sections) {
@@ -281,6 +306,62 @@ class ChordCorrectionMemory {
       hash = Math.imul(hash, 16777619);
     }
     return `song-${(hash >>> 0).toString(16)}`;
+  }
+
+  recordingFingerprint(song) {
+    const source = song?.source || {};
+    const duration = Number(source.duration ?? song?.duration ?? 0);
+    const value = [
+      source.filename || '',
+      Number.isFinite(duration) ? duration.toFixed(2) : '',
+      source.authoritativeLyrics || source.transcriptText || ''
+    ].join('\n').toLowerCase();
+    let hash = 2166136261;
+    for (let index = 0; index < value.length; index += 1) {
+      hash ^= value.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `recording-${(hash >>> 0).toString(16)}`;
+  }
+
+  countSavedEdits(previous, edited) {
+    let count = previous.title === edited.title ? 0 : 1;
+    if (previous.originalKey !== edited.originalKey) count += 1;
+    const oldSections = previous.sections || [];
+    const newSections = edited.sections || [];
+    const sectionCount = Math.max(oldSections.length, newSections.length);
+    for (let sectionIndex = 0; sectionIndex < sectionCount; sectionIndex += 1) {
+      const oldSection = oldSections[sectionIndex];
+      const newSection = newSections[sectionIndex];
+      if (!oldSection || !newSection) {
+        count += 1;
+        continue;
+      }
+      if (oldSection.label !== newSection.label || oldSection.type !== newSection.type) count += 1;
+      const oldLines = oldSection.lines || [];
+      const newLines = newSection.lines || [];
+      const lineCount = Math.max(oldLines.length, newLines.length);
+      for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
+        const oldLine = oldLines[lineIndex];
+        const newLine = newLines[lineIndex];
+        if (!oldLine || !newLine) {
+          count += 1;
+          continue;
+        }
+        if (oldLine.lyrics !== newLine.lyrics) count += 1;
+        const oldChords = oldLine.chords || [];
+        const newChords = newLine.chords || [];
+        const chordCount = Math.max(oldChords.length, newChords.length);
+        for (let chordIndex = 0; chordIndex < chordCount; chordIndex += 1) {
+          const oldChord = oldChords[chordIndex];
+          const newChord = newChords[chordIndex];
+          if (!oldChord || !newChord || oldChord.symbol !== newChord.symbol
+            || oldChord.characterOffset !== newChord.characterOffset
+            || oldChord.timestamp !== newChord.timestamp) count += 1;
+        }
+      }
+    }
+    return count;
   }
 
   isEnharmonicChange(left, right) {

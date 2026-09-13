@@ -13,6 +13,10 @@ class UIController {
     this.audioAbortController = null;
     this.audioJobId = null;
     this.correctionMemory = new ChordCorrectionMemory();
+    this.authorDrag = null;
+    this.selectedAuthorChord = null;
+    this.authorTimingOverrides = new Map();
+    this.authorDraft = null;
     
     // Initialize UI elements
     this.initializeElements();
@@ -56,6 +60,10 @@ class UIController {
       authorContent: document.getElementById('authorContent'),
       authorPreview: document.getElementById('authorPreview'),
       authorPreviewStatus: document.getElementById('authorPreviewStatus'),
+      chordEditBar: document.getElementById('chordEditBar'),
+      selectedChordLabel: document.getElementById('selectedChordLabel'),
+      chordTimingInput: document.getElementById('chordTimingInput'),
+      authorAnnouncement: document.getElementById('authorAnnouncement'),
       importAudioButton: document.getElementById('importAudioButton'),
       cancelAudioButton: document.getElementById('cancelAudioButton'),
       audioFileInput: document.getElementById('audioFileInput'),
@@ -110,6 +118,15 @@ class UIController {
     this.elements.authorContent.addEventListener('input', () => this.updateAuthorPreview());
     this.elements.authorTitle.addEventListener('input', () => this.updateAuthorPreview());
     this.elements.authorKey.addEventListener('change', () => this.updateAuthorPreview());
+    this.elements.authorPreview.addEventListener('click', event => this.selectAuthorChord(event));
+    this.elements.authorPreview.addEventListener('focusin', event => this.selectAuthorChord(event));
+    this.elements.authorPreview.addEventListener('keydown', event => this.handleAuthorChordKeydown(event));
+    this.elements.authorPreview.addEventListener('dragstart', event => this.handleAuthorChordDragStart(event));
+    this.elements.authorPreview.addEventListener('dragover', event => this.handleAuthorChordDragOver(event));
+    this.elements.authorPreview.addEventListener('dragleave', event => this.handleAuthorChordDragLeave(event));
+    this.elements.authorPreview.addEventListener('drop', event => this.handleAuthorChordDrop(event));
+    this.elements.authorPreview.addEventListener('dragend', () => this.clearAuthorDragState());
+    this.elements.chordTimingInput.addEventListener('change', () => this.saveAuthorTimingOverride());
     
     // Upload area click
     this.elements.uploadArea.addEventListener('click', () => {
@@ -172,9 +189,11 @@ class UIController {
       const visibleLearning = this.correctionMemory.apply(editableSong);
       const song = SongModel.create({ ...visibleLearning.song, id: analyzedSong.id });
       this.currentSongs.push(song);
-      const learnedStatus = learned.applied
-        ? ` · applied ${learned.applied} learned correction${learned.applied === 1 ? '' : 's'}`
-        : '';
+      const learnedStatus = learned.savedEditsApplied
+        ? ' · restored your saved chart edits'
+        : learned.applied
+          ? ` · applied ${learned.applied} learned correction${learned.applied === 1 ? '' : 's'}`
+          : '';
       this.updateStatus(`Created draft for ${song.title}${learnedStatus}`, 'success');
       this.elements.audioFileInput.value = '';
       this.clearAudioLyrics();
@@ -266,6 +285,10 @@ class UIController {
   openAuthoring(songId = null) {
     const song = songId === null ? null : this.currentSongs.find(item => item.id === songId);
     this.editingSongId = song?.id ?? null;
+    this.selectedAuthorChord = null;
+    this.authorTimingOverrides.clear();
+    this.authorDraft = null;
+    this.elements.chordEditBar.hidden = true;
     this.elements.authorHeading.textContent = song ? 'Edit chord sheet' : 'Create a chord sheet';
     this.elements.saveChartButton.textContent = song ? 'Save changes' : 'Add chord sheet';
     this.elements.authorTitle.value = song?.title || '';
@@ -283,6 +306,9 @@ class UIController {
 
   closeAuthoring() {
     this.editingSongId = null;
+    this.selectedAuthorChord = null;
+    this.authorTimingOverrides.clear();
+    this.authorDraft = null;
     this.elements.authorSection.style.display = 'none';
     if (this.currentSongs.length) {
       this.displaySongs();
@@ -303,11 +329,9 @@ class UIController {
       return;
     }
 
-    const authored = SongModel.fromManual({
-      title,
-      originalKey: this.elements.authorKey.value,
-      content
-    });
+    const authored = this.authorDraft
+      ? SongModel.create({ ...this.authorDraft, title, originalKey: this.elements.authorKey.value, currentKey: this.elements.authorKey.value })
+      : SongModel.fromManual({ title, originalKey: this.elements.authorKey.value, content });
 
     if (this.editingSongId !== null) {
       const index = this.currentSongs.findIndex(song => song.id === this.editingSongId);
@@ -331,20 +355,23 @@ class UIController {
         content: SongModel.toEditorText(rawSong)
       });
       SongModel.retainAnalysisMetadata(rawBaseline, rawSong);
+      SongModel.retainAnalysisMetadata(authored, previous);
+      this.applyAuthorTimingOverrides(authored);
       const learning = this.correctionMemory.learn(previous, authored, {
         visibleSections: visibleBaseline.sections,
         rawSections: rawBaseline.sections
       });
-      SongModel.retainAnalysisMetadata(authored, previous);
       authored.source.correctionsLearned = learning.learned;
+      authored.source.savedEditsLearned = learning.savedEdits;
       this.currentSongs[index] = authored;
     } else {
       this.currentSongs.push(authored);
     }
 
     this.editingSongId = null;
+    this.authorDraft = null;
     this.elements.authorSection.style.display = 'none';
-    const learnedCount = authored.source?.correctionsLearned || 0;
+    const learnedCount = authored.source?.savedEditsLearned || authored.source?.correctionsLearned || 0;
     const learnedStatus = learnedCount
       ? ` · learned ${learnedCount} correction${learnedCount === 1 ? '' : 's'}`
       : '';
@@ -358,9 +385,207 @@ class UIController {
       originalKey: this.elements.authorKey.value,
       content: this.elements.authorContent.value
     });
+    if (this.editingSongId !== null) {
+      const previous = this.currentSongs.find(song => song.id === this.editingSongId);
+      if (previous) SongModel.retainAnalysisMetadata(draft, previous);
+    }
+    this.applyAuthorTimingOverrides(draft);
+    this.authorDraft = draft;
     const populated = draft.sections.some(section => section.lines.some(line => line.lyrics || line.chords.length));
-    this.elements.authorPreview.innerHTML = populated ? this.renderStructuredContent(draft) : '';
-    this.elements.authorPreviewStatus.textContent = populated ? 'Chords stay anchored above lyrics' : 'Start typing to preview your chart';
+    this.elements.authorPreview.innerHTML = populated ? this.renderStructuredContent(draft, { interactive: true }) : '';
+    this.elements.authorPreviewStatus.textContent = populated ? 'Drag chords to place them, or focus one and use arrow keys' : 'Start typing to preview your chart';
+    if (this.selectedAuthorChord) this.restoreAuthorChordSelection();
+  }
+
+  authorChordKey(chordId) {
+    return String(chordId || '');
+  }
+
+  selectAuthorChord(event) {
+    const token = event.target.closest('button.chord-token');
+    if (!token) return;
+    this.selectedAuthorChord = {
+      sectionIndex: Number(token.dataset.sectionIndex),
+      lineIndex: Number(token.dataset.lineIndex),
+      chordIndex: Number(token.dataset.chordIndex),
+      chordId: token.dataset.chordId
+    };
+    this.restoreAuthorChordSelection();
+  }
+
+  restoreAuthorChordSelection() {
+    const selection = this.selectedAuthorChord;
+    if (!selection) return;
+    const selector = `button.chord-token[data-chord-id="${CSS.escape(selection.chordId)}"]`;
+    const token = this.elements.authorPreview.querySelector(selector);
+    this.elements.authorPreview.querySelectorAll('button.chord-token').forEach(item => item.setAttribute('aria-pressed', String(item === token)));
+    if (!token) {
+      this.selectedAuthorChord = null;
+      this.elements.chordEditBar.hidden = true;
+      return;
+    }
+    const key = this.authorChordKey(selection.chordId);
+    const override = this.authorTimingOverrides.get(key);
+    const timestamp = override ?? token.dataset.timestamp;
+    this.elements.selectedChordLabel.textContent = `${token.textContent} selected`;
+    this.elements.chordTimingInput.value = timestamp === '' || timestamp === undefined ? '' : Number(timestamp).toFixed(2);
+    this.elements.chordEditBar.hidden = false;
+  }
+
+  saveAuthorTimingOverride() {
+    if (!this.selectedAuthorChord) return;
+    const value = this.elements.chordTimingInput.value;
+    const key = this.authorChordKey(this.selectedAuthorChord.chordId);
+    if (value === '') {
+      this.authorTimingOverrides.delete(key);
+      this.announceAuthorEdit('Custom chord time cleared');
+      return;
+    }
+    if (!Number.isFinite(Number(value)) || Number(value) < 0) return;
+    this.authorTimingOverrides.set(key, Number(value));
+    this.announceAuthorEdit(`Chord time set to ${Number(value).toFixed(2)} seconds`);
+  }
+
+  applyAuthorTimingOverrides(song) {
+    this.authorTimingOverrides.forEach((timestamp, key) => {
+      const chord = (song.sections || []).flatMap(section => section.lines || [])
+        .flatMap(line => line.chords || []).find(item => item.id === key);
+      if (!chord) return;
+      chord.timestamp = timestamp;
+      chord.confidence = null;
+      chord.timingEdited = true;
+    });
+  }
+
+  handleAuthorChordDragStart(event) {
+    const token = event.target.closest('button.chord-token');
+    if (!token) return;
+    this.authorDrag = {
+      sectionIndex: Number(token.dataset.sectionIndex),
+      lineIndex: Number(token.dataset.lineIndex),
+      chordIndex: Number(token.dataset.chordIndex),
+      chordId: token.dataset.chordId
+    };
+    token.classList.add('dragging');
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', JSON.stringify(this.authorDrag));
+  }
+
+  handleAuthorChordDragOver(event) {
+    const line = event.target.closest('.chord-line[data-section-index]');
+    if (!line || !this.authorDrag) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    this.elements.authorPreview.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
+    line.classList.add('author-drop-target');
+  }
+
+  handleAuthorChordDragLeave(event) {
+    const line = event.target.closest('.chord-line[data-section-index]');
+    if (line && !line.contains(event.relatedTarget)) line.classList.remove('author-drop-target');
+  }
+
+  handleAuthorChordDrop(event) {
+    const line = event.target.closest('.chord-line[data-section-index]');
+    if (!line || !this.authorDrag) return;
+    event.preventDefault();
+    const destination = {
+      sectionIndex: Number(line.dataset.sectionIndex),
+      lineIndex: Number(line.dataset.lineIndex)
+    };
+    const rect = line.getBoundingClientRect();
+    const characterWidth = this.measureAuthorCharacterWidth(line);
+    const offset = Math.max(0, Math.round((event.clientX - rect.left) / characterWidth));
+    this.moveAuthorChord(this.authorDrag, destination, offset);
+    this.clearAuthorDragState();
+  }
+
+  handleAuthorChordKeydown(event) {
+    const token = event.target.closest('button.chord-token');
+    if (!token) return;
+    if (event.key === 'Escape') {
+      token.blur();
+      this.selectedAuthorChord = null;
+      this.elements.chordEditBar.hidden = true;
+      return;
+    }
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const source = {
+      sectionIndex: Number(token.dataset.sectionIndex),
+      lineIndex: Number(token.dataset.lineIndex),
+      chordIndex: Number(token.dataset.chordIndex),
+      chordId: token.dataset.chordId
+    };
+    const amount = event.shiftKey ? 4 : 1;
+    const destination = { sectionIndex: source.sectionIndex, lineIndex: source.lineIndex };
+    let offset = Number(token.dataset.characterOffset) || 0;
+    if (event.key === 'ArrowLeft') offset = Math.max(0, offset - amount);
+    if (event.key === 'ArrowRight') offset += amount;
+    if (event.key === 'ArrowUp') destination.lineIndex = Math.max(0, source.lineIndex - 1);
+    if (event.key === 'ArrowDown') destination.lineIndex += 1;
+    this.moveAuthorChord(source, destination, offset, true);
+  }
+
+  moveAuthorChord(source, destination, offset, restoreFocus = false) {
+    const draft = this.authorDraft || SongModel.fromManual({
+      title: this.elements.authorTitle.value || 'Untitled Song', originalKey: this.elements.authorKey.value,
+      content: this.elements.authorContent.value
+    });
+    const sourceLine = draft.sections?.[source.sectionIndex]?.lines?.[source.lineIndex];
+    const destinationLine = draft.sections?.[destination.sectionIndex]?.lines?.[destination.lineIndex];
+    const chord = sourceLine?.chords?.find(item => item.id === source.chordId) || sourceLine?.chords?.[source.chordIndex];
+    if (!chord || !destinationLine) return;
+    sourceLine.chords.splice(sourceLine.chords.indexOf(chord), 1);
+    chord.characterOffset = this.availableChordOffset(destinationLine.chords, offset, chord.symbol);
+    if (!this.authorTimingOverrides.has(this.authorChordKey(chord.id))) {
+      chord.timestamp = SongModel.timestampForCharacterOffset(destinationLine, chord.characterOffset, chord.timestamp);
+      chord.confidence = null;
+    }
+    destinationLine.chords.push(chord);
+    destinationLine.chords.sort((a, b) => a.characterOffset - b.characterOffset);
+    const chordIndex = destinationLine.chords.indexOf(chord);
+    this.elements.authorContent.value = SongModel.toEditorText(draft);
+    this.selectedAuthorChord = { ...destination, chordIndex, chordId: chord.id };
+    this.authorDraft = draft;
+    const populated = draft.sections.some(section => section.lines.some(line => line.lyrics || line.chords.length));
+    this.elements.authorPreview.innerHTML = populated ? this.renderStructuredContent(draft, { interactive: true }) : '';
+    this.restoreAuthorChordSelection();
+    if (restoreFocus) {
+      const selected = this.elements.authorPreview.querySelector('button.chord-token[aria-pressed="true"]');
+      selected?.focus();
+    }
+    this.announceAuthorEdit(`${chord.symbol} moved to column ${chord.characterOffset + 1}`);
+  }
+
+  availableChordOffset(chords, desired, symbol) {
+    let offset = Math.max(0, Number(desired) || 0);
+    const sorted = [...(chords || [])].sort((a, b) => a.characterOffset - b.characterOffset);
+    while (sorted.some(chord => {
+      const start = Number(chord.characterOffset) || 0;
+      const end = start + String(chord.symbol || '').length;
+      return offset < end + 1 && offset + String(symbol || '').length >= start;
+    })) offset += 1;
+    return offset;
+  }
+
+  measureAuthorCharacterWidth(line) {
+    const context = document.createElement('canvas').getContext('2d');
+    const style = getComputedStyle(line);
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    return context.measureText('0').width || 9.6;
+  }
+
+  clearAuthorDragState() {
+    this.authorDrag = null;
+    this.elements.authorPreview.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
+      item.classList.remove('dragging', 'author-drop-target');
+    });
+  }
+
+  announceAuthorEdit(message) {
+    this.elements.authorAnnouncement.textContent = '';
+    requestAnimationFrame(() => { this.elements.authorAnnouncement.textContent = message; });
   }
 
   /**
@@ -610,20 +835,21 @@ class UIController {
     return html;
   }
 
-  renderStructuredContent(song) {
+  renderStructuredContent(song, options = {}) {
     const musicTheory = new MusicTheory();
     const sections = song.sections || [];
-    return `<div class="structured-chart">${sections.map(section => {
+    return `<div class="structured-chart">${sections.map((section, sectionIndex) => {
       const label = section.label ? `<div class="section-label">${this.escapeHtml(section.label)}</div>` : '';
-      const lines = (section.lines || []).map(line => {
-        const chords = (line.chords || []).map(chord => ({
+      const lines = (section.lines || []).map((line, lineIndex) => {
+        const chords = (line.chords || []).map((chord, chordIndex) => ({
           ...chord,
+          chordIndex,
           displaySymbol: song.transposition === 0
             ? chord.symbol
             : musicTheory.transposeChord(chord.symbol, song.transposition)
         }));
         return `<div class="chart-line">
-          <div class="chord-line" aria-label="Chords">${this.renderChordAnchors(chords)}</div>
+          <div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex })}</div>
           <div class="lyric-line">${this.escapeHtml(line.lyrics || '') || '&nbsp;'}</div>
         </div>`;
       }).join('');
@@ -631,14 +857,20 @@ class UIController {
     }).join('')}</div>`;
   }
 
-  renderChordAnchors(chords) {
+  renderChordAnchors(chords, options = {}) {
     if (!chords.length) return '&nbsp;';
     const output = [];
     let cursor = 0;
     [...chords].sort((a, b) => a.characterOffset - b.characterOffset).forEach(chord => {
       const offset = Math.max(cursor, Number(chord.characterOffset) || 0);
       if (offset > cursor) output.push(this.escapeHtml(' '.repeat(offset - cursor)));
-      output.push(`<span class="chord-token">${this.escapeHtml(chord.displaySymbol || chord.symbol)}</span>`);
+      const symbol = this.escapeHtml(chord.displaySymbol || chord.symbol);
+      if (options.interactive) {
+        const timestamp = chord.timestamp ?? '';
+        output.push(`<button type="button" class="chord-token" draggable="true" aria-pressed="false" data-chord-id="${this.escapeHtml(chord.id)}" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" data-character-offset="${Number(chord.characterOffset) || 0}" data-timestamp="${timestamp}" title="Drag to place; arrow keys move">${symbol}</button>`);
+      } else {
+        output.push(`<span class="chord-token">${symbol}</span>`);
+      }
       cursor = offset + String(chord.displaySymbol || chord.symbol).length;
     });
     return output.join('');
