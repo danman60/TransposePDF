@@ -19,11 +19,21 @@ class UIController {
     this.authorDraft = null;
     this.authorPointerDrag = null;
     this.lastFocusedElement = null;
+    this.libraryStore = typeof LibraryStore !== 'undefined' ? new LibraryStore() : null;
+    this.telemetry = typeof SessionTelemetry !== 'undefined' ? new SessionTelemetry() : null;
+    this.activeSession = null;
+    this.activeSongId = null;
+    this.songRevisions = new Map();
+    this.autosaveTimer = null;
+    this.pendingRecoveryDraft = null;
+    this.authorDraftPersistentId = null;
+    this.sessionSaveQueue = Promise.resolve();
     
     // Initialize UI elements
     this.initializeElements();
     this.attachEventListeners();
     this.initializeDragAndDrop();
+    this.ready = this.initializePersistence();
   }
 
   /**
@@ -50,6 +60,15 @@ class UIController {
       // Songs
       songCount: document.getElementById('songCount'),
       songsContainer: document.getElementById('songsContainer'),
+      songSelectorList: document.getElementById('songSelectorList'),
+      activeSongSelect: document.getElementById('activeSongSelect'),
+      librarySongCount: document.getElementById('librarySongCount'),
+      sessionName: document.getElementById('sessionName'),
+      sessionSaveState: document.getElementById('sessionSaveState'),
+      recoveryBanner: document.getElementById('recoveryBanner'),
+      recoveryMessage: document.getElementById('recoveryMessage'),
+      restoreDraftButton: document.getElementById('restoreDraftButton'),
+      discardDraftButton: document.getElementById('discardDraftButton'),
 
       // Authoring
       createChartButton: document.getElementById('createChartButton'),
@@ -165,6 +184,83 @@ class UIController {
     this.elements.exportFilename.addEventListener('input', (e) => {
       this.exportFilename = e.target.value || 'Transposed Songbook';
     });
+    this.elements.activeSongSelect?.addEventListener('change', event => this.selectActiveSong(event.target.value));
+    this.elements.sessionName?.addEventListener('input', () => this.scheduleSessionSave());
+    this.elements.restoreDraftButton?.addEventListener('click', () => this.restoreRecoveryDraft());
+    this.elements.discardDraftButton?.addEventListener('click', () => this.discardRecoveryDraft());
+    ['input', 'change'].forEach(name => {
+      this.elements.authorTitle.addEventListener(name, () => this.scheduleDraftSave('editor.changed'));
+      this.elements.authorKey.addEventListener(name, () => this.scheduleDraftSave('editor.changed'));
+      this.elements.authorContent.addEventListener(name, () => this.scheduleDraftSave('editor.changed'));
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') this.flushDraftSave();
+    });
+  }
+
+  async initializePersistence() {
+    this.setSaveState('Saving…');
+    try {
+      if (!this.libraryStore) throw new Error('Persistent library unavailable');
+      await this.libraryStore.open();
+      this.activeSession = await this.libraryStore.getSession();
+      this.elements.sessionName.value = this.activeSession?.name || 'My songs';
+      const songs = [];
+      for (const item of this.activeSession?.items || []) {
+        const record = await this.libraryStore.getSong(item.songId);
+        if (!record || record.archivedAt) continue;
+        this.songRevisions.set(record.id, record.revision);
+        songs.push(SongModel.create({
+          ...record.song,
+          id: record.id,
+          transposition: item.transpose,
+          spellingPolicy: item.spellingPolicy,
+          currentKey: new MusicTheory().transposeKey(record.song.originalKey, item.transpose, item.spellingPolicy)
+        }));
+      }
+      this.currentSongs = songs;
+      const activeItem = this.activeSession?.items?.find(item => item.id === this.activeSession.activeItemId);
+      this.activeSongId = activeItem?.songId || songs[0]?.id || null;
+      if (songs.length) this.displaySongs();
+      await this.offerNewestRecoveryDraft();
+      this.setSaveState('Saved');
+      this.track('session.started', { songCount: songs.length });
+      this.updateTelemetrySnapshot();
+    } catch (error) {
+      this.setSaveState('Save failed');
+      this.track('ui.error', { operation: 'restore', errorCode: 'persistence_failed' });
+    }
+  }
+
+  setSaveState(value) {
+    if (this.elements.sessionSaveState) this.elements.sessionSaveState.textContent = value;
+  }
+
+  track(eventType, data = {}, song = null) {
+    try {
+      this.telemetry?.emit(eventType, data, {
+        screen: this.telemetry?.screen,
+        songId: song?.id || this.activeSongId,
+        sourceType: song?.sourceType || null
+      });
+    } catch (_) {}
+  }
+
+  updateTelemetrySnapshot(extra = {}) {
+    try {
+      this.telemetry?.updateSnapshot({
+        screen: this.telemetry.screen,
+        activeSongId: this.activeSongId,
+        currentSongs: this.currentSongs,
+        editor: this.elements.authorSection?.style.display !== 'none' ? this.editorSnapshot() : null,
+        ...extra
+      });
+    } catch (_) {}
+  }
+
+  setScreen(screen, data = {}) {
+    try { this.telemetry?.setScreen(screen, data); } catch (_) {}
+    this.updateTelemetrySnapshot();
   }
 
   showStartView(mode = 'start') {
@@ -175,6 +271,137 @@ class UIController {
     if (mode === 'start' && this.currentSongs.length) {
       this.elements.songsSection.style.display = 'block';
     }
+    const telemetryScreen = mode === 'audio' ? 'audio-import' : mode === 'pdf' ? 'pdf-import' : 'start';
+    this.setScreen(telemetryScreen);
+  }
+
+  async persistSong(song, { addToSession = true } = {}) {
+    if (!this.libraryStore) return song;
+    this.setSaveState('Saving…');
+    try {
+      if (!song.id || typeof song.id !== 'string') song.id = this.libraryStore.createId();
+      const expectedRevision = this.songRevisions.get(String(song.id));
+      const record = await this.libraryStore.saveSong(song, {
+        expectedRevision: expectedRevision === undefined ? null : expectedRevision
+      });
+      song.id = record.id;
+      this.songRevisions.set(record.id, record.revision);
+      if (addToSession) {
+        this.activeSession ||= await this.libraryStore.getSession();
+        if (!this.activeSession.items.some(item => item.songId === record.id)) {
+          const item = {
+            id: this.libraryStore.createId(), songId: record.id,
+            transpose: song.transposition || 0, spellingPolicy: song.spellingPolicy || 'contextual'
+          };
+          this.activeSession.items.push(item);
+          this.activeSession.activeItemId = item.id;
+          this.activeSongId = record.id;
+        }
+        await this.persistSession();
+      }
+      this.setSaveState('Saved');
+      return song;
+    } catch (error) {
+      this.setSaveState('Save failed');
+      this.track('ui.error', { operation: 'song.save', errorCode: error.name });
+      throw error;
+    }
+  }
+
+  persistSession() {
+    this.sessionSaveQueue = this.sessionSaveQueue.catch(() => {}).then(() => this.persistSessionNow());
+    return this.sessionSaveQueue;
+  }
+
+  async persistSessionNow() {
+    if (!this.libraryStore || !this.activeSession) return;
+    const saved = await this.libraryStore.saveSession({
+      ...this.activeSession,
+      name: this.elements.sessionName?.value.trim() || 'My songs',
+      items: this.activeSession.items.map(item => {
+        const song = this.currentSongs.find(candidate => String(candidate.id) === String(item.songId));
+        return { ...item, transpose: song?.transposition ?? item.transpose, spellingPolicy: song?.spellingPolicy || item.spellingPolicy };
+      })
+    }, { expectedRevision: this.activeSession.revision });
+    this.activeSession = saved;
+    this.setSaveState('Saved');
+    this.updateTelemetrySnapshot();
+  }
+
+  scheduleSessionSave() {
+    this.setSaveState('Saving…');
+    clearTimeout(this.sessionSaveTimer);
+    this.sessionSaveTimer = setTimeout(() => this.persistSession().catch(() => this.setSaveState('Save failed')), 500);
+  }
+
+  editorSnapshot() {
+    return {
+      title: this.elements.authorTitle.value,
+      originalKey: this.elements.authorKey.value,
+      content: this.elements.authorContent.value,
+      timingOverrides: [...this.authorTimingOverrides.entries()]
+    };
+  }
+
+  scheduleDraftSave(eventType = 'editor.changed') {
+    if (this.elements.authorSection?.style.display === 'none') return;
+    this.setSaveState('Saving…');
+    clearTimeout(this.autosaveTimer);
+    this.autosaveTimer = setTimeout(() => this.flushDraftSave(), 700);
+    this.track(eventType, {}, this.currentSongs.find(song => String(song.id) === String(this.editingSongId)));
+    this.updateTelemetrySnapshot();
+  }
+
+  async flushDraftSave() {
+    clearTimeout(this.autosaveTimer);
+    this.autosaveTimer = null;
+    if (!this.libraryStore || this.elements.authorSection?.style.display === 'none') return;
+    const entityId = this.editingSongId || this.authorDraftPersistentId;
+    if (!entityId) return;
+    try {
+      await this.libraryStore.saveDraft(entityId, this.editorSnapshot(), {
+        id: `song:${entityId}`,
+        baseRevision: this.songRevisions.get(String(entityId)) || 0
+      });
+      this.setSaveState('Saved');
+    } catch (_) {
+      this.setSaveState('Save failed');
+    }
+  }
+
+  async offerNewestRecoveryDraft() {
+    const drafts = await this.libraryStore.listDrafts();
+    for (const draft of drafts) {
+      const recoverable = await this.libraryStore.getRecoverableDraft(draft.entityId);
+      if (!recoverable) continue;
+      this.pendingRecoveryDraft = recoverable;
+      this.elements.recoveryMessage.textContent = `Unsaved changes from ${new Date(recoverable.savedAt).toLocaleString()} are available.`;
+      this.elements.recoveryBanner.hidden = false;
+      return;
+    }
+  }
+
+  restoreRecoveryDraft() {
+    const draft = this.pendingRecoveryDraft;
+    if (!draft) return;
+    const song = this.currentSongs.find(item => String(item.id) === draft.entityId);
+    this.openAuthoring(song?.id || null);
+    this.authorDraftPersistentId = draft.entityId;
+    this.elements.authorTitle.value = draft.editor.title || '';
+    this.elements.authorKey.value = draft.editor.originalKey || 'C';
+    this.elements.authorContent.value = draft.editor.content || '';
+    this.authorTimingOverrides = new Map(draft.editor.timingOverrides || []);
+    this.updateAuthorPreview(true);
+    this.elements.recoveryBanner.hidden = true;
+    this.track('draft.recovered');
+  }
+
+  async discardRecoveryDraft() {
+    if (!this.pendingRecoveryDraft) return;
+    await this.libraryStore.deleteDraft(this.pendingRecoveryDraft.entityId);
+    this.pendingRecoveryDraft = null;
+    this.elements.recoveryBanner.hidden = true;
+    this.track('draft.discarded');
   }
 
   async handleAudioUpload(event) {
@@ -185,6 +412,8 @@ class UIController {
     this.audioAbortController = new AbortController();
     this.elements.audioJob.style.display = 'block';
     this.updateAudioProgress('Uploading recording', 5, 'Sending audio to the analysis server.');
+    this.track('import.started', { type: 'audio', size: file.size });
+    this.setScreen('audio-import');
 
     try {
       const formData = new FormData();
@@ -208,7 +437,7 @@ class UIController {
         }
       };
       const learned = this.correctionMemory.apply(normalizedResult);
-      const analyzedSong = SongModel.create({ ...learned.song, id: Date.now() });
+      const analyzedSong = SongModel.create({ ...learned.song, id: this.libraryStore?.createId() || String(Date.now()) });
       const editableSong = SongModel.fromManual({
         title: analyzedSong.title,
         originalKey: analyzedSong.originalKey,
@@ -220,6 +449,7 @@ class UIController {
       SongModel.retainAnalysisMetadata(editableSong, analyzedSong);
       const visibleLearning = this.correctionMemory.apply(editableSong);
       const song = SongModel.create({ ...visibleLearning.song, id: analyzedSong.id });
+      await this.persistSong(song);
       this.currentSongs.push(song);
       const learnedStatus = learned.savedEditsApplied
         ? ' · restored your saved chart edits'
@@ -231,11 +461,13 @@ class UIController {
       this.clearAudioLyrics();
       this.elements.audioJob.style.display = 'none';
       this.openAuthoring(song.id);
+      this.track('import.completed', { type: 'audio' }, song);
     } catch (error) {
       if (this.audioJobId && error.name !== 'AbortError') {
         fetch(`/api/audio-jobs/${encodeURIComponent(this.audioJobId)}`, { method: 'DELETE' }).catch(() => {});
       }
       if (error.name !== 'AbortError') {
+        this.track('import.failed', { type: 'audio' });
         this.updateAudioProgress('Analysis failed', 0, error.message);
         this.showError(`Recording analysis failed: ${error.message}`);
         this.updateStatus('Recording analysis failed', 'error');
@@ -313,6 +545,8 @@ class UIController {
     this.elements.audioJobProgress.style.width = `${percent}%`;
     this.elements.audioJobProgressTrack.setAttribute('aria-valuenow', String(percent));
     this.elements.audioJobMessage.textContent = message;
+    this.track('import.progress', { type: 'audio', stage, progress: percent });
+    this.updateTelemetrySnapshot({ activeJob: { stage, progress: percent } });
   }
 
   normalizeAnalyzedSongSpellings(song) {
@@ -328,11 +562,12 @@ class UIController {
   }
 
   openAuthoring(songId = null) {
-    const song = songId === null ? null : this.currentSongs.find(item => item.id === songId);
+    const song = songId === null ? null : this.currentSongs.find(item => String(item.id) === String(songId));
     this.editingSongId = song?.id ?? null;
     this.selectedAuthorChord = null;
     this.authorTimingOverrides.clear();
     this.authorDraft = song ? SongModel.create(song) : null;
+    this.authorDraftPersistentId = song?.id || this.libraryStore?.createId() || String(Date.now());
     this.authorLastSerializedText = song ? SongModel.toEditorText(song) : '';
     this.elements.chordEditBar.hidden = true;
     this.elements.authorHeading.textContent = song ? 'Edit chord sheet' : 'Create a chord sheet';
@@ -348,9 +583,12 @@ class UIController {
     this.elements.authorSection.style.display = 'block';
     this.updateAuthorPreview();
     this.elements.authorTitle.focus();
+    this.setScreen('author-source', { songId: song?.id || null });
+    this.track('editor.opened', {}, song);
   }
 
   closeAuthoring() {
+    this.flushDraftSave();
     this.editingSongId = null;
     this.selectedAuthorChord = null;
     this.authorTimingOverrides.clear();
@@ -363,7 +601,7 @@ class UIController {
     }
   }
 
-  saveAuthoredSong() {
+  async saveAuthoredSong() {
     const title = this.elements.authorTitle.value.trim();
     const content = this.elements.authorContent.value;
     if (!title) {
@@ -378,6 +616,7 @@ class UIController {
     const authored = this.authorDraft
       ? SongModel.create({ ...this.authorDraft, title, originalKey: this.elements.authorKey.value, currentKey: this.elements.authorKey.value })
       : SongModel.fromManual({ title, originalKey: this.elements.authorKey.value, content });
+    if (!authored.id || typeof authored.id !== 'string') authored.id = this.authorDraftPersistentId;
 
     if (this.editingSongId !== null) {
       const index = this.currentSongs.findIndex(song => song.id === this.editingSongId);
@@ -415,6 +654,14 @@ class UIController {
       this.currentSongs.push(authored);
     }
 
+    try {
+      await this.persistSong(authored, { addToSession: this.editingSongId === null });
+      await this.libraryStore?.deleteDraft(this.editingSongId || this.authorDraftPersistentId);
+    } catch (error) {
+      this.showError(`Could not save chart: ${error.message}`);
+      return;
+    }
+
     this.editingSongId = null;
     this.authorDraft = null;
     this.elements.authorSection.style.display = 'none';
@@ -426,6 +673,8 @@ class UIController {
       ? ' · chart saved for this session, but learning could not be stored in this browser'
       : '';
     this.updateStatus(`Saved ${authored.title}${learnedStatus}${persistenceWarning}`, persistenceWarning ? 'warning' : 'success');
+    this.activeSongId = authored.id;
+    this.track('chart.saved', {}, authored);
     this.displaySongs();
   }
 
@@ -440,7 +689,7 @@ class UIController {
     draft.title = this.elements.authorTitle.value || 'Untitled Song';
     draft.originalKey = this.elements.authorKey.value;
     if (this.editingSongId !== null) {
-      const previous = this.currentSongs.find(song => song.id === this.editingSongId);
+      const previous = this.currentSongs.find(song => String(song.id) === String(this.editingSongId));
       if (previous) SongModel.retainAnalysisMetadata(draft, previous);
     }
     this.applyAuthorTimingOverrides(draft);
@@ -577,11 +826,13 @@ class UIController {
     if (value === '') {
       this.authorTimingOverrides.delete(key);
       this.announceAuthorEdit('Custom chord time cleared');
+      this.scheduleDraftSave('chord.timing_changed');
       return;
     }
     if (!Number.isFinite(Number(value)) || Number(value) < 0) return;
     this.authorTimingOverrides.set(key, Number(value));
     this.announceAuthorEdit(`Chord time set to ${Number(value).toFixed(2)} seconds`);
+    this.scheduleDraftSave('chord.timing_changed');
   }
 
   applyAuthorTimingOverrides(song) {
@@ -699,6 +950,7 @@ class UIController {
       selected?.focus();
     }
     this.announceAuthorEdit(`${chord.symbol} moved to column ${chord.characterOffset + 1}`);
+    this.scheduleDraftSave('chord.dragged');
   }
 
   availableChordOffset(chords, desired, symbol) {
@@ -804,6 +1056,8 @@ class UIController {
       }
       
       this.currentFile = file;
+      this.track('import.started', { type: 'pdf', size: file.size });
+      this.setScreen('pdf-import');
       this.updateStatus('Loading PDF...', 'info');
       
       // Process PDF
@@ -821,13 +1075,14 @@ class UIController {
       this.updateStatus('Analyzing chords...', 'info');
       
       // Process each song
-      const importIdBase = Date.now();
       const importedSongs = songs.map((song, index) => ({
         ...SongModel.fromPDFSong(song),
-        id: importIdBase + index,
+        id: this.libraryStore?.createId() || `${Date.now()}-${index}`,
         transposition: 0
       }));
+      for (const song of importedSongs) await this.persistSong(song);
       this.currentSongs = [...this.currentSongs, ...importedSongs];
+      this.activeSongId = importedSongs[0]?.id || this.activeSongId;
       
       this.showUploadProgress(100);
       this.updateStatus(`Successfully loaded ${songs.length} songs`, 'success');
@@ -836,8 +1091,10 @@ class UIController {
       this.hideLoading();
       this.hideUploadProgress();
       this.displaySongs();
+      this.track('import.completed', { type: 'pdf', songCount: songs.length });
       
     } catch (error) {
+      this.track('import.failed', { type: 'pdf' });
       this.hideLoading();
       this.hideUploadProgress();
       this.showError(error.message);
@@ -859,14 +1116,17 @@ class UIController {
     // Update song count
     this.elements.songCount.textContent = this.currentSongs.length;
     
+    if (!this.currentSongs.some(song => String(song.id) === String(this.activeSongId))) {
+      this.activeSongId = this.currentSongs[0].id;
+    }
+    this.renderSongSelectors();
+
     // Clear container
     this.elements.songsContainer.innerHTML = '';
     
     // Create full lead sheet view for each song
-    this.currentSongs.forEach((song, index) => {
-      const songSheet = this.createLeadSheetView(song, index);
-      this.elements.songsContainer.appendChild(songSheet);
-    });
+    const activeSong = this.currentSongs.find(song => String(song.id) === String(this.activeSongId));
+    this.elements.songsContainer.appendChild(this.createLeadSheetView(activeSong, this.currentSongs.indexOf(activeSong)));
     
     // Show sections
     this.elements.uploadSection.style.display = 'none';
@@ -874,6 +1134,35 @@ class UIController {
     this.elements.authorSection.style.display = 'none';
     this.elements.songsSection.style.display = 'block';
     this.elements.exportButton.disabled = false;
+    this.setScreen('songs');
+    this.updateTelemetrySnapshot();
+  }
+
+  renderSongSelectors() {
+    const options = this.currentSongs.map(song =>
+      `<option value="${this.escapeHtml(String(song.id))}"${String(song.id) === String(this.activeSongId) ? ' selected' : ''}>${this.escapeHtml(song.title)} · ${this.escapeHtml(song.currentKey)}</option>`
+    ).join('');
+    if (this.elements.activeSongSelect) this.elements.activeSongSelect.innerHTML = options;
+    if (this.elements.librarySongCount) this.elements.librarySongCount.textContent = this.currentSongs.length;
+    if (this.elements.songSelectorList) {
+      this.elements.songSelectorList.innerHTML = this.currentSongs.map(song => {
+        const active = String(song.id) === String(this.activeSongId);
+        return `<button type="button" class="song-selector-item${active ? ' active' : ''}" data-song-id="${this.escapeHtml(String(song.id))}" aria-current="${active ? 'true' : 'false'}"><strong>${this.escapeHtml(song.title)}</strong><span>${this.escapeHtml(song.currentKey)}</span></button>`;
+      }).join('');
+      this.elements.songSelectorList.querySelectorAll('[data-song-id]').forEach(button =>
+        button.addEventListener('click', () => this.selectActiveSong(button.dataset.songId)));
+    }
+  }
+
+  selectActiveSong(songId) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return;
+    this.activeSongId = song.id;
+    const item = this.activeSession?.items.find(candidate => candidate.songId === String(song.id));
+    if (item) this.activeSession.activeItemId = item.id;
+    this.displaySongs();
+    this.persistSession().catch(() => this.setSaveState('Save failed'));
+    this.track('song.selected', {}, song);
   }
 
   /**
@@ -887,6 +1176,7 @@ class UIController {
     sheet.setAttribute('aria-label', `${song.title} chord sheet`);
     
     // Create transpose controls bar
+    const songIdArgument = JSON.stringify(String(song.id));
     const controlsBar = `
       <div class="song-controls">
         <div class="song-header">
@@ -898,22 +1188,22 @@ class UIController {
         </div>
         
         <div class="transpose-controls">
-          <button class="secondary-button edit-song-button" onclick="window.transposeApp.openAuthoring(${song.id})" title="Edit chord sheet">Edit</button>
+          <button class="secondary-button edit-song-button" onclick='window.transposeApp.openAuthoring(${songIdArgument})' title="Edit chord sheet">Edit</button>
           <label class="spelling-policy-label">Spelling
-            <select class="spelling-policy" onchange="window.transposeApp.setSpellingPolicy(${song.id}, this.value)" aria-label="Chord spelling for ${this.escapeHtml(song.title)}">
+            <select class="spelling-policy" onchange='window.transposeApp.setSpellingPolicy(${songIdArgument}, this.value)' aria-label="Chord spelling for ${this.escapeHtml(song.title)}">
               <option value="contextual"${(song.spellingPolicy || 'contextual') === 'contextual' ? ' selected' : ''}>Contextual</option>
               <option value="flats"${song.spellingPolicy === 'flats' ? ' selected' : ''}>Prefer flats</option>
               <option value="sharps"${song.spellingPolicy === 'sharps' ? ' selected' : ''}>Prefer sharps</option>
               <option value="preserve"${song.spellingPolicy === 'preserve' ? ' selected' : ''}>Preserve</option>
             </select>
           </label>
-          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, -1)" title="Transpose down" aria-label="Transpose ${this.escapeHtml(song.title)} down one semitone">−</button>
+          <button class="transpose-button" onclick='window.transposeApp.transposeSong(${songIdArgument}, -1)' title="Transpose down" aria-label="Transpose ${this.escapeHtml(song.title)} down one semitone">−</button>
           <div class="transpose-display">
-            <div class="transpose-value" id="transposeValue-${song.id}">0</div>
+            <div class="transpose-value" id="transposeValue-${song.id}">${song.transposition > 0 ? `+${song.transposition}` : song.transposition}</div>
             <div class="transpose-label">semitones</div>
           </div>
-          <button class="transpose-button" onclick="window.transposeApp.transposeSong(${song.id}, 1)" title="Transpose up" aria-label="Transpose ${this.escapeHtml(song.title)} up one semitone">+</button>
-          <button class="reset-button" onclick="window.transposeApp.resetSong(${song.id})" title="Reset to original key" aria-label="Reset ${this.escapeHtml(song.title)} to original key">↺</button>
+          <button class="transpose-button" onclick='window.transposeApp.transposeSong(${songIdArgument}, 1)' title="Transpose up" aria-label="Transpose ${this.escapeHtml(song.title)} up one semitone">+</button>
+          <button class="reset-button" onclick='window.transposeApp.resetSong(${songIdArgument})' title="Reset to original key" aria-label="Reset ${this.escapeHtml(song.title)} to original key">↺</button>
         </div>
       </div>
     `;
@@ -1043,7 +1333,7 @@ class UIController {
   }
 
   setSpellingPolicy(songId, policy) {
-    const song = this.currentSongs.find(item => item.id === songId);
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
     if (!song || !['contextual', 'flats', 'sharps', 'preserve'].includes(policy)) return;
     const previous = SongModel.create(song);
     song.spellingPolicy = policy;
@@ -1053,6 +1343,9 @@ class UIController {
     this.updateStatus(learning?.persisted === false
       ? `Chord spelling set to ${policy} for this session; browser storage is unavailable`
       : `Chord spelling set to ${policy}`, learning?.persisted === false ? 'warning' : 'success');
+    this.persistSession().catch(() => this.setSaveState('Save failed'));
+    this.track('spelling.changed', { policy }, song);
+    this.updateTelemetrySnapshot();
   }
   
   /**
@@ -1228,7 +1521,7 @@ class UIController {
    * Transpose individual song with real-time lead sheet updates
    */
   transposeSong(songId, semitones) {
-    const song = this.currentSongs.find(s => s.id === songId);
+    const song = this.currentSongs.find(s => String(s.id) === String(songId));
     if (!song) return;
     
     try {
@@ -1247,6 +1540,9 @@ class UIController {
       
       // Log the change
       logger.status(`${song.title}: ${song.originalKey} → ${song.currentKey} (${song.transposition > 0 ? '+' : ''}${song.transposition})`, 'info');
+      this.persistSession().catch(() => this.setSaveState('Save failed'));
+      this.track('transpose.changed', { semitones: song.transposition }, song);
+      this.updateTelemetrySnapshot();
       
     } catch (error) {
       this.showError(`Failed to transpose "${song.title}": ${error.message}`);
@@ -1257,7 +1553,7 @@ class UIController {
    * Reset individual song to original key
    */
   resetSong(songId) {
-    const song = this.currentSongs.find(s => s.id === songId);
+    const song = this.currentSongs.find(s => String(s.id) === String(songId));
     if (!song) return;
     
     try {
@@ -1273,6 +1569,9 @@ class UIController {
       
       // Log the reset
       logger.status(`${song.title}: Reset to original key (${song.originalKey})`, 'info');
+      this.persistSession().catch(() => this.setSaveState('Save failed'));
+      this.track('transpose.changed', { semitones: 0 }, song);
+      this.updateTelemetrySnapshot();
       
     } catch (error) {
       this.showError(`Failed to reset "${song.title}": ${error.message}`);
@@ -1361,6 +1660,7 @@ class UIController {
   showExportSection() {
     this.elements.exportSection.style.display = 'block';
     this.elements.exportSection.scrollIntoView({ behavior: 'smooth' });
+    this.setScreen('export');
   }
 
   /**
@@ -1373,6 +1673,7 @@ class UIController {
       this.isProcessing = true;
       this.showExportProgress(0);
       this.updateStatus('Generating PDF...', 'info');
+      this.track('export.opened', { songCount: this.currentSongs.length });
       
       // Generate PDF
       const pdfGenerator = new PDFGenerator();
@@ -1386,6 +1687,7 @@ class UIController {
       this.showExportProgress(100);
       
       this.updateStatus('PDF exported successfully', 'success');
+      this.track('export.completed', { songCount: this.currentSongs.length });
       
       // Hide progress after delay
       setTimeout(() => {
@@ -1393,6 +1695,7 @@ class UIController {
       }, 2000);
       
     } catch (error) {
+      this.track('export.failed');
       this.hideExportProgress();
       this.showError(`Export failed: ${error.message}`);
       this.updateStatus('Export failed', 'error');
@@ -1423,6 +1726,7 @@ class UIController {
     this.elements.progressFill.style.width = `${percentage}%`;
     this.elements.uploadProgressTrack?.setAttribute('aria-valuenow', String(percentage));
     this.elements.progressText.textContent = `Processing... ${percentage}%`;
+    this.track('import.progress', { type: 'pdf', progress: percentage });
   }
 
   hideUploadProgress() {
@@ -1455,6 +1759,8 @@ class UIController {
    * Show error dialog
    */
   showError(message, allowRetry = false) {
+    this.track('ui.error', { operation: 'user-visible', errorCode: 'shown' });
+    this.updateTelemetrySnapshot({ lastError: 'user-visible' });
     this.lastFocusedElement = document.activeElement;
     this.elements.errorMessage.textContent = message;
     this.elements.errorRetry.style.display = allowRetry ? 'inline-block' : 'none';

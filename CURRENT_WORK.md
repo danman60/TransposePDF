@@ -2,7 +2,7 @@
 
 ## Last Session Summary
 
-Completed visual, accessibility, and functional authoring audit. Desktop now uses a bounded source/preview workspace; mobile uses Source/Preview tabs and touch-sized chord movement controls. Drag placement remains free horizontally at character-column granularity and snaps only to lyric-line chord baselines.
+Active task: persistent multi-song library/session workspace, immediately reachable editing, recovery autosave, and FIRMAMENT-local live telemetry. Plan: `docs/plans/2026-09-13-persistent-library-live-session.md`.
 
 ## What Changed
 
@@ -33,7 +33,7 @@ PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function brow
 
 ## Incomplete Work
 
-- None for requested visual/function audit scope.
+- Implement and verify persistent library/session selector, editor recovery, and live telemetry; deploy to FIRMAMENT.
 
 ## Tests
 

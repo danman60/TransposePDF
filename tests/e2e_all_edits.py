@@ -97,10 +97,10 @@ def main():
         page.locator("#saveChartButton").click()
         raw_after_second_save = page.evaluate("JSON.stringify(window.transposeApp.currentSongs[0].source.rawAnalysis)")
         results["raw_immutable_after_reimport"] = raw_before_second_save == raw_after_second_save
-        song_id = page.evaluate("window.transposeApp.currentSongs[0].id")
-        page.locator(f"button[onclick*='transposeSong({song_id}, 1)']").click()
+        song_id = page.evaluate("window.transposeApp.activeSongId")
+        page.get_by_role("button", name=re.compile(r"^Transpose .* up one semitone$")).click()
         results["transpose"] = page.locator(f"#transposeValue-{song_id}").inner_text() == "+1"
-        page.locator(f"button[onclick*='resetSong({song_id})']").click()
+        page.get_by_role("button", name=re.compile(r"^Reset .* to original key$")).click()
         results["reset"] = page.locator(f"#transposeValue-{song_id}").inner_text() == "0"
         page.locator("#exportButton").click()
         with page.expect_download(timeout=60_000) as download_info:

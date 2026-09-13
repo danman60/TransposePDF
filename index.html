@@ -9,8 +9,7 @@
     
     <!-- PWA manifest -->
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="icons/icon-192.png" sizes="192x192">
-    <link rel="icon" href="icons/icon-512.png" sizes="512x512">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='28' fill='%234fc3f7'/><text x='96' y='126' font-family='Arial' font-size='92' fill='%2307151b' text-anchor='middle'>♪</text></svg>">
     
     <!-- Styles -->
     <link rel="stylesheet" href="styles/main.css">
@@ -29,10 +28,25 @@
         <!-- Header -->
         <header class="app-header">
             <h1>Chord Transposer Pro</h1>
+            <div class="session-identity" aria-label="Current session">
+                <label class="session-name-label" for="sessionName">Session</label>
+                <input class="session-name" id="sessionName" type="text" value="My songs" autocomplete="off" aria-label="Session name">
+                <span class="session-save-state" id="sessionSaveState" role="status" aria-live="polite">Saved</span>
+            </div>
             <div class="status-indicator" id="statusIndicator" role="status" aria-live="polite" aria-atomic="true">Ready</div>
         </header>
 
         <main id="mainContent">
+        <aside class="recovery-banner" id="recoveryBanner" role="status" aria-live="polite" hidden>
+            <div>
+                <strong>Unsaved changes found</strong>
+                <p id="recoveryMessage">A newer editing draft is available.</p>
+            </div>
+            <div class="recovery-actions">
+                <button class="primary-button" id="restoreDraftButton" type="button">Restore draft</button>
+                <button class="secondary-button" id="discardDraftButton" type="button">Discard</button>
+            </div>
+        </aside>
         <!-- Creation choices -->
         <section class="start-section" id="startSection">
             <div class="start-copy">
@@ -190,7 +204,22 @@
                 <h2>Songs <span class="song-count" id="songCount">0</span></h2>
                 <button class="export-button" id="exportButton" disabled>Export PDF</button>
             </div>
-            <div class="songs-container" id="songsContainer"></div>
+            <label class="mobile-song-selector" for="activeSongSelect">
+                <span>Current song</span>
+                <select id="activeSongSelect" aria-label="Choose current song"></select>
+            </label>
+            <div class="session-workspace" id="sessionWorkspace">
+                <aside class="song-library-sidebar" aria-label="Songs in this session">
+                    <div class="library-sidebar-heading">
+                        <strong>Session songs</strong>
+                        <span id="librarySongCount">0</span>
+                    </div>
+                    <nav class="song-selector-list" id="songSelectorList" aria-label="Choose a song"></nav>
+                </aside>
+                <div class="workspace-chart-pane">
+                    <div class="songs-container" id="songsContainer"></div>
+                </div>
+            </div>
         </section>
 
         <!-- Export Section -->
@@ -249,6 +278,8 @@
     <script src="modules/pdfProcessor.js"></script>
     <script src="modules/songSeparator.js"></script>
     <script src="modules/pdfGenerator.js"></script>
+    <script src="modules/libraryStore.js"></script>
+    <script src="modules/sessionTelemetry.js"></script>
     <script src="modules/uiController.js"></script>
     <script src="app.js"></script>
 
