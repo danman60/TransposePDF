@@ -6,6 +6,7 @@ All 20 selected feature/streamline items implemented in local release tree. Dedi
 
 ## Recent Changes
 
+- `af0f3e4` hotfix: imported songs now edit directly on the main chart. Lyrics support in-place typing/deletion; chord symbols support direct replacement and independently anchored same-line/cross-line dragging over syllables or blank space. Performance remains read-only.
 - Named setlists/library search, history with readable line diffs, ChordPro, Nashville/capo/instrument views.
 - Performance mode, swipe/keyboard/MIDI controls, timed rehearsal, low-confidence review, companion view.
 - Serialized SessionStore, delegated workspace actions, extracted chart/authoring controllers, unified observability.
@@ -16,6 +17,7 @@ All 20 selected feature/streamline items implemented in local release tree. Dedi
 
 ## Verification
 
+- FIRMAMENT v18 inline chart lifecycle: 6/6. Untouched chord IDs/section/line/offsets remained byte-identical after another chord moved; reload persistence passed; zero console/page errors.
 - Persistent lifecycle: 17/17, zero console/page/telemetry errors.
 - UX gaps: 6/6.
 - Team sync contract: 10/10; mocked dedicated-endpoint browser smoke: 10/10.
