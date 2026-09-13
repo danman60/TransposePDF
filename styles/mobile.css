@@ -73,6 +73,11 @@
   .song-library-sidebar { display: none; }
   .transpose-controls { align-items: end; }
   .transpose-controls label { min-width: 88px; }
+  .section-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .performance-shell { padding: 12px 12px 116px; }
+  .performance-dock { left: 8px; right: 8px; bottom: 8px; transform: none; flex-wrap: wrap; justify-content: center; }
+  .performance-dock label { font-size: .75rem; }
+  .rehearsal-panel > div:first-child { flex-direction: column; }
 
   .mobile-song-selector {
     display: flex;
@@ -553,6 +558,7 @@
 /* Accessibility improvements */
 @media (prefers-reduced-motion: reduce) {
   .song-selector-row, .history-drawer, .lead-sheet-content { transition: none !important; scroll-behavior: auto !important; }
+  .performance-shell *, .control-drawer, .review-rail { transition: none !important; scroll-behavior: auto !important; }
   * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

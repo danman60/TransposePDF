@@ -3,65 +3,6 @@
  * Initializes and coordinates all modules
  */
 
-// Logging system
-class TransposeLogger {
-  constructor() {
-    this.logs = [];
-    this.metrics = {};
-  }
-  
-  status(message, type = 'info') {
-    const entry = { timestamp: Date.now(), message, type };
-    this.logs.push(entry);
-    console.log(`[${type.toUpperCase()}] ${message}`);
-  }
-  
-  startTimer(operation) {
-    this.metrics[operation] = { start: performance.now() };
-  }
-  
-  endTimer(operation) {
-    if (this.metrics[operation]) {
-      this.metrics[operation].duration = performance.now() - this.metrics[operation].start;
-      this.status(`${operation} completed in ${this.metrics[operation].duration.toFixed(0)}ms`);
-    }
-  }
-  
-  error(message, context = {}) {
-    const error = { 
-      timestamp: Date.now(), 
-      message, 
-      context,
-      userAgent: navigator.userAgent,
-      url: window.location.href
-    };
-    this.logs.push(error);
-    console.error('TransposeApp Error:', error);
-  }
-  
-  exportLogs() {
-    return {
-      logs: this.logs,
-      metrics: this.metrics,
-      performance: this.getPerformanceSnapshot()
-    };
-  }
-  
-  getPerformanceSnapshot() {
-    return {
-      memory: performance.memory ? {
-        usedJSHeapSize: performance.memory.usedJSHeapSize,
-        totalJSHeapSize: performance.memory.totalJSHeapSize,
-        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
-      } : null,
-      timing: performance.timing ? {
-        loadEventEnd: performance.timing.loadEventEnd,
-        domContentLoadedEventEnd: performance.timing.domContentLoadedEventEnd
-      } : null
-    };
-  }
-}
-
 // Health check system
 const healthCheck = async () => {
   const checks = [
@@ -93,8 +34,8 @@ const healthCheck = async () => {
 
 // Main Application Class
 class TransposeApp {
-  constructor() {
-    this.logger = new TransposeLogger();
+  constructor(observability = logger) {
+    this.logger = observability;
     this.uiController = null;
     this.initialized = false;
   }
@@ -113,6 +54,7 @@ class TransposeApp {
       // Initialize UI Controller
       this.uiController = new UIController();
       window.transposeApp = this.uiController;
+      this.logger.setTelemetry(this.uiController.telemetry);
       
       // Initialize keyboard shortcuts
       this.uiController.initializeKeyboardShortcuts();
@@ -197,35 +139,18 @@ class TransposeApp {
    * Show initialization error
    */
   showInitError(message) {
-    const errorHtml = `
-      <div style="
-        position: fixed; 
-        top: 50%; 
-        left: 50%; 
-        transform: translate(-50%, -50%);
-        background: white; 
-        border: 2px solid #f44336; 
-        border-radius: 8px; 
-        padding: 2rem; 
-        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-        max-width: 500px;
-        text-align: center;
-        z-index: 10000;
-      ">
-        <h3 style="color: #f44336; margin-bottom: 1rem;">Initialization Failed</h3>
-        <p style="margin-bottom: 1.5rem; color: #666;">${message}</p>
-        <button onclick="location.reload()" style="
-          background: #1976d2; 
-          color: white; 
-          border: none; 
-          padding: 12px 24px; 
-          border-radius: 6px; 
-          cursor: pointer;
-        ">Reload Page</button>
-      </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', errorHtml);
+    const panel = document.createElement('div');
+    panel.className = 'init-error-panel';
+    const heading = document.createElement('h3');
+    heading.textContent = 'Initialization Failed';
+    const detail = document.createElement('p');
+    detail.textContent = String(message || 'Unknown initialization error');
+    const reload = document.createElement('button');
+    reload.type = 'button';
+    reload.textContent = 'Reload Page';
+    reload.addEventListener('click', () => window.location.reload());
+    panel.append(heading, detail, reload);
+    document.body.append(panel);
   }
 
   /**
@@ -282,12 +207,18 @@ class TransposeApp {
 }
 
 // Global instances
-const logger = new TransposeLogger();
+const logger = new Observability();
 let transposeApp = null;
 
 // DOM Content Loaded Event
 document.addEventListener('DOMContentLoaded', async () => {
   try {
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/3.11.174/pdf.worker.min.js';
+    }
+    document.getElementById('choosePdfButton')?.addEventListener('click', () => document.getElementById('fileInput')?.click());
+    document.getElementById('errorClose')?.addEventListener('click', () => window.closeError());
+    document.getElementById('errorRetry')?.addEventListener('click', () => window.retryOperation());
     // Initialize main app
     transposeApp = new TransposeApp();
     await transposeApp.init();
@@ -331,6 +262,11 @@ window.addEventListener('unhandledrejection', (e) => {
 
 // Performance monitoring
 window.addEventListener('load', () => {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(registration => logger.status('Service worker registered', 'success', { scope: registration.scope }))
+      .catch(error => logger.error('Service worker registration failed', { code: 'SW_REGISTER', error: error.message }));
+  }
   // Log performance metrics after page load
   setTimeout(() => {
     if (performance.timing) {

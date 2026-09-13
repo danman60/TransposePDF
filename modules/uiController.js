@@ -31,9 +31,15 @@ class UIController {
     this.authorDraftPersistentId = null;
     this.sessionSaveQueue = Promise.resolve();
     this.pendingTranspose = new Map();
+    this.reviewQueue = null;
+    this.rehearsal = null;
+    this.rehearsalSongId = null;
+    this.currentAudioObjectUrl = null;
+    this.audioJobClient = typeof AudioJobClient !== 'undefined' ? new AudioJobClient() : null;
     
     // Initialize UI elements
     this.initializeElements();
+    this.initializeLiveControllers();
     this.attachEventListeners();
     this.initializeDragAndDrop();
     this.ready = this.initializePersistence();
@@ -76,6 +82,42 @@ class UIController {
       recoveryMessage: document.getElementById('recoveryMessage'),
       restoreDraftButton: document.getElementById('restoreDraftButton'),
       discardDraftButton: document.getElementById('discardDraftButton'),
+      companionButton: document.getElementById('companionButton'),
+      controlsButton: document.getElementById('controlsButton'),
+      controlDrawer: document.getElementById('controlDrawer'),
+      closeControlsButton: document.getElementById('closeControlsButton'),
+      connectMidiButton: document.getElementById('connectMidiButton'),
+      midiStatus: document.getElementById('midiStatus'),
+      bindingList: document.getElementById('bindingList'),
+      bindingConflict: document.getElementById('bindingConflict'),
+      replaceBindingButton: document.getElementById('replaceBindingButton'),
+      reviewButton: document.getElementById('reviewButton'),
+      reviewBadge: document.getElementById('reviewBadge'),
+      reviewRail: document.getElementById('reviewRail'),
+      reviewItem: document.getElementById('reviewItem'),
+      closeReviewButton: document.getElementById('closeReviewButton'),
+      reviewAccept: document.getElementById('reviewAccept'),
+      reviewEdit: document.getElementById('reviewEdit'),
+      reviewRemove: document.getElementById('reviewRemove'),
+      reviewUndo: document.getElementById('reviewUndo'),
+      performanceButton: document.getElementById('performanceButton'),
+      performanceShell: document.getElementById('performanceShell'),
+      performanceTitle: document.getElementById('performanceTitle'),
+      performanceChart: document.getElementById('performanceChart'),
+      performanceExit: document.getElementById('performanceExit'),
+      performancePrev: document.getElementById('performancePrev'),
+      performanceNext: document.getElementById('performanceNext'),
+      performanceFont: document.getElementById('performanceFont'),
+      performanceColumns: document.getElementById('performanceColumns'),
+      performanceAutoscroll: document.getElementById('performanceAutoscroll'),
+      rehearsalPanel: document.getElementById('rehearsalPanel'),
+      rehearsalAudio: document.getElementById('rehearsalAudio'),
+      rehearsalAvailability: document.getElementById('rehearsalAvailability'),
+      rehearsalPlay: document.getElementById('rehearsalPlay'),
+      rehearsalSeek: document.getElementById('rehearsalSeek'),
+      rehearsalRate: document.getElementById('rehearsalRate'),
+      rehearsalLoop: document.getElementById('rehearsalLoop'),
+      rehearsalFollow: document.getElementById('rehearsalFollow'),
       librarySearch: document.getElementById('librarySearch'),
       librarySearchResults: document.getElementById('librarySearchResults'),
       historyDrawer: document.getElementById('historyDrawer'),
@@ -148,6 +190,33 @@ class UIController {
   /**
    * Attach event listeners
    */
+  initializeLiveControllers() {
+    this.performance = new PerformanceController({
+      getSongs: () => this.currentSongs,
+      getActiveSongId: () => this.activeSongId,
+      selectSong: id => this.selectActiveSong(id),
+      render: state => this.renderPerformance(state)
+    });
+    this.controlBindings = new ControlBindings({ actions: {
+      previous: () => this.performance.previous(), next: () => this.performance.next(),
+      transposeDown: () => this.transposeSong(this.activeSongId, -1),
+      transposeUp: () => this.transposeSong(this.activeSongId, 1),
+      playPause: () => this.toggleRehearsal()
+    }});
+    const assignBinding = this.controlBindings.assign.bind(this.controlBindings);
+    this.controlBindings.assign = (...args) => {
+      const result = assignBinding(...args);
+      queueMicrotask(() => this.renderBindings());
+      return result;
+    };
+    document.addEventListener('keydown', event => {
+      const capturing = Boolean(this.controlBindings.captureState);
+      this.controlBindings.handleKeydown(event);
+      if (capturing) this.renderBindings();
+    });
+    this.renderBindings();
+  }
+
   attachEventListeners() {
     // File input
     this.elements.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
@@ -211,6 +280,32 @@ class UIController {
     this.elements.closeHistoryButton?.addEventListener('click', () => { this.elements.historyDrawer.hidden = true; });
     this.elements.importChordProButton?.addEventListener('click', () => this.elements.chordProFileInput.click());
     this.elements.chordProFileInput?.addEventListener('change', event => this.importChordPro(event));
+    this.elements.companionButton?.addEventListener('click', () => this.openCompanion());
+    this.elements.performanceButton?.addEventListener('click', () => this.performance.enter({ fullscreen: true, fullscreenElement: this.elements.performanceShell }));
+    this.elements.performanceExit?.addEventListener('click', () => this.performance.exit());
+    this.elements.performancePrev?.addEventListener('click', () => this.performance.previous());
+    this.elements.performanceNext?.addEventListener('click', () => this.performance.next());
+    this.elements.performanceFont?.addEventListener('input', event => this.performance.setFontScale(event.target.value));
+    this.elements.performanceColumns?.addEventListener('change', event => this.performance.setColumns(event.target.value));
+    this.elements.performanceAutoscroll?.addEventListener('change', event => this.performance.setAutoscroll(event.target.checked));
+    this.elements.controlsButton?.addEventListener('click', () => { this.elements.controlDrawer.hidden = false; });
+    this.elements.closeControlsButton?.addEventListener('click', () => { this.elements.controlDrawer.hidden = true; });
+    this.elements.connectMidiButton?.addEventListener('click', async () => {
+      const connected = await this.controlBindings.connectMIDI();
+      this.elements.midiStatus.textContent = connected ? 'MIDI connected' : 'MIDI unavailable';
+    });
+    this.elements.replaceBindingButton?.addEventListener('click', () => { this.controlBindings.replaceConflict(); this.renderBindings(); });
+    this.elements.reviewButton?.addEventListener('click', () => this.openReview());
+    this.elements.closeReviewButton?.addEventListener('click', () => { this.elements.reviewRail.hidden = true; });
+    this.elements.reviewAccept?.addEventListener('click', () => this.applyReview('accept'));
+    this.elements.reviewEdit?.addEventListener('click', () => this.applyReview('edit'));
+    this.elements.reviewRemove?.addEventListener('click', () => this.applyReview('remove'));
+    this.elements.reviewUndo?.addEventListener('click', () => this.applyReview('undo'));
+    this.elements.rehearsalPlay?.addEventListener('click', () => this.toggleRehearsal());
+    this.elements.rehearsalSeek?.addEventListener('input', event => this.rehearsal?.seek(event.target.value));
+    this.elements.rehearsalRate?.addEventListener('change', event => this.rehearsal?.setRate(event.target.value));
+    this.elements.rehearsalLoop?.addEventListener('click', () => this.toggleRehearsalLoop());
+    this.elements.rehearsalFollow?.addEventListener('click', () => { this.rehearsal?.follow ? this.rehearsal.pauseFollow() : this.rehearsal?.resumeFollow(); });
     this.elements.restoreDraftButton?.addEventListener('click', () => this.restoreRecoveryDraft());
     this.elements.discardDraftButton?.addEventListener('click', () => this.discardRecoveryDraft());
     ['input', 'change'].forEach(name => {
@@ -352,12 +447,19 @@ class UIController {
 
   updateTelemetrySnapshot(extra = {}) {
     try {
+      const rehearsalState = this.rehearsal?.state();
       this.telemetry?.updateSnapshot({
         screen: this.telemetry.screen,
         activeSongId: this.activeSongId,
-        currentSongs: this.currentSongs,
+        currentSongs: this.currentSongs.map(song => ({ ...song, telemetryId: String(song.id) })),
         editor: this.elements.authorSection?.style.display !== 'none' ? this.editorSnapshot() : null,
         ...extra
+      });
+      if (this.telemetry?.snapshot) Object.assign(this.telemetry.snapshot, {
+        sessionName: this.activeSession?.name || 'Current Session',
+        performance: rehearsalState
+          ? { currentTime: rehearsalState.currentTime, ...rehearsalState.activeLine }
+          : { scrollTop: this.performance?.scrollPositions.get(String(this.activeSongId)) || 0 }
       });
     } catch (_) {}
   }
@@ -512,7 +614,13 @@ class UIController {
       if (!response.ok) throw new Error(payload.error || `Upload failed (${response.status})`);
 
       this.audioJobId = payload.jobId;
-      const result = await this.waitForAudioJob(payload.jobId, this.audioAbortController.signal);
+      const result = this.audioJobClient
+        ? await this.audioJobClient.wait(payload.jobId, {
+          signal: this.audioAbortController.signal,
+          onProgress: job => this.updateAudioProgress(job.stage, job.progress, 'Lyrics, key, and chord timing remain editable when complete.'),
+          pollingFallback: (jobId, options) => this.audioJobClient.poll(jobId, options)
+        })
+        : await this.waitForAudioJob(payload.jobId, this.audioAbortController.signal);
       const normalizedResult = this.normalizeAnalyzedSongSpellings(result);
       normalizedResult.source = {
         ...(normalizedResult.source || {}),
@@ -535,6 +643,7 @@ class UIController {
       const visibleLearning = this.correctionMemory.apply(editableSong);
       const song = SongModel.create({ ...visibleLearning.song, id: analyzedSong.id });
       const savedSong = await this.persistSong(song);
+      this.enableRehearsal(file, savedSong);
       const learnedStatus = learned.savedEditsApplied
         ? ' · restored your saved chart edits'
         : learned.applied
@@ -1206,6 +1315,7 @@ class UIController {
       this.activeSongId = this.currentSongs[0].id;
     }
     this.renderSongSelectors();
+    this.refreshReviewQueue();
 
     // Clear container
     this.elements.songsContainer.innerHTML = '';
@@ -1222,6 +1332,8 @@ class UIController {
     this.elements.exportButton.disabled = false;
     this.setScreen('songs');
     this.updateTelemetrySnapshot();
+    if (this.performance?.state.active) this.renderPerformance(this.performance.snapshot());
+    this.syncRehearsalAvailability();
   }
 
   renderSongSelectors() {
@@ -1825,6 +1937,135 @@ class UIController {
     this.elements.exportSection.style.display = 'block';
     this.elements.exportSection.scrollIntoView({ behavior: 'smooth' });
     this.setScreen('export');
+  }
+
+  renderPerformance(state) {
+    this.elements.performanceShell.hidden = !state.active;
+    document.body.classList.toggle('performance-active', state.active);
+    if (!state.active) return;
+    const song = this.currentSongs.find(item => String(item.id) === String(this.activeSongId));
+    if (!song) return;
+    this.elements.performanceTitle.textContent = song.title;
+    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(song);
+    this.elements.performanceChart.style.fontSize = `${state.fontScale}em`;
+    this.elements.performanceChart.style.columnCount = String(state.columns);
+    this.elements.performanceChart.dataset.reducedMotion = String(state.reducedMotion);
+  }
+
+  renderBindings() {
+    const labels = { previous: 'Previous song', next: 'Next song', transposeDown: 'Transpose down', transposeUp: 'Transpose up', playPause: 'Play / pause' };
+    this.elements.bindingList.innerHTML = Object.entries(labels).map(([action, label]) => {
+      const key = this.controlBindings.keyboard[action]?.key || this.controlBindings.keyboard[action]?.code || 'Not set';
+      const midi = this.controlBindings.midi[action];
+      return `<div class="binding-row"><strong>${label}</strong><span>${this.escapeHtml(key)} · ${midi ? `${midi.kind} ${midi.number + 1}` : 'No MIDI'}</span><button type="button" data-bind-key="${action}">Set key</button><button type="button" data-bind-midi="${action}">Learn MIDI</button></div>`;
+    }).join('');
+    this.elements.bindingList.querySelectorAll('[data-bind-key]').forEach(button => button.addEventListener('click', () => {
+      this.controlBindings.capture(button.dataset.bindKey, 'keyboard'); button.textContent = 'Press a key…';
+    }));
+    this.elements.bindingList.querySelectorAll('[data-bind-midi]').forEach(button => button.addEventListener('click', () => {
+      this.controlBindings.capture(button.dataset.bindMidi, 'midi'); button.textContent = 'Move footswitch…';
+    }));
+    this.elements.bindingConflict.hidden = !this.controlBindings.pendingConflict;
+    if (this.controlBindings.pendingConflict) this.elements.bindingConflict.querySelector('span').textContent = `Already assigned to ${this.controlBindings.pendingConflict.conflictAction}.`;
+  }
+
+  refreshReviewQueue() {
+    const song = this.currentSongs.find(item => String(item.id) === String(this.activeSongId));
+    this.reviewQueue = song ? new ReviewQueue(song) : null;
+    const count = this.reviewQueue?.items().length || 0;
+    this.elements.reviewBadge.textContent = String(count);
+    this.elements.reviewButton.disabled = !count;
+    return count;
+  }
+
+  openReview() {
+    if (!this.refreshReviewQueue()) return;
+    this.elements.reviewRail.hidden = false;
+    this.renderReviewItem();
+  }
+
+  renderReviewItem() {
+    const item = this.reviewQueue?.items()[0];
+    this.elements.reviewUndo.disabled = !this.reviewQueue?.history.length;
+    if (!item) {
+      this.elements.reviewItem.innerHTML = '<p>Review complete.</p>';
+      this.elements.reviewBadge.textContent = '0';
+      return;
+    }
+    this.elements.reviewItem.innerHTML = `<span class="review-kind">${item.kind}</span><strong>${this.escapeHtml(item.value)}</strong><p>${Math.round(item.confidence * 100)}% confidence</p>`;
+  }
+
+  async applyReview(action) {
+    if (!this.reviewQueue) return;
+    const item = this.reviewQueue.items()[0];
+    if (action === 'undo') this.reviewQueue.undo();
+    else if (!item) return;
+    else if (action === 'accept') this.reviewQueue.accept(item.id);
+    else if (action === 'remove') this.reviewQueue.remove(item.id);
+    else if (action === 'edit') {
+      const value = window.prompt(`Edit ${item.kind}`, item.value); if (value === null) return;
+      this.reviewQueue.edit(item.id, value);
+    }
+    try {
+      const saved = await this.persistSong(this.reviewQueue.result(), { addToSession: false });
+      this.updateLeadSheetDisplay(saved);
+      this.elements.reviewBadge.textContent = String(this.reviewQueue.items().length);
+      this.elements.reviewRail.hidden = false;
+      this.renderReviewItem();
+    } catch (error) { this.handleSessionStoreError(error, 'review.save'); }
+  }
+
+  enableRehearsal(file, song) {
+    this.rehearsal?.destroy();
+    this.rehearsal = new RehearsalController({ audio: this.elements.rehearsalAudio, source: file, song });
+    this.rehearsalSongId = String(song.id);
+    [this.elements.rehearsalPlay, this.elements.rehearsalSeek, this.elements.rehearsalRate, this.elements.rehearsalLoop, this.elements.rehearsalFollow].forEach(element => { element.disabled = false; });
+    this.elements.rehearsalAvailability.textContent = 'Current-page recording ready.';
+    this.rehearsal.subscribe(state => this.renderRehearsalState(state));
+  }
+
+  syncRehearsalAvailability() {
+    const available = Boolean(this.rehearsal && String(this.activeSongId) === this.rehearsalSongId);
+    [this.elements.rehearsalPlay, this.elements.rehearsalSeek, this.elements.rehearsalRate, this.elements.rehearsalLoop, this.elements.rehearsalFollow].forEach(element => { element.disabled = !available; });
+    this.elements.rehearsalAvailability.textContent = available
+      ? 'Current-page recording ready.'
+      : 'Import audio on this page to enable rehearsal for this song.';
+    if (!available) this.rehearsal?.pause();
+  }
+
+  renderRehearsalState(state) {
+    this.elements.rehearsalPlay.textContent = state.playing ? 'Pause' : 'Play';
+    this.elements.rehearsalSeek.max = String(state.duration || 0);
+    this.elements.rehearsalSeek.value = String(state.currentTime);
+    this.elements.rehearsalFollow.textContent = state.follow ? 'Follow on' : 'Follow off';
+    this.elements.rehearsalLoop.classList.toggle('active', Boolean(state.loop));
+    document.querySelectorAll('.rehearsal-active-line,.rehearsal-active-chord').forEach(element => element.classList.remove('rehearsal-active-line','rehearsal-active-chord'));
+    if (state.activeLine) {
+      const line = document.querySelector(`#leadSheet-${CSS.escape(String(this.activeSongId))} [data-section-index="${state.activeLine.sectionIndex}"][data-line-index="${state.activeLine.lineIndex}"]`)?.closest('.chart-line');
+      line?.classList.add('rehearsal-active-line');
+      if (state.follow) line?.scrollIntoView({ block: 'center', behavior: this.performance.state.reducedMotion ? 'auto' : 'smooth' });
+    }
+    if (state.activeChord) document.querySelector(`#leadSheet-${CSS.escape(String(this.activeSongId))} [data-section-index="${state.activeChord.sectionIndex}"][data-line-index="${state.activeChord.lineIndex}"] .chord-token:nth-child(${state.activeChord.chordIndex + 1})`)?.classList.add('rehearsal-active-chord');
+  }
+
+  toggleRehearsal() {
+    if (!this.rehearsal) return;
+    return this.elements.rehearsalAudio.paused ? this.rehearsal.play() : this.rehearsal.pause();
+  }
+
+  toggleRehearsalLoop() {
+    if (!this.rehearsal) return;
+    if (this.rehearsal.loop) return this.rehearsal.clearLoop();
+    const active = this.rehearsal.state().activeLine;
+    if (active) this.rehearsal.loopLine(active.sectionIndex, active.lineIndex);
+  }
+
+  openCompanion() {
+    this.updateTelemetrySnapshot({
+      sessionName: this.activeSession?.name || 'Current Session',
+      activeCursor: this.rehearsal?.state().currentTime ?? this.performance.scrollPositions.get(String(this.activeSongId)) ?? 0
+    });
+    window.open('/companion.html', 'transposepdf-companion');
   }
 
   async importChordPro(event) {

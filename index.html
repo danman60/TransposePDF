@@ -37,6 +37,7 @@
                 </div>
             </div>
             <div class="status-indicator" id="statusIndicator" role="status" aria-live="polite" aria-atomic="true">Ready</div>
+            <button class="icon-action" id="companionButton" type="button">Companion</button>
         </header>
 
         <main id="mainContent">
@@ -194,7 +195,7 @@
                 <h2>Load Your Songbook</h2>
                 <p>Drag and drop a PDF file or click to select</p>
                 <input type="file" id="fileInput" accept=".pdf" hidden>
-                <button class="upload-button" type="button" onclick="document.getElementById('fileInput').click()">
+                <button class="upload-button" id="choosePdfButton" type="button">
                     Choose PDF File
                 </button>
                 <button class="secondary-button" id="cancelImportButton" type="button">Back</button>
@@ -211,7 +212,7 @@
         <section class="songs-section" id="songsSection" style="display: none;">
             <div class="section-header">
                 <h2>Songs <span class="song-count" id="songCount">0</span></h2>
-                <button class="export-button" id="exportButton" disabled>Export PDF</button>
+                <div class="section-actions"><button class="secondary-button" id="reviewButton" type="button">Review <span id="reviewBadge">0</span></button><button class="secondary-button" id="controlsButton" type="button">Controls</button><button class="primary-button" id="performanceButton" type="button">Performance</button><button class="export-button" id="exportButton" disabled>Export PDF</button></div>
             </div>
             <label class="mobile-song-selector" for="activeSongSelect">
                 <span>Current song</span>
@@ -232,9 +233,20 @@
                 </aside>
                 <div class="workspace-chart-pane">
                     <div class="songs-container" id="songsContainer"></div>
+                    <section class="rehearsal-panel" id="rehearsalPanel" aria-labelledby="rehearsalHeading">
+                        <div><strong id="rehearsalHeading">Rehearsal</strong><span id="rehearsalAvailability">Import audio on this page to enable rehearsal.</span></div>
+                        <audio id="rehearsalAudio" preload="metadata"></audio>
+                        <div class="rehearsal-controls"><button id="rehearsalPlay" type="button" disabled>Play</button><input id="rehearsalSeek" type="range" min="0" max="0" step="0.1" value="0" disabled aria-label="Rehearsal position"><select id="rehearsalRate" disabled aria-label="Playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option></select><button id="rehearsalLoop" type="button" disabled>Loop line</button><button id="rehearsalFollow" type="button" disabled>Follow on</button></div>
+                    </section>
                 </div>
             </div>
         </section>
+
+        <aside class="control-drawer" id="controlDrawer" hidden aria-labelledby="controlHeading"><div class="drawer-header"><h2 id="controlHeading">Hands-free controls</h2><button id="closeControlsButton" type="button">Close</button></div><p id="midiStatus">MIDI not connected</p><button id="connectMidiButton" type="button">Connect MIDI</button><div id="bindingList" class="binding-list"></div><div id="bindingConflict" role="alert" hidden><span></span><button id="replaceBindingButton" type="button">Replace binding</button></div></aside>
+
+        <aside class="review-rail" id="reviewRail" hidden aria-labelledby="reviewHeading"><div class="drawer-header"><h2 id="reviewHeading">Review uncertain results</h2><button id="closeReviewButton" type="button">Close</button></div><div id="reviewItem"></div><div class="review-actions"><button id="reviewAccept" type="button">Accept</button><button id="reviewEdit" type="button">Edit</button><button id="reviewRemove" type="button">Remove</button><button id="reviewUndo" type="button">Undo</button></div></aside>
+
+        <section class="performance-shell" id="performanceShell" hidden aria-label="Performance mode"><div class="performance-top"><strong id="performanceTitle">Performance</strong><button id="performanceExit" type="button">Exit</button></div><div id="performanceChart"></div><div class="performance-dock"><button id="performancePrev" type="button">Previous</button><label>Text <input id="performanceFont" type="range" min="0.7" max="2" step="0.1" value="1"></label><label>Columns <select id="performanceColumns"><option>1</option><option>2</option><option>3</option></select></label><label><input id="performanceAutoscroll" type="checkbox"> Auto-scroll</label><button id="performanceNext" type="button">Next</button></div></section>
 
         <aside class="history-drawer" id="historyDrawer" aria-labelledby="historyHeading" hidden>
             <div class="drawer-header"><div><span class="eyebrow">Song history</span><h2 id="historyHeading">Versions</h2></div><button id="closeHistoryButton" class="secondary-button" type="button">Close</button></div>
@@ -264,8 +276,8 @@
             <div class="error-content" tabindex="-1">
                 <h3 id="errorHeading">Couldn’t complete that action</h3>
                 <p id="errorMessage"></p>
-                <button class="error-close" id="errorClose" onclick="closeError()">Close</button>
-                <button class="error-retry" id="errorRetry" onclick="retryOperation()" style="display: none;">Retry</button>
+                <button class="error-close" id="errorClose" type="button">Close</button>
+                <button class="error-retry" id="errorRetry" type="button" style="display: none;">Retry</button>
             </div>
         </div>
 
@@ -285,13 +297,6 @@
     </div>
 
     <!-- Scripts -->
-    <script>
-        // Initialize PDF.js worker
-        if (typeof pdfjsLib !== 'undefined') {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/3.11.174/pdf.worker.min.js';
-        }
-    </script>
-    
     <!-- Application modules -->
     <script src="modules/musicTheory.js"></script>
     <script src="modules/songModel.js"></script>
@@ -303,18 +308,14 @@
     <script src="modules/libraryStore.js"></script>
     <script src="modules/sessionStore.js"></script>
     <script src="modules/sessionTelemetry.js"></script>
+    <script src="modules/observability.js"></script>
+    <script src="modules/performanceController.js"></script>
+    <script src="modules/controlBindings.js"></script>
+    <script src="modules/reviewQueue.js"></script>
+    <script src="modules/rehearsalController.js"></script>
+    <script src="modules/audioJobClient.js"></script>
     <script src="modules/uiController.js"></script>
     <script src="app.js"></script>
 
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(registration => console.log('SW registered:', registration))
-                    .catch(error => console.log('SW registration failed:', error));
-            });
-        }
-    </script>
 </body>
 </html>
