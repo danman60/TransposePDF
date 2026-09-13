@@ -71,7 +71,7 @@ class ChartRenderer {
         }));
         return `<div class="chart-line">
           <div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex })}</div>
-          <div class="lyric-line">${this.escape(line.lyrics || '') || '&nbsp;'}</div>
+          <div class="lyric-line${line.lyrics ? '' : ' inline-edit-empty'}"${options.editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit lyrics" spellcheck="true" data-inline-field="lyrics" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-placeholder="Type lyrics"` : ''}>${this.escape(line.lyrics || '')}${!line.lyrics && !options.editable ? '&nbsp;' : ''}</div>
         </div>`;
       }).join('');
       return `<section class="section-block">${label}${lines}</section>`;
@@ -84,15 +84,18 @@ class ChartRenderer {
     let cursor = 0;
     [...chords].sort((a, b) => a.characterOffset - b.characterOffset).forEach(chord => {
       const offset = Math.max(cursor, Number(chord.characterOffset) || 0);
-      if (offset > cursor) output.push(this.escape(' '.repeat(offset - cursor)));
+      if (!options.editable && offset > cursor) output.push(this.escape(' '.repeat(offset - cursor)));
       const symbol = this.escape(chord.displaySymbol || chord.symbol);
-      if (options.interactive) {
+      if (options.editable) {
+        const timestamp = chord.timestamp ?? '';
+        output.push(`<span class="inline-chord-anchor" style="--chord-column:${Number(chord.characterOffset) || 0}" data-chord-id="${this.escape(chord.id)}" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" data-character-offset="${Number(chord.characterOffset) || 0}" data-timestamp="${timestamp}"><span class="chord-token inline-chord-edit" contenteditable="plaintext-only" role="textbox" aria-label="Edit chord ${symbol}" spellcheck="false" data-inline-field="chord" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" title="Type to edit chord">${symbol}</span><span class="inline-chord-drag-handle" contenteditable="false" role="button" tabindex="0" aria-label="Drag ${symbol}" title="Drag chord">⋮</span></span>`);
+      } else if (options.interactive) {
         const timestamp = chord.timestamp ?? '';
         output.push(`<button type="button" class="chord-token" draggable="true" aria-pressed="false" data-chord-id="${this.escape(chord.id)}" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" data-character-offset="${Number(chord.characterOffset) || 0}" data-timestamp="${timestamp}" title="Drag to place; arrow keys move">${symbol}</button>`);
       } else {
         output.push(`<span class="chord-token">${symbol}</span>`);
       }
-      cursor = offset + String(chord.displaySymbol || chord.symbol).length;
+      if (!options.editable) cursor = offset + String(chord.displaySymbol || chord.symbol).length;
     });
     return output.join('');
   }

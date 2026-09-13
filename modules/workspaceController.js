@@ -14,6 +14,13 @@ class WorkspaceController {
     this.listeners.dragstart = event => this.handleDragStart(event);
     this.listeners.dragover = event => this.handleDragOver(event);
     this.listeners.drop = event => this.handleDrop(event);
+    this.listeners.focusin = event => this.handleFocusIn(event);
+    this.listeners.focusout = event => this.handleFocusOut(event);
+    this.listeners.keydown = event => this.handleKeyDown(event);
+    this.listeners.paste = event => this.handlePaste(event);
+    this.listeners.pointerdown = event => this.handlePointerDown(event);
+    this.listeners.pointermove = event => this.handlePointerMove(event);
+    this.listeners.pointerup = event => this.handlePointerUp(event);
     Object.entries(this.listeners).forEach(([name, listener]) => this.root.addEventListener(name, listener));
     this.attached = true;
     return this;
@@ -36,6 +43,7 @@ class WorkspaceController {
     const actions = {
       'select-song': () => this.ui.selectActiveSong(songId),
       'edit-song': () => this.ui.openAuthoring(songId),
+      'focus-chart': () => this.ui.focusInlineChart(songId),
       'open-history': () => this.ui.openHistory(songId),
       'transpose-song': () => this.ui.transposeSong(songId, Number(target.dataset.semitones) || 0),
       'reset-song': () => this.ui.resetSong(songId),
@@ -56,15 +64,52 @@ class WorkspaceController {
   }
 
   handleDragStart(event) {
+    const chord = event.target.closest?.('.inline-chord-anchor');
+    if (chord && this.root.contains(chord)) {
+      this.inlineDrag = {
+        songId: chord.closest('.lead-sheet[data-song-id]')?.dataset.songId,
+        sectionIndex: Number(chord.dataset.sectionIndex), lineIndex: Number(chord.dataset.lineIndex),
+        chordId: chord.dataset.chordId
+      };
+      chord.classList.add('dragging');
+      event.dataTransfer?.setData('text/chord-id', chord.dataset.chordId);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      return;
+    }
     const row = event.target.closest?.('[data-reorder-id]');
     if (row && this.root.contains(row)) event.dataTransfer?.setData('text/song-id', row.dataset.reorderId);
   }
 
   handleDragOver(event) {
+    const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
+    if (chordLine && this.inlineDrag) {
+      event.preventDefault();
+      this.root.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
+      chordLine.classList.add('author-drop-target');
+      const width = this.ui.authoringController.measureAuthorCharacterWidth(chordLine);
+      const offset = Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
+      chordLine.style.setProperty('--drop-caret-left', `${offset * width}px`);
+      return;
+    }
     if (event.target.closest?.('[data-reorder-id]')) event.preventDefault();
   }
 
   handleDrop(event) {
+    const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
+    if (chordLine && this.inlineDrag) {
+      event.preventDefault();
+      const width = this.ui.authoringController.measureAuthorCharacterWidth(chordLine);
+      const offset = Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
+      const source = this.inlineDrag;
+      this.inlineDrag = null;
+      this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
+        item.classList.remove('dragging', 'author-drop-target'); item.style.removeProperty('--drop-caret-left');
+      });
+      this.ui.moveInlineChord(source, {
+        sectionIndex: Number(chordLine.dataset.sectionIndex), lineIndex: Number(chordLine.dataset.lineIndex)
+      }, offset);
+      return;
+    }
     const row = event.target.closest?.('[data-reorder-id]');
     if (!row || !this.root.contains(row)) return;
     event.preventDefault();
@@ -77,6 +122,86 @@ class WorkspaceController {
     if (!row) return;
     const delta = target.dataset.direction === 'up' ? -1 : 1;
     this.ui.reorderSessionSong(songId, [...row.parentElement.children].indexOf(row) + delta);
+  }
+
+  inlineTarget(event) {
+    const target = event.target.closest?.('[data-inline-field][contenteditable]');
+    return target && this.root.contains(target) ? target : null;
+  }
+
+  handleFocusIn(event) {
+    const target = this.inlineTarget(event);
+    if (!target) return;
+    target.dataset.originalText = target.textContent || '';
+    target.classList.remove('inline-edit-empty');
+  }
+
+  handleFocusOut(event) {
+    const target = this.inlineTarget(event);
+    if (!target || target.dataset.inlineSaving === 'true') return;
+    const next = (target.textContent || '').replace(/[\r\n]+/g, '');
+    if (next === (target.dataset.originalText || '')) {
+      if (!next && target.dataset.inlineField === 'lyrics') target.classList.add('inline-edit-empty');
+      return;
+    }
+    target.dataset.inlineSaving = 'true';
+    this.ui.commitInlineChartEdit(target, next);
+  }
+
+  handleKeyDown(event) {
+    const target = this.inlineTarget(event);
+    if (!target || event.isComposing) return;
+    if (event.key === 'Enter') { event.preventDefault(); target.blur(); }
+    if (event.key === 'Escape') {
+      event.preventDefault(); target.textContent = target.dataset.originalText || ''; target.blur();
+    }
+  }
+
+  handlePaste(event) {
+    const target = this.inlineTarget(event);
+    if (!target) return;
+    event.preventDefault();
+    const text = (event.clipboardData?.getData('text/plain') || '').replace(/[\r\n]+/g, ' ');
+    document.execCommand('insertText', false, text);
+  }
+
+  handlePointerDown(event) {
+    const handle = event.target.closest?.('.inline-chord-drag-handle');
+    const chord = handle?.closest('.inline-chord-anchor');
+    if (!chord || !this.root.contains(chord)) return;
+    event.preventDefault();
+    this.pointerDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false,
+      source: { songId: chord.closest('.lead-sheet[data-song-id]')?.dataset.songId,
+        sectionIndex: Number(chord.dataset.sectionIndex), lineIndex: Number(chord.dataset.lineIndex), chordId: chord.dataset.chordId } };
+    handle.setPointerCapture?.(event.pointerId);
+  }
+
+  handlePointerMove(event) {
+    const drag = this.pointerDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 5) return;
+    drag.active = true;
+    event.preventDefault();
+    const line = document.elementFromPoint(event.clientX, event.clientY)?.closest('.lead-sheet .chord-line[data-section-index]');
+    if (!line) return;
+    this.root.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
+    line.classList.add('author-drop-target');
+    const width = this.ui.authoringController.measureAuthorCharacterWidth(line);
+    const offset = Math.max(0, Math.round((event.clientX - line.getBoundingClientRect().left) / width));
+    line.style.setProperty('--drop-caret-left', `${offset * width}px`);
+  }
+
+  handlePointerUp(event) {
+    const drag = this.pointerDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const line = document.elementFromPoint(event.clientX, event.clientY)?.closest('.lead-sheet .chord-line[data-section-index]');
+    this.pointerDrag = null;
+    this.root.querySelectorAll('.author-drop-target').forEach(item => { item.classList.remove('author-drop-target'); item.style.removeProperty('--drop-caret-left'); });
+    if (!drag.active || !line) return;
+    event.preventDefault();
+    const width = this.ui.authoringController.measureAuthorCharacterWidth(line);
+    this.ui.moveInlineChord(drag.source, { sectionIndex: Number(line.dataset.sectionIndex), lineIndex: Number(line.dataset.lineIndex) },
+      Math.max(0, Math.round((event.clientX - line.getBoundingClientRect().left) / width)));
   }
 }
 

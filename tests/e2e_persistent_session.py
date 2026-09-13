@@ -107,11 +107,9 @@ def main():
         )
         page.screenshot(path=str(ARTIFACTS / "persistent-workspace-desktop.png"))
         page.locator(".edit-song-button").click()
-        results["exact_editor"] = (
-            page.locator("#authorTitle").input_value() == "Alpha"
-            and page.locator("#authorContent").input_value() == long_alpha
-        )
-        page.locator("#cancelAuthorButton").click()
+        results["exact_editor"] = page.locator(
+            '.lead-sheet [data-inline-field="lyrics"]'
+        ).first.evaluate("el => el.isContentEditable && document.activeElement === el")
 
         page.locator(".spelling-policy").select_option("flats")
         page.reload(wait_until="domcontentloaded")
@@ -133,7 +131,7 @@ def main():
         page.locator(".transpose-button[title='Transpose up']").click()
         page.wait_for_timeout(700)
 
-        page.locator(".edit-song-button").click()
+        page.evaluate("window.transposeApp.openAuthoring(window.transposeApp.activeSongId)")
         recovered_text = page.locator("#authorContent").input_value() + "\nC\nRECOVERY E2E EXACT"
         page.locator("#authorContent").fill(recovered_text)
         page.wait_for_timeout(900)
@@ -163,7 +161,9 @@ def main():
         )
         page.screenshot(path=str(ARTIFACTS / "persistent-workspace-mobile.png"))
         page.locator(".edit-song-button").click()
-        results["mobile_edit"] = page.locator("#authorTitle").input_value() == "Gamma"
+        results["mobile_edit"] = page.locator(
+            '.lead-sheet [data-inline-field="lyrics"]'
+        ).first.evaluate("el => el.isContentEditable && document.activeElement === el")
         page.wait_for_timeout(700)
 
         state = api_json("/api/telemetry/state?sessionId=" + urllib.parse.quote(session_id))

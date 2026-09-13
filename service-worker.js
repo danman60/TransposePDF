@@ -3,7 +3,7 @@
  * Handles caching for offline functionality
  */
 
-const CACHE_NAME = 'transpose-app-v16';
+const CACHE_NAME = 'transpose-app-v18';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -59,13 +59,8 @@ self.addEventListener('install', event => {
         // Cache app files first
         return cache.addAll(CACHE_FILES);
       })
-      .then(async () => {
-        const manifestResponse = await fetch('/vendor/pdfjs/3.11.174/cmaps/manifest.json');
-        if (!manifestResponse.ok) throw new Error('PDF.js CMap manifest unavailable');
-        const files = await manifestResponse.json();
-        const cache = await caches.open(CACHE_NAME);
-        return cache.addAll(files.map(file => `/vendor/pdfjs/3.11.174/cmaps/${file}`));
-      })
+      // PDF.js CMaps are cached on first use by the vendor cache-first route.
+      // Blocking install on 169 optional files delayed editor updates for minutes.
       .then(() => console.log('[SW] Service worker installed successfully'))
       .catch(error => {
         console.error('[SW] Installation failed:', error);

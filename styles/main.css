@@ -677,6 +677,54 @@ body {
   margin-bottom: 0.75rem;
 }
 
+.lead-sheet [data-inline-field] {
+  border-radius: 0.2rem;
+  outline: 1px solid transparent;
+  outline-offset: 2px;
+  transition: background-color 120ms ease, outline-color 120ms ease;
+}
+
+.lead-sheet [data-inline-field]:hover {
+  background: color-mix(in srgb, var(--primary-color) 7%, transparent);
+  outline-color: color-mix(in srgb, var(--primary-color) 28%, transparent);
+}
+
+.lead-sheet [data-inline-field]:focus {
+  background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  outline: 2px solid var(--primary-color);
+}
+
+.lead-sheet .lyric-line.inline-edit-empty::before {
+  content: attr(data-placeholder);
+  color: var(--text-secondary);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.lead-sheet .chord-line { position: relative; }
+.lead-sheet .inline-chord-anchor {
+  position: absolute;
+  left: calc(var(--chord-column, 0) * 1ch);
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+}
+.lead-sheet .inline-chord-edit {
+  cursor: text;
+}
+.lead-sheet .inline-chord-drag-handle {
+  width: 0.65rem;
+  margin-left: 0.08rem;
+  overflow: hidden;
+  color: var(--text-secondary);
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.lead-sheet .inline-chord-anchor:hover .inline-chord-drag-handle,
+.lead-sheet .inline-chord-anchor:focus-within .inline-chord-drag-handle { opacity: 0.7; }
+.lead-sheet .inline-chord-drag-handle:active { cursor: grabbing; }
+
 .section-header {
   color: var(--primary-color);
   font-weight: bold;

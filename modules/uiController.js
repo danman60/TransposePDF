@@ -1012,7 +1012,7 @@ class UIController {
         </div>
         
         <div class="transpose-controls">
-          <button class="secondary-button edit-song-button" data-action="edit-song" data-song-id="${songId}" type="button" title="Edit chord sheet">Edit</button>
+          <button class="secondary-button edit-song-button" data-action="focus-chart" data-song-id="${songId}" type="button" title="Edit lyrics and chords directly on this chart">Edit on chart</button>
           <label class="spelling-policy-label">Spelling
             <select class="spelling-policy" data-action="set-spelling" data-song-id="${songId}" aria-label="Chord spelling for ${this.escapeHtml(song.title)}">
               <option value="contextual"${(song.spellingPolicy || 'contextual') === 'contextual' ? ' selected' : ''}>Contextual</option>
@@ -1052,8 +1052,72 @@ class UIController {
   /**
    * Render the actual lead sheet content exactly like the PDF layout
    */
-  renderLeadSheetContent(song) {
-    return this.chartRenderer.renderLeadSheetContent(song);
+  renderLeadSheetContent(song, { editable = true } = {}) {
+    return this.chartRenderer.renderLeadSheetContent(song, { editable });
+  }
+
+  async commitInlineChartEdit(target, value) {
+    const sheet = target.closest('.lead-sheet[data-song-id]');
+    const song = this.currentSongs.find(item => String(item.id) === String(sheet?.dataset.songId));
+    if (!song || !song.sections?.[Number(target.dataset.sectionIndex)]) return false;
+    const previous = SongModel.create(song);
+    const edited = SongModel.create(song);
+    const line = edited.sections[Number(target.dataset.sectionIndex)]?.lines?.[Number(target.dataset.lineIndex)];
+    if (!line) return false;
+    if (target.dataset.inlineField === 'lyrics') line.lyrics = String(value).replace(/[\r\n]+/g, '');
+    if (target.dataset.inlineField === 'chord') {
+      const chordId = target.dataset.chordId || target.closest('.inline-chord-anchor')?.dataset.chordId;
+      const index = line.chords.findIndex(chord => String(chord.id) === String(chordId));
+      if (index < 0) return false;
+      const symbol = String(value).replace(/\s+/g, '').trim();
+      if (symbol) line.chords[index].symbol = symbol;
+      else line.chords.splice(index, 1);
+    }
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      this.updateStatus('Chart edit saved', 'success');
+      this.track('chart.inline_edit.saved', { field: target.dataset.inlineField }, saved);
+      return true;
+    } catch (error) {
+      this.updateLeadSheetDisplay(this.currentSongs.find(item => String(item.id) === String(song.id)) || song);
+      return false;
+    }
+  }
+
+  focusInlineChart(songId) {
+    const sheet = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"]`);
+    const target = sheet?.querySelector('[data-inline-field="lyrics"]');
+    target?.focus();
+    this.updateStatus('Edit lyrics in place. Type chord symbols or drag them anywhere above a lyric line.', 'success');
+  }
+
+  async moveInlineChord(source, destination, desiredOffset) {
+    const song = this.currentSongs.find(item => String(item.id) === String(source.songId));
+    if (!song) return false;
+    const previous = SongModel.create(song);
+    const edited = SongModel.create(song);
+    const sourceLine = edited.sections?.[source.sectionIndex]?.lines?.[source.lineIndex];
+    const destinationLine = edited.sections?.[destination.sectionIndex]?.lines?.[destination.lineIndex];
+    const chord = sourceLine?.chords?.find(item => String(item.id) === String(source.chordId));
+    if (!chord || !destinationLine) return false;
+    sourceLine.chords.splice(sourceLine.chords.indexOf(chord), 1);
+    chord.characterOffset = this.authoringController.availableChordOffset(destinationLine.chords, desiredOffset, chord.symbol);
+    chord.timestamp = SongModel.timestampForCharacterOffset(destinationLine, chord.characterOffset, chord.timestamp);
+    chord.confidence = null;
+    destinationLine.chords.push(chord);
+    destinationLine.chords.sort((left, right) => left.characterOffset - right.characterOffset);
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      this.updateStatus(`${chord.symbol} moved to column ${chord.characterOffset + 1}`, 'success');
+      this.track('chart.chord.dragged', { sectionIndex: destination.sectionIndex, lineIndex: destination.lineIndex, characterOffset: chord.characterOffset }, saved);
+      return true;
+    } catch (_) { return false; }
   }
 
   renderStructuredContent(song, options = {}) {
@@ -1383,7 +1447,7 @@ class UIController {
     const song = this.currentSongs.find(item => String(item.id) === String(this.activeSongId));
     if (!song) return;
     this.elements.performanceTitle.textContent = song.title;
-    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(song);
+    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(song, { editable: false });
     this.elements.performanceChart.style.fontSize = `${state.fontScale}em`;
     this.elements.performanceChart.style.columnCount = String(state.columns);
     this.elements.performanceChart.dataset.reducedMotion = String(state.reducedMotion);
