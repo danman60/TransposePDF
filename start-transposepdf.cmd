@@ -6,5 +6,5 @@ if not exist ".venv\Scripts\python.exe" (
   exit /b 1
 )
 start "TransposePDF Server" /min ".venv\Scripts\python.exe" server.py
-timeout /t 2 /nobreak >nul
+ping -n 3 127.0.0.1 >nul
 start "" "http://127.0.0.1:8000"
