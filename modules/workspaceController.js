@@ -47,6 +47,7 @@ class WorkspaceController {
       'open-history': () => this.ui.openHistory(songId),
       'transpose-song': () => this.ui.transposeSong(songId, Number(target.dataset.semitones) || 0),
       'reset-song': () => this.ui.resetSong(songId),
+      'add-chart-line': () => this.ui.insertInlineChartLine(songId, Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), null),
       'move-song': () => this.moveSong(target, songId),
       'remove-song': () => this.ui.removeSessionSong(songId)
     };
@@ -151,7 +152,31 @@ class WorkspaceController {
   handleKeyDown(event) {
     const target = this.inlineTarget(event);
     if (!target || event.isComposing) return;
-    if (event.key === 'Enter') { event.preventDefault(); target.blur(); }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (target.dataset.inlineField === 'lyrics') {
+        target.dataset.inlineSaving = 'true';
+        const selection = window.getSelection?.();
+        let caret = (target.textContent || '').length;
+        if (selection?.rangeCount && target.contains(selection.anchorNode)) {
+          const range = selection.getRangeAt(0).cloneRange();
+          range.selectNodeContents(target); range.setEnd(selection.anchorNode, selection.anchorOffset);
+          caret = range.toString().length;
+        }
+        this.ui.insertInlineChartLine(
+          target.closest('.lead-sheet[data-song-id]')?.dataset.songId,
+          Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), caret, target.textContent || ''
+        );
+      } else target.blur();
+    }
+    if ((event.key === 'Backspace' || event.key === 'Delete') && target.dataset.inlineField === 'lyrics' && !(target.textContent || '')) {
+      event.preventDefault();
+      target.dataset.inlineSaving = 'true';
+      this.ui.removeInlineChartLine(
+        target.closest('.lead-sheet[data-song-id]')?.dataset.songId,
+        Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex)
+      );
+    }
     if (event.key === 'Escape') {
       event.preventDefault(); target.textContent = target.dataset.originalText || ''; target.blur();
     }

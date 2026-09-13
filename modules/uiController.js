@@ -1087,6 +1087,68 @@ class UIController {
     }
   }
 
+  async insertInlineChartLine(songId, sectionIndex, lineIndex, caretOffset = null, currentLyrics = null) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const source = song?.sections?.[sectionIndex]?.lines?.[lineIndex];
+    if (!song || !source) return false;
+    const previous = SongModel.create(song);
+    const edited = SongModel.create(song);
+    const line = edited.sections[sectionIndex].lines[lineIndex];
+    if (currentLyrics != null) line.lyrics = String(currentLyrics).replace(/[\r\n]+/g, '');
+    const splitAt = caretOffset == null ? line.lyrics.length : Math.max(0, Math.min(Number(caretOffset), line.lyrics.length));
+    const trailingLyrics = caretOffset == null ? '' : line.lyrics.slice(splitAt);
+    line.lyrics = caretOffset == null ? line.lyrics : line.lyrics.slice(0, splitAt);
+    const newLine = {
+      id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      lyrics: trailingLyrics, chords: [], startTime: null, endTime: null,
+      lyricConfidence: null, timedWords: []
+    };
+    edited.sections[sectionIndex].lines.splice(lineIndex + 1, 0, newLine);
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      requestAnimationFrame(() => {
+        const selector = `.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] [data-inline-field="lyrics"][data-section-index="${sectionIndex}"][data-line-index="${lineIndex + 1}"]`;
+        const target = this.elements.songsContainer.querySelector(selector);
+        target?.focus();
+        const selection = window.getSelection?.();
+        if (target && selection) { const range = document.createRange(); range.selectNodeContents(target); range.collapse(true); selection.removeAllRanges(); selection.addRange(range); }
+      });
+      this.updateStatus('New lyric line added', 'success');
+      this.track('chart.line.inserted', { sectionIndex, lineIndex: lineIndex + 1 }, saved);
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  async removeInlineChartLine(songId, sectionIndex, lineIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const lines = song?.sections?.[sectionIndex]?.lines;
+    if (!song || !lines?.[lineIndex] || lines.length <= 1 || lines[lineIndex].lyrics) return false;
+    const previous = SongModel.create(song);
+    const edited = SongModel.create(song);
+    const editedLines = edited.sections[sectionIndex].lines;
+    const removed = editedLines[lineIndex];
+    const focusIndex = lineIndex > 0 ? lineIndex - 1 : 0;
+    const destination = editedLines[lineIndex > 0 ? lineIndex - 1 : 1];
+    if (removed.chords?.length) destination.chords.push(...removed.chords);
+    editedLines.splice(lineIndex, 1);
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      requestAnimationFrame(() => {
+        const target = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] [data-inline-field="lyrics"][data-section-index="${sectionIndex}"][data-line-index="${focusIndex}"]`);
+        target?.focus();
+      });
+      this.updateStatus('Empty lyric line removed', 'success');
+      this.track('chart.line.removed', { sectionIndex, lineIndex }, saved);
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
   focusInlineChart(songId) {
     const sheet = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"]`);
     const target = sheet?.querySelector('[data-inline-field="lyrics"]');

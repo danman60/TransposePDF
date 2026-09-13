@@ -701,6 +701,17 @@ body {
   opacity: 0.7;
 }
 
+.chart-line { position: relative; }
+.inline-add-line {
+  position: absolute; right: .25rem; bottom: -.72rem; z-index: 2;
+  border: 1px solid #4abff0; border-radius: 999px; padding: .18rem .58rem;
+  background: #17242b; color: #73d3fa;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .28); font-size: .72rem; font-weight: 700;
+  opacity: 0; transition: opacity 120ms ease, color 120ms ease;
+}
+.chart-line:hover .inline-add-line, .chart-line:focus-within .inline-add-line, .inline-add-line:focus { opacity: 1; }
+.inline-add-line:hover { color: #fff; background: #217ba1; }
+
 .lead-sheet .chord-line { position: relative; }
 .lead-sheet .inline-chord-anchor {
   position: absolute;
