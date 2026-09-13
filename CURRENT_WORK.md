@@ -2,7 +2,7 @@
 
 ## Last Session Summary
 
-Active task: persistent multi-song library/session workspace, immediately reachable editing, recovery autosave, and FIRMAMENT-local live telemetry. Plan: `docs/plans/2026-09-13-persistent-library-live-session.md`.
+Persistent multi-song library/session workspace, immediately reachable editing, recovery autosave, and FIRMAMENT-local live telemetry shipped and passed full lifecycle testing. Plan: `docs/plans/2026-09-13-persistent-library-live-session.md`.
 
 ## What Changed
 
@@ -33,7 +33,7 @@ PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function brow
 
 ## Incomplete Work
 
-- Implement and verify persistent library/session selector, editor recovery, and live telemetry; deploy to FIRMAMENT.
+- None for persistent workspace and telemetry scope.
 
 ## Tests
 
@@ -46,6 +46,7 @@ PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function brow
 - 2026-09-13: commit `a10a73d` pushed and runtime files copied to FIRMAMENT. Live server returned HTTP 200 and served `spellChordForKey` plus offline cache v7.
 - 2026-09-13 10:31 Eastern: visual/function audit passed 30/30 checks at desktop, mobile, and 200%-equivalent reflow. Blank-space and cross-line chord placement, mobile tabs/nudges, keyboard file pickers, progress semantics, error focus restoration, and sticky Save passed with zero console errors and zero failed requests. Full Armor regression passed 12/12; two analyses completed in 19.62s and 21.57s; PDF was 18,039 bytes.
 - 2026-09-13 10:34 Eastern: commit `dda8565` pushed and audited runtime files copied to FIRMAMENT. Live server returned HTTP 200, served cache v8 and new authoring/accessibility markup, and Chrome produced a 67,937-byte composited screenshot.
+- 2026-09-13 11:55 Eastern: commit `7ca5558` deployed to FIRMAMENT; persistent server task created. FIRMAMENT lifecycle passed 17/17 through SSH tunnel: three-song exact reload, one-song selector, sticky Edit, recovery, immediate spelling and rapid transpose persistence, export, mobile, telemetry, and zero browser errors. Armor of God lifecycle passed 12/12 with two real analyses (24.76s/10.49s), exact edits/timing/spelling, immutable raw evidence, transpose/reset, 33,201-byte PDF, fresh-profile isolation, and zero console errors.
 
 ## Next Steps (priority order)
 

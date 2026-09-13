@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 import time
@@ -7,7 +8,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 
-URL = "http://127.0.0.1:8000"
+URL = os.environ.get("TRANSPOSEPDF_URL", "http://127.0.0.1:8000")
 AUDIO = "/tmp/ArmorOfGod.mp3"
 LYRICS = "/tmp/armor-of-god-lyrics.txt"
 SHOT = "/home/danman60/projects/TransposePDF/artifacts/all-edits-authoring.png"
