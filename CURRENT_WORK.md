@@ -6,6 +6,7 @@ All 20 selected feature/streamline items implemented in local release tree. Dedi
 
 ## Recent Changes
 
+- `04fa365` deployed as FIRMAMENT v20: Enter splits lyrics at the live caret into a new chart line/chord lane; `+ line` inserts a blank row; Backspace/Delete removes an empty non-sole row. Immediate unblurred typing is preserved.
 - `af0f3e4` hotfix: imported songs now edit directly on the main chart. Lyrics support in-place typing/deletion; chord symbols support direct replacement and independently anchored same-line/cross-line dragging over syllables or blank space. Performance remains read-only.
 - Named setlists/library search, history with readable line diffs, ChordPro, Nashville/capo/instrument views.
 - Performance mode, swipe/keyboard/MIDI controls, timed rehearsal, low-confidence review, companion view.
@@ -17,6 +18,7 @@ All 20 selected feature/streamline items implemented in local release tree. Dedi
 
 ## Verification
 
+- FIRMAMENT v20: line insertion 9/9, inline editing/drag 9/9, persistent lifecycle 17/17; zero console/page/telemetry errors.
 - FIRMAMENT v18 inline chart lifecycle: 6/6. Untouched chord IDs/section/line/offsets remained byte-identical after another chord moved; reload persistence passed; zero console/page errors.
 - Persistent lifecycle: 17/17, zero console/page/telemetry errors.
 - UX gaps: 6/6.
