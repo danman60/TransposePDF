@@ -195,7 +195,8 @@ class LibraryStore {
         songId: String(item.songId),
         position,
         transpose: Number(item.transpose) || 0,
-        spellingPolicy: item.spellingPolicy || 'contextual'
+        spellingPolicy: item.spellingPolicy || 'contextual',
+        view: this.sanitizeNested(this.clone(item.view || {}))
       }));
       const activeItemId = items.some(item => item.id === session?.activeItemId)
         ? session.activeItemId

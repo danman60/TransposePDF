@@ -20,6 +20,8 @@ class UIController {
     this.authorPointerDrag = null;
     this.lastFocusedElement = null;
     this.libraryStore = typeof LibraryStore !== 'undefined' ? new LibraryStore() : null;
+    this.sessionStore = this.libraryStore && typeof SessionStore !== 'undefined'
+      ? new SessionStore({ libraryStore: this.libraryStore }) : null;
     this.telemetry = typeof SessionTelemetry !== 'undefined' ? new SessionTelemetry() : null;
     this.activeSession = null;
     this.activeSongId = null;
@@ -28,6 +30,7 @@ class UIController {
     this.pendingRecoveryDraft = null;
     this.authorDraftPersistentId = null;
     this.sessionSaveQueue = Promise.resolve();
+    this.pendingTranspose = new Map();
     
     // Initialize UI elements
     this.initializeElements();
@@ -201,35 +204,42 @@ class UIController {
   async initializePersistence() {
     this.setSaveState('Saving…');
     try {
-      if (!this.libraryStore) throw new Error('Persistent library unavailable');
-      await this.libraryStore.open();
-      this.activeSession = await this.libraryStore.getSession();
+      if (!this.sessionStore) throw new Error('Persistent session unavailable');
+      await this.sessionStore.hydrate();
+      this.syncFromSessionStore();
       this.elements.sessionName.value = this.activeSession?.name || 'My songs';
-      const songs = [];
-      for (const item of this.activeSession?.items || []) {
-        const record = await this.libraryStore.getSong(item.songId);
-        if (!record || record.archivedAt) continue;
-        this.songRevisions.set(record.id, record.revision);
-        songs.push(SongModel.create({
-          ...record.song,
-          id: record.id,
-          transposition: item.transpose,
-          spellingPolicy: item.spellingPolicy,
-          currentKey: new MusicTheory().transposeKey(record.song.originalKey, item.transpose, item.spellingPolicy)
-        }));
-      }
-      this.currentSongs = songs;
-      const activeItem = this.activeSession?.items?.find(item => item.id === this.activeSession.activeItemId);
-      this.activeSongId = activeItem?.songId || songs[0]?.id || null;
-      if (songs.length) this.displaySongs();
+      if (this.currentSongs.length) this.displaySongs();
       await this.offerNewestRecoveryDraft();
       this.setSaveState('Saved');
-      this.track('session.started', { songCount: songs.length });
+      this.track('session.started', { songCount: this.currentSongs.length });
       this.updateTelemetrySnapshot();
     } catch (error) {
       this.setSaveState('Save failed');
       this.track('ui.error', { operation: 'restore', errorCode: 'persistence_failed' });
     }
+  }
+
+  syncFromSessionStore(ephemeralSongs = []) {
+    const prior = new Map([...this.currentSongs, ...ephemeralSongs].map(song => [String(song.id), song]));
+    this.activeSession = this.sessionStore?.activeSession || null;
+    this.currentSongs = (this.sessionStore?.songs || []).map(song => {
+      const runtime = prior.get(String(song.id));
+      return runtime?.source?.rawAnalysis
+        ? SongModel.create({ ...song, source: runtime.source })
+        : SongModel.create(song);
+    });
+    this.activeSongId = this.sessionStore?.currentSong?.id || this.currentSongs[0]?.id || null;
+    this.songRevisions = new Map([...(this.sessionStore?.songRecords || new Map()).entries()]
+      .map(([id, record]) => [id, record.revision]));
+  }
+
+  handleSessionStoreError(error, operation) {
+    this.setSaveState('Save failed');
+    this.track('ui.error', { operation, errorCode: error?.name || 'session_failed' });
+    if (error?.name === 'ConflictError') {
+      this.showError('This session changed in another tab. Reload to review the newer version before saving again.');
+    }
+    return error;
   }
 
   setSaveState(value) {
@@ -276,56 +286,34 @@ class UIController {
   }
 
   async persistSong(song, { addToSession = true } = {}) {
-    if (!this.libraryStore) return song;
+    if (!this.sessionStore) return song;
     this.setSaveState('Saving…');
     try {
-      if (!song.id || typeof song.id !== 'string') song.id = this.libraryStore.createId();
-      const expectedRevision = this.songRevisions.get(String(song.id));
-      const record = await this.libraryStore.saveSong(song, {
-        expectedRevision: expectedRevision === undefined ? null : expectedRevision
-      });
-      song.id = record.id;
-      this.songRevisions.set(record.id, record.revision);
-      if (addToSession) {
-        this.activeSession ||= await this.libraryStore.getSession();
-        if (!this.activeSession.items.some(item => item.songId === record.id)) {
-          const item = {
-            id: this.libraryStore.createId(), songId: record.id,
-            transpose: song.transposition || 0, spellingPolicy: song.spellingPolicy || 'contextual'
-          };
-          this.activeSession.items.push(item);
-          this.activeSession.activeItemId = item.id;
-          this.activeSongId = record.id;
-        }
-        await this.persistSession();
-      }
+      const exists = this.sessionStore.songRecords.has(String(song.id));
+      if (addToSession && !exists) await this.sessionStore.addSong(song);
+      else await this.sessionStore.commitSong(song);
+      this.syncFromSessionStore([song]);
       this.setSaveState('Saved');
-      return song;
+      return this.currentSongs.find(item => String(item.id) === String(song.id)) || song;
     } catch (error) {
-      this.setSaveState('Save failed');
-      this.track('ui.error', { operation: 'song.save', errorCode: error.name });
-      throw error;
+      throw this.handleSessionStoreError(error, 'song.save');
     }
   }
 
   persistSession() {
-    this.sessionSaveQueue = this.sessionSaveQueue.catch(() => {}).then(() => this.persistSessionNow());
-    return this.sessionSaveQueue;
+    return this.persistSessionNow();
   }
 
   async persistSessionNow() {
-    if (!this.libraryStore || !this.activeSession) return;
-    const saved = await this.libraryStore.saveSession({
-      ...this.activeSession,
-      name: this.elements.sessionName?.value.trim() || 'My songs',
-      items: this.activeSession.items.map(item => {
-        const song = this.currentSongs.find(candidate => String(candidate.id) === String(item.songId));
-        return { ...item, transpose: song?.transposition ?? item.transpose, spellingPolicy: song?.spellingPolicy || item.spellingPolicy };
-      })
-    }, { expectedRevision: this.activeSession.revision });
-    this.activeSession = saved;
-    this.setSaveState('Saved');
-    this.updateTelemetrySnapshot();
+    if (!this.sessionStore?.activeSession) return;
+    try {
+      await this.sessionStore.renameSession(this.elements.sessionName?.value.trim() || 'My songs');
+      this.syncFromSessionStore();
+      this.setSaveState('Saved');
+      this.updateTelemetrySnapshot();
+    } catch (error) {
+      throw this.handleSessionStoreError(error, 'session.save');
+    }
   }
 
   scheduleSessionSave() {
@@ -449,8 +437,7 @@ class UIController {
       SongModel.retainAnalysisMetadata(editableSong, analyzedSong);
       const visibleLearning = this.correctionMemory.apply(editableSong);
       const song = SongModel.create({ ...visibleLearning.song, id: analyzedSong.id });
-      await this.persistSong(song);
-      this.currentSongs.push(song);
+      const savedSong = await this.persistSong(song);
       const learnedStatus = learned.savedEditsApplied
         ? ' · restored your saved chart edits'
         : learned.applied
@@ -460,8 +447,8 @@ class UIController {
       this.elements.audioFileInput.value = '';
       this.clearAudioLyrics();
       this.elements.audioJob.style.display = 'none';
-      this.openAuthoring(song.id);
-      this.track('import.completed', { type: 'audio' }, song);
+      this.openAuthoring(savedSong.id);
+      this.track('import.completed', { type: 'audio' }, savedSong);
     } catch (error) {
       if (this.audioJobId && error.name !== 'AbortError') {
         fetch(`/api/audio-jobs/${encodeURIComponent(this.audioJobId)}`, { method: 'DELETE' }).catch(() => {});
@@ -649,16 +636,17 @@ class UIController {
       authored.source.correctionsLearned = learning.learned;
       authored.source.savedEditsLearned = learning.savedEdits;
       authored.source.correctionsPersisted = learning.persisted;
-      this.currentSongs[index] = authored;
-    } else {
-      this.currentSongs.push(authored);
     }
 
     try {
-      await this.persistSong(authored, { addToSession: this.editingSongId === null });
+      const savedSong = await this.persistSong(authored, { addToSession: this.editingSongId === null });
+      if (String(this.sessionStore.currentSong?.id) !== String(savedSong.id)) {
+        await this.sessionStore.selectSong(savedSong.id);
+        this.syncFromSessionStore([savedSong]);
+      }
       await this.libraryStore?.deleteDraft(this.editingSongId || this.authorDraftPersistentId);
     } catch (error) {
-      this.showError(`Could not save chart: ${error.message}`);
+      if (error?.name !== 'ConflictError') this.showError(`Could not save chart: ${error.message}`);
       return;
     }
 
@@ -673,7 +661,6 @@ class UIController {
       ? ' · chart saved for this session, but learning could not be stored in this browser'
       : '';
     this.updateStatus(`Saved ${authored.title}${learnedStatus}${persistenceWarning}`, persistenceWarning ? 'warning' : 'success');
-    this.activeSongId = authored.id;
     this.track('chart.saved', {}, authored);
     this.displaySongs();
   }
@@ -1081,8 +1068,10 @@ class UIController {
         transposition: 0
       }));
       for (const song of importedSongs) await this.persistSong(song);
-      this.currentSongs = [...this.currentSongs, ...importedSongs];
-      this.activeSongId = importedSongs[0]?.id || this.activeSongId;
+      if (importedSongs.length) {
+        await this.sessionStore.selectSong(importedSongs[0].id);
+        this.syncFromSessionStore(importedSongs);
+      }
       
       this.showUploadProgress(100);
       this.updateStatus(`Successfully loaded ${songs.length} songs`, 'success');
@@ -1154,15 +1143,17 @@ class UIController {
     }
   }
 
-  selectActiveSong(songId) {
+  async selectActiveSong(songId) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     if (!song) return;
-    this.activeSongId = song.id;
-    const item = this.activeSession?.items.find(candidate => candidate.songId === String(song.id));
-    if (item) this.activeSession.activeItemId = item.id;
-    this.displaySongs();
-    this.persistSession().catch(() => this.setSaveState('Save failed'));
-    this.track('song.selected', {}, song);
+    try {
+      await this.sessionStore.selectSong(song.id);
+      this.syncFromSessionStore();
+      this.displaySongs();
+      this.track('song.selected', {}, this.sessionStore.currentSong);
+    } catch (error) {
+      this.handleSessionStoreError(error, 'song.select');
+    }
   }
 
   /**
@@ -1332,20 +1323,24 @@ class UIController {
     });
   }
 
-  setSpellingPolicy(songId, policy) {
+  async setSpellingPolicy(songId, policy) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     if (!song || !['contextual', 'flats', 'sharps', 'preserve'].includes(policy)) return;
     const previous = SongModel.create(song);
-    song.spellingPolicy = policy;
-    song.currentKey = new MusicTheory().transposeKey(song.originalKey, song.transposition, policy);
-    const learning = song.sourceType === 'audio' ? this.correctionMemory.learn(previous, song) : null;
-    this.updateLeadSheetDisplay(song);
-    this.updateStatus(learning?.persisted === false
-      ? `Chord spelling set to ${policy} for this session; browser storage is unavailable`
-      : `Chord spelling set to ${policy}`, learning?.persisted === false ? 'warning' : 'success');
-    this.persistSession().catch(() => this.setSaveState('Save failed'));
-    this.track('spelling.changed', { policy }, song);
-    this.updateTelemetrySnapshot();
+    try {
+      await this.sessionStore.updateSongOverrides(song.id, { spellingPolicy: policy });
+      this.syncFromSessionStore();
+      const updated = this.currentSongs.find(item => String(item.id) === String(song.id));
+      const learning = updated.sourceType === 'audio' ? this.correctionMemory.learn(previous, updated) : null;
+      this.updateLeadSheetDisplay(updated);
+      this.updateStatus(learning?.persisted === false
+        ? `Chord spelling set to ${policy} for this session; browser storage is unavailable`
+        : `Chord spelling set to ${policy}`, learning?.persisted === false ? 'warning' : 'success');
+      this.track('spelling.changed', { policy }, updated);
+      this.updateTelemetrySnapshot();
+    } catch (error) {
+      this.handleSessionStoreError(error, 'spelling.change');
+    }
   }
   
   /**
@@ -1521,61 +1516,68 @@ class UIController {
    * Transpose individual song with real-time lead sheet updates
    */
   transposeSong(songId, semitones) {
-    const song = this.currentSongs.find(s => String(s.id) === String(songId));
-    if (!song) return;
-    
-    try {
-      // Update transposition
-      song.transposition += semitones;
-      
-      // Calculate new key
-      const musicTheory = new MusicTheory();
-      song.currentKey = musicTheory.transposeKey(song.originalKey, song.transposition, song.spellingPolicy || 'contextual');
-      
-      // Update the lead sheet display in real-time
-      this.updateLeadSheetDisplay(song);
-      
-      // Update transpose display
-      this.updateTransposeDisplay(song);
-      
-      // Log the change
-      logger.status(`${song.title}: ${song.originalKey} → ${song.currentKey} (${song.transposition > 0 ? '+' : ''}${song.transposition})`, 'info');
-      this.persistSession().catch(() => this.setSaveState('Save failed'));
-      this.track('transpose.changed', { semitones: song.transposition }, song);
+    const visibleSong = this.currentSongs.find(s => String(s.id) === String(songId));
+    if (!visibleSong) return Promise.resolve();
+    const pending = this.pendingTranspose.get(String(songId));
+    const target = (pending === undefined ? visibleSong.transposition : pending) + semitones;
+    this.pendingTranspose.set(String(songId), target);
+    const preview = SongModel.create({
+      ...visibleSong,
+      transposition: target,
+      currentKey: new MusicTheory().transposeKey(visibleSong.originalKey, target, visibleSong.spellingPolicy || 'contextual')
+    });
+    this.updateLeadSheetDisplay(preview);
+    this.updateTransposeDisplay(preview);
+    const execution = (async () => {
+      const song = this.currentSongs.find(s => String(s.id) === String(songId));
+      if (!song) return;
+      await this.sessionStore.updateSongOverrides(song.id, { transpose: target });
+      this.syncFromSessionStore();
+      const updated = this.currentSongs.find(s => String(s.id) === String(songId));
+      this.updateLeadSheetDisplay(updated);
+      this.updateTransposeDisplay(updated);
+      if (this.pendingTranspose.get(String(songId)) === target) this.pendingTranspose.delete(String(songId));
+      logger.status(`${updated.title}: ${updated.originalKey} → ${updated.currentKey} (${updated.transposition > 0 ? '+' : ''}${updated.transposition})`, 'info');
+      this.track('transpose.changed', { semitones: updated.transposition }, updated);
       this.updateTelemetrySnapshot();
-      
-    } catch (error) {
-      this.showError(`Failed to transpose "${song.title}": ${error.message}`);
-    }
+    })();
+    execution.catch(error => {
+      this.handleSessionStoreError(error, 'transpose.change');
+    });
+    return execution;
   }
 
   /**
    * Reset individual song to original key
    */
   resetSong(songId) {
-    const song = this.currentSongs.find(s => String(s.id) === String(songId));
-    if (!song) return;
-    
-    try {
-      // Reset to original state
-      song.transposition = 0;
-      song.currentKey = new MusicTheory().transposeKey(song.originalKey, 0, song.spellingPolicy || 'contextual');
-      
-      // Update the lead sheet display
-      this.updateLeadSheetDisplay(song);
-      
-      // Update transpose display
-      this.updateTransposeDisplay(song);
-      
-      // Log the reset
-      logger.status(`${song.title}: Reset to original key (${song.originalKey})`, 'info');
-      this.persistSession().catch(() => this.setSaveState('Save failed'));
-      this.track('transpose.changed', { semitones: 0 }, song);
+    const visibleSong = this.currentSongs.find(s => String(s.id) === String(songId));
+    if (!visibleSong) return Promise.resolve();
+    this.pendingTranspose.set(String(songId), 0);
+    const preview = SongModel.create({
+      ...visibleSong,
+      transposition: 0,
+      currentKey: new MusicTheory().transposeKey(visibleSong.originalKey, 0, visibleSong.spellingPolicy || 'contextual')
+    });
+    this.updateLeadSheetDisplay(preview);
+    this.updateTransposeDisplay(preview);
+    const execution = (async () => {
+      const song = this.currentSongs.find(s => String(s.id) === String(songId));
+      if (!song) return;
+      await this.sessionStore.updateSongOverrides(song.id, { transpose: 0 });
+      this.syncFromSessionStore();
+      const updated = this.currentSongs.find(s => String(s.id) === String(songId));
+      this.updateLeadSheetDisplay(updated);
+      this.updateTransposeDisplay(updated);
+      if (this.pendingTranspose.get(String(songId)) === 0) this.pendingTranspose.delete(String(songId));
+      logger.status(`${updated.title}: Reset to original key (${updated.originalKey})`, 'info');
+      this.track('transpose.changed', { semitones: 0 }, updated);
       this.updateTelemetrySnapshot();
-      
-    } catch (error) {
-      this.showError(`Failed to reset "${song.title}": ${error.message}`);
-    }
+    })();
+    execution.catch(error => {
+      this.handleSessionStoreError(error, 'transpose.reset');
+    });
+    return execution;
   }
   
   /**
@@ -1790,7 +1792,7 @@ class UIController {
    * Reset application state
    */
   reset() {
-    this.currentSongs = [];
+    this.syncFromSessionStore();
     this.currentFile = null;
     this.isProcessing = false;
     

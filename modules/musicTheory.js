@@ -337,6 +337,52 @@ class MusicTheory {
     return match[1] + (finalOffset > 0 ? '#'.repeat(finalOffset) : 'b'.repeat(-finalOffset));
   }
 
+  /** Split a canonical chord without changing its spelling. */
+  parseChordParts(symbol) {
+    const value = String(symbol || '').trim();
+    if (value === 'N.C.') return { symbol: value, noChord: true, root: null, suffix: '', bass: null };
+    const match = value.match(/^([A-G](?:#{1,2}|b{1,2})?)([^/]*?)(?:\/([A-G](?:#{1,2}|b{1,2})?))?$/);
+    if (!match || !match[1]) return null;
+    return { symbol: value, noChord: false, root: match[1], suffix: match[2] || '', bass: match[3] || null };
+  }
+
+  /** Sem the written-note offset for a transposing instrument. */
+  concertToWrittenOffset(instrument = 'concert') {
+    const normalized = String(instrument || 'concert').trim().toLowerCase().replace(/[^a-z]/g, '');
+    return { concert: 0, c: 0, bb: 2, bflat: 2, eb: 9, eflat: 9, f: 7 }[normalized] ?? 0;
+  }
+
+  /** Convert a concert chord into a tonic-relative Nashville number. */
+  toNashville(symbol, key, { prefer = 'contextual' } = {}) {
+    const chord = this.parseChordParts(symbol);
+    const tonic = this.parseKey(key);
+    if (!chord || !tonic || chord.noChord) return chord?.noChord ? 'N.C.' : symbol;
+    const names = ['1', 'b2', '2', 'b3', '3', '4', '#4', '5', 'b6', '6', 'b7', '7'];
+    if (prefer === 'flats') names[6] = 'b5';
+    const degree = root => names[(this.notePitch(root) - tonic.pitch + 12) % 12];
+    return `${degree(chord.root)}${chord.suffix}${chord.bass ? `/${degree(chord.bass)}` : ''}`;
+  }
+
+  /** One non-mutating display path for concert, capo, instrument, and Nashville views. */
+  displayChord(symbol, song = {}, view = {}) {
+    if (!symbol || symbol === 'N.C.') return symbol;
+    const policy = view.spellingPolicy || song.spellingPolicy || 'contextual';
+    const transposition = Number(song.transposition) || 0;
+    const sourceKey = song.originalKey || 'C';
+    const concertKey = this.transposeKey(sourceKey, transposition, policy);
+    const concertChord = this.transposeChord(symbol, transposition, {
+      policy, sourceKey, targetKey: concertKey, allowDoubleAccidentals: false
+    });
+    if ((view.notation || song.view?.notation || 'chords') === 'nashville') {
+      return this.toNashville(concertChord, concertKey, { prefer: policy });
+    }
+    const instrument = view.instrument || song.view?.instrument || 'concert';
+    const capo = Math.max(0, Math.min(11, Number(view.capo ?? song.view?.capo) || 0));
+    const displayOffset = this.concertToWrittenOffset(instrument) - capo;
+    if (!displayOffset) return concertChord;
+    return this.transposeChord(concertChord, displayOffset, { policy });
+  }
+
   /**
    * Get enharmonic equivalent
    */
@@ -557,3 +603,4 @@ class MusicTheory {
 if (typeof window !== 'undefined') {
   window.MusicTheory = MusicTheory;
 }
+if (typeof module !== 'undefined' && module.exports) module.exports = MusicTheory;

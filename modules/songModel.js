@@ -35,6 +35,7 @@ class SongModel {
       timeSignature: input.timeSignature || '',
       sourceType: input.sourceType || 'manual',
       spellingPolicy: input.spellingPolicy || 'contextual',
+      view: this.normalizeView(input.view),
       sections,
       source: input.source || {},
       textItems: input.textItems || [],
@@ -236,6 +237,7 @@ class SongModel {
     edited.timeSignature = previous.timeSignature || edited.timeSignature;
     edited.keyConfidence = previous.keyConfidence ?? edited.keyConfidence;
     edited.spellingPolicy = previous.spellingPolicy || edited.spellingPolicy || 'contextual';
+    edited.view = this.normalizeView(previous.view || edited.view);
     edited.chords = previous.chords || [];
     edited.songText = this.toSongText(edited);
     return edited;
@@ -243,6 +245,19 @@ class SongModel {
 
   static normalizeLyrics(value) {
     return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+  }
+
+  static normalizeView(view = {}) {
+    const notation = view.notation === 'nashville' ? 'nashville' : 'chords';
+    const instruments = new Set(['concert', 'bb', 'eb', 'f']);
+    const instrument = instruments.has(String(view.instrument || '').toLowerCase())
+      ? String(view.instrument).toLowerCase()
+      : 'concert';
+    return {
+      notation,
+      capo: Math.max(0, Math.min(11, Math.trunc(Number(view.capo) || 0))),
+      instrument
+    };
   }
 
   static timestampForCharacterOffset(line, characterOffset, fallback = null) {
