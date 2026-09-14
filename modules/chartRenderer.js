@@ -62,7 +62,9 @@ class ChartRenderer {
     const musicTheory = this.musicTheory();
     const sections = song.sections || [];
     return `<div class="structured-chart">${sections.map((section, sectionIndex) => {
-      const label = section.label ? `<div class="section-label">${this.escape(section.label)}</div>` : '';
+      const label = options.editable
+        ? `<div class="section-heading"><span class="section-drag-handle" draggable="true" tabindex="0" aria-label="Drag to reorder section" title="Drag section">⠿</span><div class="section-label${section.label ? '' : ' inline-edit-empty'}" contenteditable="plaintext-only" role="textbox" aria-label="Edit section label" spellcheck="true" data-inline-field="section-label" data-section-index="${sectionIndex}" data-placeholder="Section">${this.escape(section.label || '')}</div><div class="section-actions" aria-label="Section actions"><button type="button" data-action="add-section-before" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Add section before">+ before</button><button type="button" data-action="add-section-after" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Add section after">+ after</button><button type="button" data-action="duplicate-section" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Duplicate section">Duplicate</button><button type="button" data-action="move-section" data-direction="up" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" aria-label="Move section up">↑</button><button type="button" data-action="move-section" data-direction="down" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" aria-label="Move section down">↓</button><button type="button" data-action="delete-section" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Delete section">Delete</button></div></div>`
+        : (section.label ? `<div class="section-label">${this.escape(section.label)}</div>` : '');
       const lines = (section.lines || []).map((line, lineIndex) => {
         const chords = (line.chords || []).map((chord, chordIndex) => ({
           ...chord,
@@ -75,7 +77,7 @@ class ChartRenderer {
           ${options.editable ? `<button type="button" class="inline-add-line" data-action="add-chart-line" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" aria-label="Add lyric line after this line" title="Add line">+ line</button>` : ''}
         </div>`;
       }).join('');
-      return `<section class="section-block">${label}${lines}</section>`;
+      return `<section class="section-block" data-section-reorder-index="${sectionIndex}">${label}${lines}</section>`;
     }).join('')}</div>`;
   }
 

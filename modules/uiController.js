@@ -1072,9 +1072,19 @@ class UIController {
     if (!song || !song.sections?.[Number(target.dataset.sectionIndex)]) return false;
     const previous = SongModel.create(song);
     const edited = SongModel.create(song);
-    const line = edited.sections[Number(target.dataset.sectionIndex)]?.lines?.[Number(target.dataset.lineIndex)];
-    if (!line) return false;
-    if (target.dataset.inlineField === 'lyrics') line.lyrics = String(value).replace(/[\r\n]+/g, '');
+    const sectionIndex = Number(target.dataset.sectionIndex);
+    const section = edited.sections[sectionIndex];
+    if (target.dataset.inlineField === 'section-label') {
+      section.label = String(value).replace(/[\r\n]+/g, '').trim();
+      section.labelProvenance = 'manual';
+      this.updateInferredArrangement(edited);
+    }
+    const line = section?.lines?.[Number(target.dataset.lineIndex)];
+    if (target.dataset.inlineField !== 'section-label' && !line) return false;
+    if (target.dataset.inlineField === 'lyrics') {
+      const nextLyrics = String(value).replace(/[\r\n]+/g, '');
+      Object.assign(line, LyricAnchor.reconcileLine(line, line.lyrics || '', nextLyrics));
+    }
     if (target.dataset.inlineField === 'chord') {
       const chordId = target.dataset.chordId || target.closest('.inline-chord-anchor')?.dataset.chordId;
       const index = line.chords.findIndex(chord => String(chord.id) === String(chordId));
@@ -1119,17 +1129,13 @@ class UIController {
     if (!song || !source) return false;
     const previous = SongModel.create(song);
     const edited = SongModel.create(song);
-    const line = edited.sections[sectionIndex].lines[lineIndex];
-    if (currentLyrics != null) line.lyrics = String(currentLyrics).replace(/[\r\n]+/g, '');
-    const splitAt = caretOffset == null ? line.lyrics.length : Math.max(0, Math.min(Number(caretOffset), line.lyrics.length));
-    const trailingLyrics = caretOffset == null ? '' : line.lyrics.slice(splitAt);
-    line.lyrics = caretOffset == null ? line.lyrics : line.lyrics.slice(0, splitAt);
-    const newLine = {
-      id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      lyrics: trailingLyrics, chords: [], startTime: null, endTime: null,
-      lyricConfidence: null, timedWords: []
-    };
-    edited.sections[sectionIndex].lines.splice(lineIndex + 1, 0, newLine);
+    let line = edited.sections[sectionIndex].lines[lineIndex];
+    if (currentLyrics != null) Object.assign(line, LyricAnchor.reconcileLine(line, line.lyrics || '', String(currentLyrics).replace(/[\r\n]+/g, '')));
+    const splitAt = caretOffset == null ? LyricAnchor.graphemes(line.lyrics).length : Number(caretOffset);
+    let parts;
+    if (caretOffset == null) parts = [line, { id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null, endTime: null, lyricConfidence: null, timedWords: [] }];
+    else parts = LyricAnchor.splitLine(line, splitAt, SongModel.createId('line'));
+    edited.sections[sectionIndex].lines.splice(lineIndex, 1, ...parts);
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
@@ -1175,6 +1181,84 @@ class UIController {
     } catch (_) { this.updateLeadSheetDisplay(song); return false; }
   }
 
+  async joinInlineChartLine(songId, sectionIndex, lineIndex, direction) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const lines = song?.sections?.[sectionIndex]?.lines;
+    const otherIndex = lineIndex + direction;
+    if (!lines?.[lineIndex] || !lines?.[otherIndex]) return false;
+    const previous = SongModel.create(song);
+    const edited = SongModel.create(song);
+    const targetLines = edited.sections[sectionIndex].lines;
+    const leftIndex = Math.min(lineIndex, otherIndex);
+    const leftLength = LyricAnchor.graphemes(targetLines[leftIndex].lyrics).length;
+    targetLines.splice(leftIndex, 2, LyricAnchor.joinLines(targetLines[leftIndex], targetLines[leftIndex + 1]));
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      requestAnimationFrame(() => {
+        const target = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] [data-inline-field="lyrics"][data-section-index="${sectionIndex}"][data-line-index="${leftIndex}"]`);
+        target?.focus();
+        if (target && direction < 0) {
+          const selection = window.getSelection?.(); const range = document.createRange();
+          range.setStart(target.firstChild || target, Math.min(leftLength, target.firstChild?.length || 0)); range.collapse(true);
+          selection?.removeAllRanges(); selection?.addRange(range);
+        }
+      });
+      this.track('chart.line.joined', { sectionIndex, lineIndex: leftIndex }, saved);
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  updateInferredArrangement(song) {
+    const inferredValue = SongModel.inferArrangement(song.sections || []);
+    song.arrangement = { ...(song.arrangement || {}), inferredValue };
+    if (song.arrangement.mode !== 'manual') song.arrangement.value = inferredValue;
+  }
+
+  async mutateInlineSections(songId, eventName, mutate) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return false;
+    const previous = SongModel.create(song); const edited = SongModel.create(song);
+    mutate(edited.sections); this.updateInferredArrangement(edited); edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved); this.track(eventName, {}, saved); return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  addInlineSection(songId, index) {
+    return this.mutateInlineSections(songId, 'chart.section.added', sections => sections.splice(index, 0, {
+      id: SongModel.createId('section'), type: 'section', label: 'New section', labelProvenance: 'manual',
+      lines: [{ id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null, endTime: null, lyricConfidence: null, timedWords: [] }]
+    }));
+  }
+
+  duplicateInlineSection(songId, index) {
+    return this.mutateInlineSections(songId, 'chart.section.duplicated', sections => {
+      const source = sections[index]; if (!source) return;
+      const copy = JSON.parse(JSON.stringify(source)); copy.id = SongModel.createId('section');
+      copy.labelProvenance = 'manual'; copy.lines.forEach(line => { line.id = SongModel.createId('line'); line.chords.forEach(chord => { chord.id = this.createStableChordId(); }); });
+      sections.splice(index + 1, 0, copy);
+    });
+  }
+
+  deleteInlineSection(songId, index) {
+    return this.mutateInlineSections(songId, 'chart.section.deleted', sections => { if (sections.length > 1) sections.splice(index, 1); });
+  }
+
+  moveInlineSection(songId, index, delta) { return this.reorderInlineSection(songId, index, index + delta); }
+
+  reorderInlineSection(songId, from, to) {
+    return this.mutateInlineSections(songId, 'chart.section.reordered', sections => {
+      const destination = Math.max(0, Math.min(sections.length - 1, to));
+      if (from < 0 || from >= sections.length || from === destination) return;
+      const [section] = sections.splice(from, 1); sections.splice(destination, 0, section);
+    });
+  }
+
   focusInlineChart(songId) {
     const sheet = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"]`);
     const target = sheet?.querySelector('[data-inline-field="lyrics"]');
@@ -1199,6 +1283,7 @@ class UIController {
     if (!copy) sourceLine.chords.splice(sourceLine.chords.indexOf(chord), 1);
     const placedChord = copy ? { ...chord, id: this.createStableChordId() } : chord;
     placedChord.characterOffset = this.authoringController.availableChordOffset(destinationLine.chords, desiredOffset, placedChord.symbol);
+    placedChord.anchor = LyricAnchor.create(destinationLine.lyrics || '', placedChord.characterOffset, 'manual');
     placedChord.timestamp = SongModel.timestampForCharacterOffset(destinationLine, placedChord.characterOffset, placedChord.timestamp);
     placedChord.confidence = null;
     destinationLine.chords.push(placedChord);
@@ -1233,6 +1318,7 @@ class UIController {
       characterOffset: this.authoringController.availableChordOffset(line.chords, desiredOffset, 'C'),
       timestamp: null
     };
+    chord.anchor = LyricAnchor.create(line.lyrics || '', chord.characterOffset, 'manual');
     chord.timestamp = SongModel.timestampForCharacterOffset(line, chord.characterOffset, null);
     line.chords.push(chord);
     line.chords.sort((left, right) => left.characterOffset - right.characterOffset);

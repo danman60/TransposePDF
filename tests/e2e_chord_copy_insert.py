@@ -105,6 +105,7 @@ def main():
         after_insert = page.evaluate("""() => window.transposeApp.currentSongs[0].sections
           .flatMap(section => section.lines.flatMap(line => line.chords.map(chord => chord.symbol)))""")
         checks["insert_typed_symbol"] = len(after_insert) == before_insert + 1 and "Bbmaj7" in after_insert
+        checks["insert_stores_manual_anchor"] = page.evaluate("() => window.transposeApp.currentSongs[0].sections.flatMap(s=>s.lines).flatMap(l=>l.chords).some(c=>c.symbol==='Bbmaj7' && c.anchor?.provenance==='manual')")
 
         # Double-clicking an existing symbol must edit it, never add another chord.
         count_before_existing_double = len(after_insert)

@@ -38,7 +38,10 @@ def main():
         }))""")
         checks["enter_splits_unsaved_dom_at_caret"] = [line["lyrics"] for line in after] == ["First NEW", "lyric sentence", "Third lyric stays here"]
         checks["existing_line_identity"] = after[0]["id"] == before[0]["id"] and after[2]["id"] == before[1]["id"]
-        checks["existing_chords_unchanged"] = after[0]["chords"] == before[0]["chords"] and after[2]["chords"] == before[1]["chords"]
+        checks["existing_chords_unchanged"] = (
+            [item[0] for line in after[:2] for item in line["chords"]] == [item[0] for item in before[0]["chords"]]
+            and after[2]["chords"] == before[1]["chords"]
+        )
         checks["new_line_focused"] = page.evaluate("() => document.activeElement?.dataset?.lineIndex === '1'")
 
         page.locator('.lead-sheet .inline-add-line[data-line-index="2"]').click()
@@ -54,7 +57,8 @@ def main():
             page.locator('.lead-sheet [data-inline-field="lyrics"][data-line-index="0"]').text_content() == "First NEW"
             and page.locator('.lead-sheet [data-inline-field="lyrics"][data-line-index="1"]').text_content() == "lyric sentence"
         )
-        checks["chordpro_contains_line"] = "lyric sentence" in page.evaluate("() => ChordPro.serialize(window.transposeApp.currentSongs[0])")
+        serialized = page.evaluate("() => ChordPro.serialize(window.transposeApp.currentSongs[0])")
+        checks["chordpro_contains_line"] = "lyric sentence" in __import__('re').sub(r'\[[^]]+\]', '', serialized)
         page.locator("#performanceButton").click()
         page.locator("#performanceChart .chart-line").first.wait_for()
         checks["render_export_parity"] = page.locator("#performanceChart .chart-line").count() == 3

@@ -88,6 +88,10 @@ def main():
         page.wait_for_timeout(250)
         same_line_offset = page.locator(f'.lead-sheet .inline-chord-anchor[data-chord-id="{moved_id}"]').get_attribute("data-character-offset")
         results["same_line_body_drag"] = same_line_offset != original_offset
+        results["drag_stores_manual_anchor"] = page.evaluate(
+            """id => window.transposeApp.currentSongs[0].sections.flatMap(s=>s.lines).flatMap(l=>l.chords).find(c=>String(c.id)===String(id))?.anchor?.provenance==='manual'""",
+            moved_id,
+        )
 
         page.locator('.lead-sheet .chord-line[data-line-index="1"]').scroll_into_view_if_needed()
         anchor = page.locator(f'.lead-sheet .inline-chord-anchor[data-chord-id="{moved_id}"]')

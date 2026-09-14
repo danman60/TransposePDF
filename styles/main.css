@@ -751,6 +751,8 @@ body {
 }
 .lead-sheet .inline-chord-edit {
   cursor: grab;
+  position: relative;
+  z-index: 1;
 }
 .lead-sheet .inline-chord-edit:focus { cursor: text; }
 .lead-sheet .inline-chord-edit.inline-edit-invalid {
@@ -766,6 +768,7 @@ body {
   cursor: grab;
   opacity: 0;
   transition: opacity 120ms ease;
+  pointer-events: none;
 }
 .lead-sheet .inline-chord-anchor:hover .inline-chord-drag-handle,
 .lead-sheet .inline-chord-anchor:focus-within .inline-chord-drag-handle { opacity: 0.7; }
@@ -1408,6 +1411,17 @@ body {
 .section-block + .section-block {
   margin-top: 1.35rem;
 }
+
+.section-block { border-radius: .45rem; padding: .25rem; }
+.section-block.section-drop-target { outline: 2px dashed var(--primary-color); background: color-mix(in srgb, var(--primary-color) 8%, transparent); }
+.section-heading { display: flex; align-items: center; gap: .75rem; min-height: 1.8rem; }
+.section-drag-handle { color: var(--text-secondary); cursor: grab; opacity: .55; user-select: none; }
+.section-drag-handle:active { cursor: grabbing; }
+.section-heading .section-label { min-width: 6rem; margin-bottom: 0; }
+.section-actions { display: flex; flex-wrap: wrap; gap: .25rem; opacity: 0; transition: opacity 120ms ease; }
+.section-block:hover .section-actions, .section-block:focus-within .section-actions { opacity: 1; }
+.section-actions button { border: 1px solid var(--border-color); border-radius: .3rem; background: transparent; color: var(--text-secondary); padding: .18rem .38rem; font-size: .68rem; }
+.section-actions button:hover, .section-actions button:focus-visible { color: var(--text-primary); border-color: var(--primary-color); }
 
 .section-label {
   margin-bottom: 0.55rem;

@@ -50,6 +50,11 @@ class WorkspaceController {
       'transpose-song': () => this.ui.transposeSong(songId, Number(target.dataset.semitones) || 0),
       'reset-song': () => this.ui.resetSong(songId),
       'add-chart-line': () => this.ui.insertInlineChartLine(songId, Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), null),
+      'add-section-before': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex)),
+      'add-section-after': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex) + 1),
+      'duplicate-section': () => this.ui.duplicateInlineSection(songId, Number(target.dataset.sectionIndex)),
+      'delete-section': () => this.ui.deleteInlineSection(songId, Number(target.dataset.sectionIndex)),
+      'move-section': () => this.ui.moveInlineSection(songId, Number(target.dataset.sectionIndex), target.dataset.direction === 'up' ? -1 : 1),
       'move-song': () => this.moveSong(target, songId),
       'remove-song': () => this.ui.removeSessionSong(songId)
     };
@@ -80,11 +85,22 @@ class WorkspaceController {
       if (event.dataTransfer) event.dataTransfer.effectAllowed = this.inlineDrag.copy ? 'copy' : 'move';
       return;
     }
+    const sectionHandle = event.target.closest?.('.section-drag-handle');
+    const section = sectionHandle?.closest('.section-block[data-section-reorder-index]');
+    if (section && this.root.contains(section)) {
+      this.sectionDrag = { songId: section.closest('.lead-sheet')?.dataset.songId,
+        sectionIndex: Number(section.dataset.sectionReorderIndex) };
+      event.dataTransfer?.setData('text/section-index', String(section.dataset.sectionReorderIndex));
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      return;
+    }
     const row = event.target.closest?.('[data-reorder-id]');
     if (row && this.root.contains(row)) event.dataTransfer?.setData('text/song-id', row.dataset.reorderId);
   }
 
   handleDragOver(event) {
+    const section = event.target.closest?.('.section-block[data-section-reorder-index]');
+    if (section && this.sectionDrag) { event.preventDefault(); section.classList.add('section-drop-target'); return; }
     const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
     if (chordLine && this.inlineDrag) {
       event.preventDefault();
@@ -99,6 +115,14 @@ class WorkspaceController {
   }
 
   handleDrop(event) {
+    const section = event.target.closest?.('.section-block[data-section-reorder-index]');
+    if (section && this.sectionDrag) {
+      event.preventDefault();
+      const source = this.sectionDrag; this.sectionDrag = null;
+      this.root.querySelectorAll('.section-drop-target').forEach(item => item.classList.remove('section-drop-target'));
+      this.ui.reorderInlineSection(source.songId, source.sectionIndex, Number(section.dataset.sectionReorderIndex));
+      return;
+    }
     const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
     if (chordLine && this.inlineDrag) {
       event.preventDefault();
@@ -161,18 +185,17 @@ class WorkspaceController {
       event.preventDefault();
       if (target.dataset.inlineField === 'lyrics') {
         target.dataset.inlineSaving = 'true';
-        const selection = window.getSelection?.();
-        let caret = (target.textContent || '').length;
-        if (selection?.rangeCount && target.contains(selection.anchorNode)) {
-          const range = selection.getRangeAt(0).cloneRange();
-          range.selectNodeContents(target); range.setEnd(selection.anchorNode, selection.anchorOffset);
-          caret = range.toString().length;
-        }
+        const caret = this.caretOffset(target);
         this.ui.insertInlineChartLine(
           target.closest('.lead-sheet[data-song-id]')?.dataset.songId,
           Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), caret, target.textContent || ''
         );
       } else target.blur();
+    }
+    if (target.dataset.inlineField === 'section-label' && event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+      event.preventDefault();
+      this.ui.moveInlineSection(target.closest('.lead-sheet[data-song-id]')?.dataset.songId,
+        Number(target.dataset.sectionIndex), event.key === 'ArrowUp' ? -1 : 1);
     }
     if ((event.key === 'Backspace' || event.key === 'Delete') && target.dataset.inlineField === 'lyrics' && !(target.textContent || '')) {
       event.preventDefault();
@@ -181,10 +204,26 @@ class WorkspaceController {
         target.closest('.lead-sheet[data-song-id]')?.dataset.songId,
         Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex)
       );
+    } else if (target.dataset.inlineField === 'lyrics' && (event.key === 'Backspace' || event.key === 'Delete')) {
+      const caret = this.caretOffset(target);
+      const length = LyricAnchor.graphemes(target.textContent || '').length;
+      if ((event.key === 'Backspace' && caret === 0) || (event.key === 'Delete' && caret === length)) {
+        event.preventDefault(); target.dataset.inlineSaving = 'true';
+        this.ui.joinInlineChartLine(target.closest('.lead-sheet[data-song-id]')?.dataset.songId,
+          Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), event.key === 'Backspace' ? -1 : 1);
+      }
     }
     if (event.key === 'Escape') {
       event.preventDefault(); target.textContent = target.dataset.originalText || ''; target.blur();
     }
+  }
+
+  caretOffset(target) {
+    const selection = window.getSelection?.();
+    if (!selection?.rangeCount || !target.contains(selection.anchorNode)) return LyricAnchor.graphemes(target.textContent || '').length;
+    const range = selection.getRangeAt(0).cloneRange();
+    range.selectNodeContents(target); range.setEnd(selection.anchorNode, selection.anchorOffset);
+    return LyricAnchor.graphemes(range.toString()).length;
   }
 
   handlePaste(event) {
