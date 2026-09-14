@@ -15,6 +15,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="transposepdf-lines-") as profile, sync_playwright() as pw:
         context = pw.chromium.launch_persistent_context(profile, headless=True, viewport={"width": 1280, "height": 820})
         page = context.pages[0]
+        page.set_default_timeout(5000)
         page.goto(URL, wait_until="domcontentloaded")
         page.wait_for_function("() => window.transposeApp?.libraryStore")
         page.locator("#createChartButton").click()

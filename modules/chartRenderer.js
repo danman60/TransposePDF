@@ -105,7 +105,7 @@ class ChartRenderer {
     const plan = ChartPageLayout.plan(plannedSong, { includeEmptyMetadata: editable });
     const pageHtml = plan.pages.map((page, pageIndex) => {
       const columns = page.columns.map(rows => this.renderPlannedColumn(rows, song, { ...options, editable })).join('');
-      return `<section class="chart-page" data-chart-page="${pageIndex + 1}" style="--page-columns:${plan.spec.columns}">
+      return `<section class="chart-page" data-chart-page="${pageIndex + 1}" style="--page-columns:${plan.spec.columns};--chart-font-size:${plan.spec.fontSize}">
         <header class="chart-page-header"><strong>${this.escape(song.title)}</strong><span>${this.escape(this.plannedKeyText(song))}</span></header>
         <div class="chart-page-columns">${columns}</div>
         ${pageIndex === plan.pages.length - 1 ? this.renderPlannedFooter(plan.metadata, song, editable) : ''}
@@ -183,12 +183,14 @@ class ChartRenderer {
     const sectionIndex = Number(row.sectionIndex); const lineIndex = Number(row.lineIndex);
     const sourceStart = Number(row.sourceStart) || 0; const sourceEnd = Number(row.sourceEnd) || sourceStart;
     const original = song.sections?.[sectionIndex]?.lines?.[lineIndex];
+    const finalSegment = sourceEnd >= String(original?.lyrics || '').length;
     const chords = (chordRow?.chords || []).map(chord => ({ ...chord,
       chordIndex: (original?.chords || []).findIndex(item => String(item.id) === String(chord.id)),
       displaySymbol: this.displayStoredChord(chord, song, this.musicTheory()) }));
     return `<div class="chart-line planned-chart-line${chordRow ? '' : ' planned-text-only'}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">
       ${chordRow ? `<div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex, sourceStart })}</div>` : ''}
       <div class="lyric-line${row.content ? '' : ' inline-edit-empty'}"${options.editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit lyrics" data-inline-field="lyrics" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}" data-placeholder="Type lyrics"` : ''}>${this.escape(row.content || '')}</div>
+      ${options.editable && finalSegment ? `<button type="button" class="inline-add-line" data-action="add-chart-line" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" aria-label="Add lyric line after this line" title="Add line">+ line</button>` : ''}
     </div>`;
   }
 

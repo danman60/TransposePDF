@@ -104,6 +104,7 @@ class WorkspaceController {
     if (!target || !this.root.contains(target)) return;
     if (target.dataset.action === 'set-spelling') this.ui.setSpellingPolicy(target.dataset.songId, target.value);
     if (target.dataset.action === 'set-chart-view') this.ui.setChartView(target.dataset.songId, target.dataset.field, target.value);
+    if (target.dataset.action === 'set-chart-font-size') this.ui.setSongFontSize(target.dataset.songId, Number(target.value));
   }
 
   handleDragStart(event) {

@@ -73,6 +73,7 @@ class SongModel {
     };
     song.layout = {
       columns: Math.max(1, Math.min(3, Math.trunc(Number(input.layout?.columns) || 1))),
+      fontSize: Math.max(10, Math.min(18, Math.round(Number(input.layout?.fontSize) || 13))),
       columnsProvenance: ['default', 'manual', 'imported'].includes(input.layout?.columnsProvenance)
         ? input.layout.columnsProvenance : 'default'
     };

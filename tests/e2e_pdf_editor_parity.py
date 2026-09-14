@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
     page.wait_for_function("() => window.transposeApp && typeof ChartPageLayout === 'function'")
     proof = page.evaluate("""async () => {
       const song = SongModel.create({ id:'parity-song', title:'Parity Proof', originalKey:'F', currentKey:'F',
-        sourceType:'manual', layout:{columns:2}, credits:{writer:{value:'Writer Proof'},arranger:{value:'Arranger Proof'}},
+        sourceType:'manual', layout:{columns:2,fontSize:13}, credits:{writer:{value:'Writer Proof'},arranger:{value:'Arranger Proof'}},
         arrangement:{mode:'manual',value:'V1 C V2 C',inferredValue:'V1 C V2 C'}, sections:[
           {label:'Alpha',lines:Array.from({length:7},(_,i)=>({lyrics:`Alpha lyric ${i+1} carries enough words to wrap identically`,chords:[{id:`a${i}`,symbol:'F',characterOffset:6}]}))},
           {label:'Beta',lines:Array.from({length:3},(_,i)=>({lyrics:`Beta lyric ${i+1} follows the same shared geometry`,chords:[{id:`b${i}`,symbol:'Bb',characterOffset:5}]}))},
@@ -45,7 +45,7 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
     subprocess.run(["pdftotext", "-bbox", str(pdf_path), str(bbox_path)], check=True)
     pages = [node for node in ET.parse(bbox_path).getroot().iter() if node.tag.endswith("page")]
     assert len(pages) == proof["editor"]["pages"], (len(pages), proof["editor"]["pages"])
-    assert proof["editor"]["font"] >= 18, proof["editor"]["font"]
+    assert proof["plan"]["spec"]["fontSize"] == 13, proof["plan"]["spec"]
     assert not proof["editor"]["overflow"], proof["editor"]
     assert proof["editor"]["textOnlyHeight"] <= proof["editor"]["font"] * 1.3, proof["editor"]
     assert proof["editor"]["chordHeight"] <= proof["editor"]["font"] * 2.7, proof["editor"]

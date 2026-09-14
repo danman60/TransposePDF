@@ -19,7 +19,7 @@ test('arrangement inference is deterministic and numbers verses', () => {
 });
 
 test('ChordPro metadata and expanded sections round-trip without duplicate known directives', () => {
-  const input = `{title: Exact}\n{composer: Ada Writer}\n{lyricist: Lee Words}\n{x_arranger: Ari Arrange}\n{x_arrangement: I V1 PC C}\n{x_columns: 2}\n{X-Custom :  keep  spacing }\n{start_of_intro}\n[C]Open\n{end_of_intro}\n{start_of_pre_chorus: Lift}\n[G]Rise\n{end_of_pre_chorus}\n`;
+  const input = `{title: Exact}\n{composer: Ada Writer}\n{lyricist: Lee Words}\n{x_arranger: Ari Arrange}\n{x_arrangement: I V1 PC C}\n{x_columns: 2}\n{x_font_size: 12}\n{X-Custom :  keep  spacing }\n{start_of_intro}\n[C]Open\n{end_of_intro}\n{start_of_pre_chorus: Lift}\n[G]Rise\n{end_of_pre_chorus}\n`;
   const song = ChordPro.parse(input)[0];
   assert.equal(song.credits.writer.value, 'Ada Writer');
   assert.equal(song.credits.writer.provenance, 'imported');
@@ -27,6 +27,7 @@ test('ChordPro metadata and expanded sections round-trip without duplicate known
   assert.equal(song.arrangement.mode, 'manual');
   assert.equal(song.arrangement.value, 'I V1 PC C');
   assert.equal(song.layout.columns, 2);
+  assert.equal(song.layout.fontSize, 12);
   assert.deepEqual(song.sections.map(section => section.type), ['intro', 'pre-chorus']);
   assert.equal(song.source.chordPro.directives[0].name, 'lyricist');
 
@@ -37,12 +38,14 @@ test('ChordPro metadata and expanded sections round-trip without duplicate known
   assert.equal((output.match(/\{composer:/g) || []).length, 1);
   assert.equal((output.match(/\{x_arranger:/g) || []).length, 1);
   assert.equal((output.match(/\{x_columns:/g) || []).length, 1);
+  assert.equal((output.match(/\{x_font_size:/g) || []).length, 1);
 
   const reparsed = ChordPro.parse(output)[0];
   assert.equal(reparsed.credits.writer.value, song.credits.writer.value);
   assert.equal(reparsed.credits.arranger.value, song.credits.arranger.value);
   assert.equal(reparsed.arrangement.value, song.arrangement.value);
   assert.equal(reparsed.layout.columns, song.layout.columns);
+  assert.equal(reparsed.layout.fontSize, song.layout.fontSize);
   assert.deepEqual(reparsed.sections.map(section => section.type), song.sections.map(section => section.type));
 });
 

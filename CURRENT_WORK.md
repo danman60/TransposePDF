@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-14 Shared Editor/PDF Page Layout
+## Active Task — 2026-09-14 Font Size and Verse Safety
 
-FIRMAMENT v44 deployed. Editor and structured PDF consume the same deterministic A4 page plan: 16pt PDF chart type, 18px+ editor chart type, identical wraps, compact 1.2 line rhythm, atomic chord/lyric pairs, continuation labels, and full-width credits/arrangement footer.
+FIRMAMENT v45 deployed. Per-song chart text is user-selectable from 10–18pt, defaults to 13pt, and drives the same editor/PDF wrapping plan. Canonical lyric lines retain one `+ line` control even when visually wrapped.
 
 ## Recent Changes
 
+- v45 live: persisted font-size selector in sidebar; 13pt default; exact editor/PDF/ChordPro font round-trip; restored `+ line` after v42 planned renderer dropped it. Live Armor snapshot retains six exact Verse 1 lines and renders without overflow.
 - v44 live: fixed editor-only doubled height for wrapped lyric continuations, removed inherited lyric bottom margin, and added overflow/row-height assertions. Editor page contents now fit the same planned rows as PDF.
 - v43/v44: retained 16pt chart type while tightening shared line height from 21.5pt to 19.2pt, reducing false blank space without shrinking lyrics.
 - v42 candidate: editor is paginated A4 preview from `ChartPageLayout`; PDF renders the same plan. Wrapped visual segments map edits and chord drops back to canonical source coordinates. Browser geometry parity passes 6/6; editing/drag/layout regressions pass 35/35.
@@ -43,6 +44,7 @@ FIRMAMENT v44 deployed. Editor and structured PDF consume the same deterministic
 
 ## Verification
 
+- v45 deployed through FIRMAMENT tunnel: font/layout 21/21; canonical line insertion 9/9; editor/PDF parity 6/6; structured PDF 9/9; inline edit/drag 10/10; section move/copy/undo 6/6. Full Armor lifecycle passed with two analyses, immutable raw evidence, exact edits, transpose/reset, 34,916-byte PDF, and zero console errors. Exact saved Armor screenshot inspected and sent to Telegram (`16981`).
 - v44 deployed through FIRMAMENT tunnel: live cache `transpose-app-v44`; editor/PDF parity 6/6 with zero page overflow; inline editing/freeform drag 10/10; searchable structured PDF 9/9. Live composite visually reviewed and sent to Telegram (`16965`).
 - v41 deployed through FIRMAMENT tunnel: editor/export geometry capture 20/20, searchable structured PDF 9/9, persistent session and actual download 17/17, full Armor manual-entry/transpose lifecycle clean with a 36,324-byte PDF. Live cache is `transpose-app-v41`; rendered A4 output inspected and sent to Telegram.
 - v40 deployed through FIRMAMENT tunnel: export/arrangement/layout 19/19, inline editing/drag 10/10, persistent session/export/telemetry 17/17, section lifecycle 6/6, deterministic PDF/schema/ChordPro 31/31. Live cache is `transpose-app-v40`. Cloud QA Agent attempted 5/5 checklist items but Anthropic returned HTTP 400 before browser control.

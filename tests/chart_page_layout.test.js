@@ -15,7 +15,7 @@ const song = {
 };
 
 const plan = ChartPageLayout.plan(song);
-assert.equal(plan.spec.fontSize, 16);
+assert.equal(plan.spec.fontSize, 13);
 assert.equal(plan.spec.columns, 2);
 assert.ok(plan.pages.length <= 6, `unexpected blank-page expansion: ${plan.pages.length}`);
 assert.ok(plan.metadata.some(row => row.field === 'writer' && row.value === 'Daniel Abrahamson'));
@@ -32,4 +32,6 @@ const segments = ChartPageLayout.wrapLine(song.sections[0].lines[0], plan.spec.m
 assert.ok(segments.length > 1);
 assert.equal(segments.map(segment => segment.lyrics).join(' '), song.sections[0].lines[0].lyrics);
 assert.ok(segments.some(segment => segment.chords.length === 1));
-console.log('7/7 shared A4 layout planning checks passed');
+assert.equal(ChartPageLayout.plan({ ...song, layout: { columns: 2, fontSize: 11 } }).spec.fontSize, 11);
+assert.equal(ChartPageLayout.plan({ ...song, layout: { columns: 2, fontSize: 99 } }).spec.fontSize, 18);
+console.log('9/9 shared A4 layout planning checks passed');

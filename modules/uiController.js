@@ -1028,6 +1028,7 @@ class UIController {
       </div>
       <div class="sidebar-transpose" aria-label="Transpose ${this.escapeHtml(song.title)}"><span>Transpose</span><div><button data-action="transpose-song" data-song-id="${songId}" data-semitones="-1" type="button" aria-label="Transpose down">−</button><output id="transposeValue-${song.id}">${transposition > 0 ? `+${transposition}` : transposition}<small>semitones</small></output><button data-action="transpose-song" data-song-id="${songId}" data-semitones="1" type="button" aria-label="Transpose up">+</button></div></div>
       <fieldset class="sidebar-columns"><legend>Columns</legend><div role="group" aria-label="Chart columns">${[1, 2, 3].map(columns => `<button type="button" data-action="set-layout-columns" data-song-id="${songId}" data-columns="${columns}" aria-pressed="${Number(song.layout?.columns || 1) === columns}">${columns}</button>`).join('')}</div><small>Wide chart and PDF</small></fieldset>
+      <label class="sidebar-font-size">Text size<select data-action="set-chart-font-size" data-song-id="${songId}" aria-label="Chart text size for ${this.escapeHtml(song.title)}">${Array.from({length: 9}, (_, index) => index + 10).map(size => `<option value="${size}"${Number(song.layout?.fontSize || 13) === size ? ' selected' : ''}>${size} pt</option>`).join('')}</select><small>Editor and PDF</small></label>
       <div class="sidebar-tool-links"><button data-action="reset-song" data-song-id="${songId}" type="button">↺ Reset original key</button><button data-action="open-history" data-song-id="${songId}" type="button">◷ Version history</button></div>`;
   }
 
@@ -1035,11 +1036,24 @@ class UIController {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     if (!song) return false;
     const edited = SongModel.create(song);
-    edited.layout = { columns: Math.max(1, Math.min(3, Math.round(Number(value) || 1))), columnsProvenance: 'manual' };
+    edited.layout = { ...edited.layout, columns: Math.max(1, Math.min(3, Math.round(Number(value) || 1))), columnsProvenance: 'manual' };
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
       this.displaySongs();
       this.track('chart.layout.changed', { columns: saved.layout.columns }, saved);
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  async setSongFontSize(songId, value) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return false;
+    const edited = SongModel.create(song);
+    edited.layout = { ...edited.layout, fontSize: Math.max(10, Math.min(18, Math.round(Number(value) || 13))) };
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      this.displaySongs();
+      this.track('chart.layout.changed', { columns: saved.layout.columns, fontSize: saved.layout.fontSize }, saved);
       return true;
     } catch (_) { this.updateLeadSheetDisplay(song); return false; }
   }

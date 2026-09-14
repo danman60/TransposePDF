@@ -27,6 +27,11 @@ def main():
         page.locator(".lead-sheet").wait_for()
         export_box = page.locator("#songLibrarySidebar #exportButton").bounding_box()
         checks["export_visible_in_sidebar"] = bool(export_box) and export_box["y"] >= 0 and export_box["y"] + export_box["height"] <= 1000
+        font_select = page.locator('[data-action="set-chart-font-size"]')
+        checks["font_default_13"] = font_select.input_value() == "13" and page.evaluate("() => window.transposeApp.currentSongs[0].layout.fontSize === 13")
+        font_select.select_option("11")
+        page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.fontSize === 11")
+        checks["font_user_override"] = page.locator('.lead-sheet .chart-page').first.evaluate("e => e.style.getPropertyValue('--chart-font-size') === '11'")
 
         for columns in (1, 2, 3):
             page.locator(f'[data-action="set-layout-columns"][data-columns="{columns}"]').click()
@@ -92,7 +97,7 @@ def main():
 
         song_id = page.evaluate("() => window.transposeApp.currentSongs[0].id")
         page.reload(); page.wait_for_function("() => window.transposeApp?.currentSongs?.length === 1")
-        checks["reload_persistence"] = page.evaluate("id => {const s=window.transposeApp.currentSongs.find(x=>String(x.id)===String(id)); return s?.layout.columns===3 && s?.credits.writer.value==='Ada Writer' && s?.arrangement.mode==='auto'}", song_id)
+        checks["reload_persistence"] = page.evaluate("id => {const s=window.transposeApp.currentSongs.find(x=>String(x.id)===String(id)); return s?.layout.columns===3 && s?.layout.fontSize===11 && s?.credits.writer.value==='Ada Writer' && s?.arrangement.mode==='auto'}", song_id)
 
         versions = page.evaluate("id => window.transposeApp.sessionStore.listSongVersions(id).then(v => v.map(x => ({id:x.id,columns:x.song?.layout?.columns,revision:x.revision})))", song_id)
         checks["version_history_created"] = len(versions) >= 3

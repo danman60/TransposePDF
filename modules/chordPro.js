@@ -59,7 +59,8 @@ class ChordPro {
       else if (name === 'composer' || name === 'writer') metadata.credits.writer = { value, provenance: 'imported' };
       else if (name === 'x_arranger') metadata.credits.arranger = { value, provenance: 'imported' };
       else if (name === 'x_arrangement') metadata.arrangement = { mode: 'manual', value, inferredValue: '', updatedAt: null };
-      else if (name === 'x_columns') metadata.layout = { columns: Math.max(1, Math.min(3, Math.trunc(Number(value) || 1))), columnsProvenance: 'imported' };
+      else if (name === 'x_columns') metadata.layout = { ...(metadata.layout || {}), columns: Math.max(1, Math.min(3, Math.trunc(Number(value) || 1))), columnsProvenance: 'imported' };
+      else if (name === 'x_font_size') metadata.layout = { ...(metadata.layout || {}), fontSize: Math.max(10, Math.min(18, Math.round(Number(value) || 13))) };
       else if (this.sectionStarts()[name]) {
         pushSection();
         const definition = this.sectionStarts()[name];
@@ -89,8 +90,9 @@ class ChordPro {
     if (song.layout?.columns && (song.layout.columns !== 1 || song.layout.columnsProvenance !== 'default')) {
       directive('x_columns', String(song.layout.columns));
     }
+    if (song.layout?.fontSize && song.layout.fontSize !== 13) directive('x_font_size', String(song.layout.fontSize));
     const emitted = new Set(['title', 't', 'subtitle', 'st', 'artist', 'key', 'tempo', 'time',
-      'time_signature', 'capo', 'composer', 'writer', 'x_arranger', 'x_arrangement', 'x_columns']);
+      'time_signature', 'capo', 'composer', 'writer', 'x_arranger', 'x_arrangement', 'x_columns', 'x_font_size']);
     (song.source?.chordPro?.directives || []).forEach(item => {
       if (emitted.has(String(item.name || '').toLowerCase())) return;
       if (item.raw) lines.push(item.raw);
