@@ -29,6 +29,12 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-display-input-") as profil
     assert chord.text_content() == "C", {"text": chord.text_content(), "stored": stored}
     assert stored["symbol"] == "C", stored
     assert stored["manualEntry"]["provenance"] == "manual", stored
+    pdf_chord_row = page.evaluate("""() => {
+      const song = window.transposeApp.currentSongs[0];
+      const chord = song.sections[0].lines[0].chords[0];
+      return new PDFGenerator().buildChordRow([chord], song.transposition, new MusicTheory(), song);
+    }""")
+    assert pdf_chord_row == "C", {"pdfChordRow": pdf_chord_row, "stored": stored}
     page.reload(wait_until="domcontentloaded")
     page.wait_for_function("() => window.transposeApp?.currentSongs?.length")
     assert page.locator('[data-inline-field="chord"]').first.text_content() == "C"
@@ -39,5 +45,5 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-display-input-") as profil
     assert "[C]" in export_text, export_text
     SHOT.parent.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=str(SHOT), full_page=False)
-    print("6/6 displayed input, canonical storage, reload, and export checks passed")
+    print("7/7 displayed input, canonical storage, reload, and export checks passed")
     context.close()

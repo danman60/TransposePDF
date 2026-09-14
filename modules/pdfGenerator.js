@@ -269,7 +269,7 @@ class PDFGenerator {
         const offset = Math.max(0, Number(chord.characterOffset) || 0);
         while (characters.length < offset) characters.push(' ');
         const symbol = song
-          ? this.displayChord(chord.symbol, song, musicTheory)
+          ? this.displayChord(chord.symbol, song, musicTheory, chord)
           : musicTheory.transposeChord(chord.symbol, semitones);
         for (let index = 0; index < symbol.length; index += 1) {
           characters[offset + index] = symbol[index];
@@ -310,13 +310,15 @@ class PDFGenerator {
     return result;
   }
 
-  displayChord(symbol, song, musicTheory = new MusicTheory()) {
+  displayChord(symbol, song, musicTheory = new MusicTheory(), chord = null) {
     const view = { ...(song.sessionView || {}), spellingPolicy: song.spellingPolicy };
     if (view.capo && (!view.spellingPolicy || view.spellingPolicy === 'contextual')) {
       const shapeKey = musicTheory.transposeKey(song.currentKey || song.originalKey, -Number(view.capo), 'contextual');
       view.spellingPolicy = shapeKey.includes('b') ? 'flats' : 'sharps';
     }
-    return musicTheory.displayChord(symbol, song, view);
+    return chord?.manualEntry?.provenance === 'manual'
+      ? musicTheory.displayManualChord(symbol, chord.manualEntry, song, view)
+      : musicTheory.displayChord(symbol, song, view);
   }
 
   /**
