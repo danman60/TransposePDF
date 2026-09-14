@@ -6,6 +6,7 @@ FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangemen
 
 ## Recent Changes
 
+- `8de4a02` deployed as FIRMAMENT v32: every chart right-click menu exposes section placement; Ctrl/Cmd/Alt+Z use a 50-step exact persisted-chart undo stack while active unsaved text keeps native undo.
 - `5b5bf47` deployed as FIRMAMENT v31: full target-aware context menus for chords, lyric lines, sections, and blank chord lanes; blank-space section insertion uses nearest clicked visual position instead of chart end.
 - `8a4b30c` deployed as FIRMAMENT v30: right-click chart context menu creates a section above/below the clicked section or at chart end; native editable-field context menus remain intact.
 - `592b7f5` deployed as FIRMAMENT v29: explicit labels drive section family; empty Verse/Pre-Chorus/Chorus repeats offer chord changes from the earlier matching section without replacing lyrics.
