@@ -64,6 +64,10 @@ def main():
         page.locator("#sidebarCollapseToggle").click()
         page.locator('[data-action="set-layout-columns"][data-columns="3"]').click()
         page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.columns === 3")
+        captured_layout = page.evaluate("() => window.transposeApp.capturePdfLayoutSnapshots()[String(window.transposeApp.activeSongId)]")
+        checks["editor_export_layout_captured"] = len(set(captured_layout["sectionColumns"])) >= 2 and len(captured_layout["lineFontRatios"]) >= 3
+        if not checks["editor_export_layout_captured"]:
+            print("EDITOR_LAYOUT_SNAPSHOT_DIAGNOSTIC", captured_layout)
 
         writer = page.locator('[data-inline-field="writer"]')
         writer.fill("Ada Writer"); writer.blur()

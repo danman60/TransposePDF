@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-14 Visible Export and Arrangement Follow-along
+## Active Task — 2026-09-14 Editor/PDF Layout Parity
 
-FIRMAMENT v40 deployed. Export PDF is persistently visible above song controls in the sidebar. Arrangement is a large wrapping follow-along field while exact manual text remains canonical.
+Preparing FIRMAMENT v41. PDF export captures the visible editor's section columns and relative line font geometry; editor lyric rows remain intact instead of being independently rewrapped by PDF heuristics.
 
 ## Recent Changes
 
+- v41 candidate: active structured chart geometry is captured at export; PDF consumes editor section-column assignments and row font ratios, removing its separate character-count wrapping decisions.
 - v40 candidate: moved the existing Export PDF action into the always-visible sidebar area and enlarged Arrangement to a 5.8rem, 1.25rem-type wrapping panel.
 - v39 candidate: independent CSS columns remove false vertical gaps beside uneven section heights; sections stay intact, full-width, editable, and draggable; credits and Add section span all columns; mobile remains one column.
 - v38 section gestures: drag targets insertion boundaries in blank chart space with a visible cyan rule; Ctrl/Cmd/Alt+Z works even after drag leaves focus outside workspace; Alt-drag duplicates an entire section with independent section/line/chord IDs.

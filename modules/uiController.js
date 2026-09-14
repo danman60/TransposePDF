@@ -2151,6 +2151,29 @@ class UIController {
   /**
    * Handle PDF export
    */
+  capturePdfLayoutSnapshots() {
+    const snapshots = {};
+    this.elements.songsContainer?.querySelectorAll('.lead-sheet[data-song-id]').forEach(sheet => {
+      const songId = String(sheet.dataset.songId || '');
+      const sectionNodes = [...sheet.querySelectorAll('.section-block[data-section-reorder-index]')];
+      const lefts = [...new Set(sectionNodes.map(node => Math.round(node.getBoundingClientRect().left)))].sort((a, b) => a - b);
+      const sectionColumns = [];
+      const lineFontRatios = {};
+      sectionNodes.forEach(section => {
+        const sectionIndex = Number(section.dataset.sectionReorderIndex);
+        const sectionBox = section.getBoundingClientRect();
+        sectionColumns[sectionIndex] = Math.max(0, lefts.indexOf(Math.round(sectionBox.left)));
+        section.querySelectorAll('.chart-line').forEach((line, lineIndex) => {
+          const text = line.querySelector('.lyric-line');
+          if (!text || !sectionBox.width) return;
+          lineFontRatios[`${sectionIndex}:${lineIndex}`] = parseFloat(getComputedStyle(text).fontSize) / sectionBox.width;
+        });
+      });
+      if (songId && sectionNodes.length) snapshots[songId] = { sectionColumns, lineFontRatios };
+    });
+    return snapshots;
+  }
+
   async handleExport() {
     if (this.isProcessing || !this.currentSongs || this.currentSongs.length === 0) return;
     
@@ -2164,7 +2187,9 @@ class UIController {
       const pdfGenerator = new PDFGenerator();
       this.showExportProgress(30);
       
-      const pdf = await pdfGenerator.generatePDF(this.currentSongs, this.exportFilename);
+      const pdf = await pdfGenerator.generatePDF(this.currentSongs, this.exportFilename, {
+        layoutSnapshots: this.capturePdfLayoutSnapshots()
+      });
       this.showExportProgress(80);
       
       // Save PDF

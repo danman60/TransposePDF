@@ -66,6 +66,14 @@ class FakePDF {
   assert.ok(wrapped.length >= 3, 'long lyrics must wrap to printable column width');
   assert.ok(wrapped.slice(1).some(segment => segment.chords.some(chord => chord.symbol === 'G')), 'wrapped chord must move with its lyric segment');
 
+  const parityPdf = new FakePDF();
+  const paritySnapshot = { sectionColumns: [1, 0], lineFontRatios: { '0:0': 0.025, '1:0': 0.025 } };
+  await generator.addStructuredSongToPDF(parityPdf, song, paritySnapshot);
+  const verseCall = parityPdf.calls.find(call => call.content === 'Verse 1');
+  const chorusCall = parityPdf.calls.find(call => call.content === 'Chorus');
+  assert.ok(verseCall.x > chorusCall.x, 'PDF section columns must match captured editor columns');
+  assert.ok(parityPdf.calls.some(call => call.content === anchoredLyrics), 'captured editor lyric row must remain unwrapped in PDF');
+
   const blank = generator.getCreditsRows({ credits: {}, arrangement: {} });
   assert.equal(blank.length, 0);
   console.log('16/16 structured PDF layout/content checks passed');

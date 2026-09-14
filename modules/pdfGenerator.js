@@ -17,7 +17,7 @@ class PDFGenerator {
   /**
    * Generate PDF from songs with transposed chords
    */
-  async generatePDF(songsInput, filename = 'Transposed Songbook') {
+  async generatePDF(songsInput, filename = 'Transposed Songbook', options = {}) {
     try {
       logger.status('Generating PDF...', 'info');
       logger.startTimer('pdfExport');
@@ -49,7 +49,7 @@ class PDFGenerator {
         logger.status(`Processing song ${i + 1}/${songs.length}: ${song.title}`, 'info');
         
         pdf.addPage();
-        await this.addSongToPDF(pdf, song);
+        await this.addSongToPDF(pdf, song, options.layoutSnapshots?.[String(song.id)]);
       }
 
       logger.endTimer('pdfExport');
@@ -112,10 +112,10 @@ class PDFGenerator {
   /**
    * Add individual song to PDF
    */
-  async addSongToPDF(pdf, song) {
+  async addSongToPDF(pdf, song, layoutSnapshot = null) {
     const usesStructuredEditor = Array.isArray(song.sections) && song.sections.length > 0 && song.source?.preserveLayout !== true;
     if (usesStructuredEditor && Array.isArray(song.sections) && song.sections.length > 0) {
-      await this.addStructuredSongToPDF(pdf, song);
+      await this.addStructuredSongToPDF(pdf, song, layoutSnapshot);
       return;
     }
     let yPos = this.margin;
@@ -185,18 +185,20 @@ class PDFGenerator {
     return rows;
   }
 
-  buildStructuredBlocks(song, maxCharacters) {
-    return song.sections.map(section => {
+  buildStructuredBlocks(song, maxCharacters, layoutSnapshot = null) {
+    return song.sections.map((section, sectionIndex) => {
       const rows = [];
       if (section.label) rows.push({ type: 'section', content: section.label, structured: true });
-      (section.lines || []).forEach(line => {
+      (section.lines || []).forEach((line, lineIndex) => {
         this.wrapStructuredLine(line, maxCharacters).forEach(segment => {
+          const fontRatio = Number(layoutSnapshot?.lineFontRatios?.[`${sectionIndex}:${lineIndex}`]) || null;
           if (segment.chords.length) rows.push({
             type: 'chords',
             content: this.buildChordRow(segment.chords, song.transposition, new MusicTheory(), song),
-            structured: true
+            structured: true,
+            fontRatio
           });
-          rows.push({ type: segment.lyrics ? 'text' : 'empty', content: segment.lyrics || '', structured: true });
+          rows.push({ type: segment.lyrics ? 'text' : 'empty', content: segment.lyrics || '', structured: true, fontRatio });
         });
       });
       return rows;
@@ -204,7 +206,7 @@ class PDFGenerator {
   }
 
   /** Render canonical songs in newspaper order: down a column, then across. */
-  async addStructuredSongToPDF(pdf, song) {
+  async addStructuredSongToPDF(pdf, song, layoutSnapshot = null) {
     const columns = Math.max(1, Math.min(3, Math.trunc(Number(song.layout?.columns) || 1)));
     const gutter = 18;
     const columnWidth = (this.pageWidth - (2 * this.margin) - ((columns - 1) * gutter)) / columns;
@@ -231,13 +233,29 @@ class PDFGenerator {
     const renderRows = async rows => {
       for (const row of rows) {
         if (y + this.lineHeight > bottom) advanceColumn();
-        await this.renderLine(pdf, row, xForColumn(column), y);
+        const renderedRow = row.fontRatio
+          ? { ...row, capturedFontSize: Math.max(6.6, Math.min(this.fontSize, row.fontRatio * columnWidth)) }
+          : row;
+        await this.renderLine(pdf, renderedRow, xForColumn(column), y);
         y += this.lineHeight;
       }
     };
 
-    for (const block of this.buildStructuredBlocks(song, maxCharacters)) {
+    const blocks = this.buildStructuredBlocks(song, layoutSnapshot ? Number.POSITIVE_INFINITY : maxCharacters, layoutSnapshot);
+    for (let sectionIndex = 0; sectionIndex < blocks.length; sectionIndex += 1) {
+      const block = blocks[sectionIndex];
       if (!block.length) continue;
+      const desiredColumn = Number(layoutSnapshot?.sectionColumns?.[sectionIndex]);
+      if (Number.isInteger(desiredColumn) && desiredColumn >= 0 && desiredColumn < columns && desiredColumn !== column) {
+        if (desiredColumn < column) {
+          pdf.addPage();
+          pageIndex += 1;
+          y = this.renderSongHeader(pdf, song, true);
+        } else {
+          y = top;
+        }
+        column = desiredColumn;
+      }
       const blockHeight = block.length * this.lineHeight;
       const columnCapacity = bottom - top;
       if (blockHeight <= columnCapacity && y + blockHeight > bottom) advanceColumn();
@@ -451,9 +469,10 @@ class PDFGenerator {
    * Render a line in the PDF
    */
   async renderLine(pdf, line, x, y) {
+    const capturedFontSize = Number(line.capturedFontSize) || null;
     switch (line.type) {
       case 'chords':
-        pdf.setFontSize(line.structured ? this.fontSize : this.chordFontSize);
+        pdf.setFontSize(capturedFontSize || (line.structured ? this.fontSize : this.chordFontSize));
         pdf.setFont(line.structured ? 'courier' : undefined, 'bold');
         pdf.setTextColor(0, 0, 200); // Blue for chords
         pdf.text(line.content, x, y);
@@ -461,7 +480,7 @@ class PDFGenerator {
         break;
         
       case 'text':
-        pdf.setFontSize(this.fontSize);
+        pdf.setFontSize(capturedFontSize || this.fontSize);
         pdf.setFont(line.structured ? 'courier' : undefined, 'normal');
         pdf.text(line.content, x, y);
         break;
