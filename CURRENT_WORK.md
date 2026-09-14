@@ -6,6 +6,7 @@ All 20 selected feature/streamline items implemented in local release tree. Dedi
 
 ## Recent Changes
 
+- `3a6aa41` deployed as FIRMAMENT v22: loaded sessions hide the large create/import card section; compact create/import navigation now lives in the desktop sidebar and mobile Song tools sheet.
 - `fc48dc9` deployed as FIRMAMENT v21: Alt-drag copies chords, chord-lane double-click inserts/focuses a new chord, and song controls moved from the blue chart header into responsive sidebar navigation.
 - Authoritative lyric files are awaited before audio submission, eliminating mismatched recording fingerprints during immediate imports.
 - `04fa365` deployed as FIRMAMENT v20: Enter splits lyrics at the live caret into a new chart line/chord lane; `+ line` inserts a blank row; Backspace/Delete removes an empty non-sole row. Immediate unblurred typing is preserved.
@@ -20,6 +21,7 @@ All 20 selected feature/streamline items implemented in local release tree. Dedi
 
 ## Verification
 
+- FIRMAMENT v22: start section computed `display:none` and `0x0` after song load on desktop/mobile; persistent 17/17, copy/insert 10/10, inline edit/drag and line operations pass; zero console/page/telemetry errors.
 - FIRMAMENT v21: chord copy/insert 10/10, persistent desktop/mobile 17/17, inline mouse/touch edit/drag 9/9; gesture telemetry HTTP 202; zero console/page/telemetry failures.
 - FIRMAMENT v20: line insertion 9/9, inline editing/drag 9/9, persistent lifecycle 17/17; zero console/page/telemetry errors.
 - FIRMAMENT v18 inline chart lifecycle: 6/6. Untouched chord IDs/section/line/offsets remained byte-identical after another chord moved; reload persistence passed; zero console/page errors.
