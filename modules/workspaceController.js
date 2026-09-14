@@ -27,7 +27,10 @@ class WorkspaceController {
     this.listeners.contextmenu = event => this.handleContextMenu(event);
     Object.entries(this.listeners).forEach(([name, listener]) => this.root.addEventListener(name, listener));
     this.documentPointerDown = event => { if (!event.target.closest?.('.chart-context-menu')) this.closeContextMenu(); };
-    this.windowDismissMenu = () => this.closeContextMenu();
+    this.windowDismissMenu = event => {
+      if (event?.type === 'scroll' && this.contextMenu && (event.target === this.contextMenu || this.contextMenu.contains?.(event.target))) return;
+      this.closeContextMenu();
+    };
     document.addEventListener('pointerdown', this.documentPointerDown);
     window.addEventListener('resize', this.windowDismissMenu);
     window.addEventListener('scroll', this.windowDismissMenu, true);
@@ -409,6 +412,15 @@ class WorkspaceController {
       this.contextState.sectionIndex = this.nearestSectionInsertion(sheet, event.clientX, event.clientY);
       actions = [['Add section here', 'section-here']];
     }
+    if (Number.isFinite(sectionIndex) && !(song?.sections?.[sectionIndex]?.lines || []).some(item => item.chords?.length)) {
+      const targetType = Arrangement.normalizeType(song.sections[sectionIndex]?.label || song.sections[sectionIndex]?.type);
+      const sources = song.sections.map((item, index) => ({ item, index,
+        sameType: Arrangement.normalizeType(item.label || item.type) === targetType }))
+        .filter(source => source.index !== sectionIndex && (source.item.lines || []).some(item => item.chords?.length))
+        .sort((left, right) => Number(right.sameType) - Number(left.sameType) || left.index - right.index);
+      const insertAt = Math.min(3, actions.length);
+      actions.splice(insertAt, 0, ...sources.map(source => [`Use chords from ${source.item.label || `section ${source.index + 1}`}`, 'copy-chords-from-section', '', source.index]));
+    }
     const menu = document.createElement('div');
     menu.className = 'chart-context-menu';
     menu.setAttribute('role', 'menu');
@@ -464,6 +476,7 @@ class WorkspaceController {
       'paste-chord-sequence': () => this.ui.insertInlineChordSequence(state),
       'add-no-chord': () => this.ui.insertInlineChord(state.songId, state.sectionIndex, state.lineIndex, state.characterOffset, 'N.C.'),
       'copy-matching-section': () => this.ui.copyMatchingSectionChords(state.songId, state.sectionIndex),
+      'copy-chords-from-section': () => this.ui.copyInlineSectionChords(state.songId, Number(data.destinationSection), state.sectionIndex),
       'section-above': () => this.ui.addInlineSection(state.songId, state.sectionIndex),
       'section-below': () => this.ui.addInlineSection(state.songId, state.sectionIndex + 1),
       'section-here': () => this.ui.addInlineSection(state.songId, state.sectionIndex),
