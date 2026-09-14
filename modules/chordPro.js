@@ -9,7 +9,7 @@ class ChordPro {
     let unknown;
 
     const reset = () => {
-      metadata = { title: '', artist: '', originalKey: 'C', tempo: null, timeSignature: '' };
+      metadata = { title: '', artist: '', originalKey: 'C', tempo: null, timeSignature: '', credits: {} };
       sections = [];
       current = { type: 'section', label: '', lines: [] };
       unknown = [];
@@ -56,6 +56,10 @@ class ChordPro {
       else if (name === 'tempo') metadata.tempo = Number(value) || null;
       else if (name === 'time' || name === 'time_signature') metadata.timeSignature = value;
       else if (name === 'capo') metadata.capo = Math.max(0, Math.min(11, Math.trunc(Number(value) || 0)));
+      else if (name === 'composer' || name === 'writer') metadata.credits.writer = { value, provenance: 'imported' };
+      else if (name === 'x_arranger') metadata.credits.arranger = { value, provenance: 'imported' };
+      else if (name === 'x_arrangement') metadata.arrangement = { mode: 'manual', value, inferredValue: '', updatedAt: null };
+      else if (name === 'x_columns') metadata.layout = { columns: Math.max(1, Math.min(3, Math.trunc(Number(value) || 1))), columnsProvenance: 'imported' };
       else if (this.sectionStarts()[name]) {
         pushSection();
         const definition = this.sectionStarts()[name];
@@ -63,7 +67,7 @@ class ChordPro {
       } else if (this.sectionEnds().has(name)) {
         pushSection();
       } else {
-        unknown.push({ name, value, sourceLine });
+        unknown.push({ name, value, sourceLine, raw: rawLine });
       }
     });
     pushSong();
@@ -79,7 +83,19 @@ class ChordPro {
     if (song.tempo !== null && song.tempo !== undefined) directive('tempo', String(song.tempo));
     if (song.timeSignature) directive('time', song.timeSignature);
     if (song.view?.capo) directive('capo', String(song.view.capo));
-    (song.source?.chordPro?.directives || []).forEach(item => directive(item.name, item.value || ''));
+    if (song.credits?.writer?.value) directive('composer', song.credits.writer.value);
+    if (song.credits?.arranger?.value) directive('x_arranger', song.credits.arranger.value);
+    if (song.arrangement?.mode === 'manual') directive('x_arrangement', song.arrangement.value || '');
+    if (song.layout?.columns && (song.layout.columns !== 1 || song.layout.columnsProvenance !== 'default')) {
+      directive('x_columns', String(song.layout.columns));
+    }
+    const emitted = new Set(['title', 't', 'subtitle', 'st', 'artist', 'key', 'tempo', 'time',
+      'time_signature', 'capo', 'composer', 'writer', 'x_arranger', 'x_arrangement', 'x_columns']);
+    (song.source?.chordPro?.directives || []).forEach(item => {
+      if (emitted.has(String(item.name || '').toLowerCase())) return;
+      if (item.raw) lines.push(item.raw);
+      else directive(item.name, item.value || '');
+    });
 
     (song.sections || []).forEach(section => {
       const pair = this.sectionDirective(section.type);
@@ -91,7 +107,7 @@ class ChordPro {
   }
 
   static parseDirective(line) {
-    const match = String(line).trim().match(/^\{([a-z_]+)(?:\s*:\s*(.*))?\}$/i);
+    const match = String(line).trim().match(/^\{([a-z][a-z0-9_-]*)(?:\s*:\s*(.*))?\}$/i);
     if (!match) return null;
     return { name: match[1].toLowerCase(), value: this.unescape(match[2] || '') };
   }
@@ -145,19 +161,38 @@ class ChordPro {
     return {
       start_of_verse: { type: 'verse', label: 'Verse' }, sov: { type: 'verse', label: 'Verse' },
       start_of_chorus: { type: 'chorus', label: 'Chorus' }, soc: { type: 'chorus', label: 'Chorus' },
-      start_of_bridge: { type: 'bridge', label: 'Bridge' }, sob: { type: 'bridge', label: 'Bridge' }
+      start_of_bridge: { type: 'bridge', label: 'Bridge' }, sob: { type: 'bridge', label: 'Bridge' },
+      start_of_pre_chorus: { type: 'pre-chorus', label: 'Pre-Chorus' }, sop: { type: 'pre-chorus', label: 'Pre-Chorus' },
+      start_of_intro: { type: 'intro', label: 'Intro' }, soi: { type: 'intro', label: 'Intro' },
+      start_of_outro: { type: 'outro', label: 'Outro' }, soo: { type: 'outro', label: 'Outro' },
+      start_of_instrumental: { type: 'instrumental', label: 'Instrumental' },
+      start_of_interlude: { type: 'interlude', label: 'Interlude' },
+      start_of_tag: { type: 'tag', label: 'Tag' }, start_of_vamp: { type: 'vamp', label: 'Vamp' },
+      start_of_refrain: { type: 'refrain', label: 'Refrain' }, start_of_solo: { type: 'solo', label: 'Solo' }
     };
   }
 
   static sectionEnds() {
-    return new Set(['end_of_verse', 'eov', 'end_of_chorus', 'eoc', 'end_of_bridge', 'eob']);
+    return new Set(['end_of_verse', 'eov', 'end_of_chorus', 'eoc', 'end_of_bridge', 'eob',
+      'end_of_pre_chorus', 'eop', 'end_of_intro', 'eoi', 'end_of_outro', 'eoo',
+      'end_of_instrumental', 'end_of_interlude', 'end_of_tag', 'end_of_vamp',
+      'end_of_refrain', 'end_of_solo']);
   }
 
   static sectionDirective(type) {
     return {
       verse: { start: 'start_of_verse', end: 'end_of_verse', label: 'Verse' },
       chorus: { start: 'start_of_chorus', end: 'end_of_chorus', label: 'Chorus' },
-      bridge: { start: 'start_of_bridge', end: 'end_of_bridge', label: 'Bridge' }
+      bridge: { start: 'start_of_bridge', end: 'end_of_bridge', label: 'Bridge' },
+      'pre-chorus': { start: 'start_of_pre_chorus', end: 'end_of_pre_chorus', label: 'Pre-Chorus' },
+      intro: { start: 'start_of_intro', end: 'end_of_intro', label: 'Intro' },
+      outro: { start: 'start_of_outro', end: 'end_of_outro', label: 'Outro' },
+      instrumental: { start: 'start_of_instrumental', end: 'end_of_instrumental', label: 'Instrumental' },
+      interlude: { start: 'start_of_interlude', end: 'end_of_interlude', label: 'Interlude' },
+      tag: { start: 'start_of_tag', end: 'end_of_tag', label: 'Tag' },
+      vamp: { start: 'start_of_vamp', end: 'end_of_vamp', label: 'Vamp' },
+      refrain: { start: 'start_of_refrain', end: 'end_of_refrain', label: 'Refrain' },
+      solo: { start: 'start_of_solo', end: 'end_of_solo', label: 'Solo' }
     }[type] || null;
   }
 
