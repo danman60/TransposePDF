@@ -6,6 +6,7 @@ FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangemen
 
 ## Recent Changes
 
+- `5b5bf47` deployed as FIRMAMENT v31: full target-aware context menus for chords, lyric lines, sections, and blank chord lanes; blank-space section insertion uses nearest clicked visual position instead of chart end.
 - `8a4b30c` deployed as FIRMAMENT v30: right-click chart context menu creates a section above/below the clicked section or at chart end; native editable-field context menus remain intact.
 - `592b7f5` deployed as FIRMAMENT v29: explicit labels drive section family; empty Verse/Pre-Chorus/Chorus repeats offer chord changes from the earlier matching section without replacing lyrics.
 - `f890e8e` deployed as FIRMAMENT v28: persistent main-chart `+ Add section` appends a blank section and selects its label for immediate naming.
@@ -26,6 +27,7 @@ FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangemen
 
 ## Verification
 
+- v31 deterministic gates: 26/26; JavaScript syntax and diff checks pass; FIRMAMENT serves `transpose-app-v31`. QA Agent cloud browser routes remain unavailable (400/402); no local model used.
 - v29 deterministic gates: 26/26. FIRMAMENT serves `transpose-app-v29`.
 - User ArmorOfGod state verified in live telemetry snapshot: active session `98015584-762a-44b3-b0b9-4692c2553e35`, one saved song, edits through 11:03 PM Eastern. FIRMAMENT Chrome Local Storage contains correction key `transposepdf.chord-corrections.v1`, schema v2, with persisted ArmorOfGod harmonic records.
 - v27 JavaScript syntax and diff checks pass; FIRMAMENT serves `transpose-app-v27`. Browser interaction gate not executed: configured QA Agent cloud routes returned 400/402 and local models remain prohibited. Existing clean-HEAD `lyric_anchor_schema.test.js` has an unrelated stale expectation (`Verse 1` vs current `Sec1`).
