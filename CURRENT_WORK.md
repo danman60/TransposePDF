@@ -6,6 +6,7 @@ FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangemen
 
 ## Recent Changes
 
+- `db86809` deployed as FIRMAMENT v35: legacy `NS`/`No section`/`New section` blocks merge into prior labeled section or disappear when empty; pending labels resolve on blur; 2/3-column cells contain long lyric/chord rows without cross-column collision.
 - `6f6791d` deployed as FIRMAMENT v34: context menu stays open while internally scrolling; empty sections show named `Use chords from <section>` choices with same-family matches first.
 - `35b1f7f` deployed as FIRMAMENT v33: `Add section here` splits a long section at the clicked lyric-row boundary instead of placing the new section after the entire chart.
 - `8de4a02` deployed as FIRMAMENT v32: every chart right-click menu exposes section placement; Ctrl/Cmd/Alt+Z use a 50-step exact persisted-chart undo stack while active unsaved text keeps native undo.
