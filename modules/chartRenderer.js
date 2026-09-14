@@ -104,14 +104,17 @@ class ChartRenderer {
     const plannedSong = { ...song, layout: { ...(song.layout || {}), columns: Number(options.columns ?? song.layout?.columns) || 1 } };
     const plan = ChartPageLayout.plan(plannedSong, { includeEmptyMetadata: editable });
     const pageHtml = plan.pages.map((page, pageIndex) => {
-      const columns = page.columns.map(rows => this.renderPlannedColumn(rows, song, { ...options, editable })).join('');
-      return `<section class="chart-page" data-chart-page="${pageIndex + 1}" style="--page-columns:${plan.spec.columns};--chart-font-size:${plan.spec.fontSize}">
+      const columns = page.spanRows
+        ? `<div class="chart-page-column chart-page-span">${this.renderPlannedColumn(page.spanRows, song, { ...options, editable, bare: true })}</div>`
+        : page.columns.map(rows => this.renderPlannedColumn(rows, song, { ...options, editable })).join('');
+      return `<section class="chart-page${song.layout?.layoutMode ? ' layout-mode' : ''}" data-chart-page="${pageIndex + 1}" style="--page-columns:${page.spanRows ? 1 : plan.spec.columns};--chart-font-size:${plan.spec.fontSize};--page-margin:${(plan.spec.margin / plan.spec.pageWidth * 100).toFixed(3)}%">
         <header class="chart-page-header"><strong>${this.escape(song.title)}</strong><span>${this.escape(this.plannedKeyText(song))}</span></header>
         <div class="chart-page-columns">${columns}</div>
         ${pageIndex === plan.pages.length - 1 ? this.renderPlannedFooter(plan.metadata, song, editable) : ''}
       </section>`;
     }).join('');
-    return `<div class="structured-chart paginated-chart" data-layout-columns="${plan.spec.columns}" style="--chart-columns:${plan.spec.columns}">${pageHtml}${editable ? `<button type="button" class="add-section-primary" data-action="add-section-end" data-song-id="${this.escape(song.id)}">+ Add section</button>` : ''}</div>`;
+    const warnings = plan.warnings?.length ? `<aside class="layout-warnings" aria-label="Layout warnings">${plan.warnings.map(item => `<div>${this.escape(item.message)}</div>`).join('')}</aside>` : '';
+    return `<div class="structured-chart paginated-chart${song.layout?.layoutMode ? ' is-layout-mode' : ''}" data-layout-columns="${plan.spec.columns}" style="--chart-columns:${plan.spec.columns}">${warnings}${pageHtml}${editable ? `<button type="button" class="add-section-primary" data-action="add-section-end" data-song-id="${this.escape(song.id)}">+ Add section</button>` : ''}</div>`;
   }
 
   renderPlannedFooter(metadata, song, editable) {
@@ -136,9 +139,10 @@ class ChartRenderer {
       if (last && !last.metadata && last.sectionIndex === row.sectionIndex) last.rows.push(row);
       else groups.push({ sectionIndex: row.sectionIndex, rows: [row] });
     });
-    return `<div class="chart-page-column">${groups.map(group => group.metadata
+    const content = groups.map(group => group.metadata
       ? this.renderPlannedMetadata(group.rows[0], song, options.editable)
-      : this.renderPlannedSection(group, song, options)).join('')}</div>`;
+      : this.renderPlannedSection(group, song, options)).join('');
+    return options.bare ? content : `<div class="chart-page-column">${content}</div>`;
   }
 
   renderPlannedMetadata(row, song, editable) {
@@ -187,11 +191,13 @@ class ChartRenderer {
     const chords = (chordRow?.chords || []).map(chord => ({ ...chord,
       chordIndex: (original?.chords || []).findIndex(item => String(item.id) === String(chord.id)),
       displaySymbol: this.displayStoredChord(chord, song, this.musicTheory()) }));
+    const breakItem = (song.layout?.breaks || []).find(item => item.sectionId === song.sections?.[sectionIndex]?.id && item.lineId === original?.id && item.edge === 'after');
+    const boundary = options.editable && finalSegment && song.layout?.layoutMode ? `<div class="layout-break-target${breakItem ? ' has-layout-break' : ''}" data-layout-boundary="true" data-break-id="${this.escape(breakItem?.id || '')}" data-break-type="${breakItem?.type || 'column'}" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" tabindex="${breakItem ? '0' : '-1'}" role="separator" aria-label="${breakItem ? `Drag ${breakItem.type} termination; double click to reset` : 'Layout drop point'}" title="${breakItem ? `Drag ${breakItem.type} termination` : 'Drop a termination line here'}"><span>${breakItem ? `${breakItem.type === 'page' ? 'Page' : 'Column'} ends here` : ''}</span></div>` : '';
     return `<div class="chart-line planned-chart-line${chordRow ? '' : ' planned-text-only'}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">
       ${chordRow ? `<div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex, sourceStart })}</div>` : ''}
       <div class="lyric-line${row.content ? '' : ' inline-edit-empty'}"${options.editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit lyrics" data-inline-field="lyrics" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}" data-placeholder="Type lyrics"` : ''}>${this.escape(row.content || '')}</div>
       ${options.editable && finalSegment ? `<button type="button" class="inline-add-line" data-action="add-chart-line" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" aria-label="Add lyric line after this line" title="Add line">+ line</button>` : ''}
-    </div>`;
+    </div>${boundary}`;
   }
 
   matchingChordSectionIndex(sections, targetIndex) {

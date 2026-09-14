@@ -34,4 +34,16 @@ assert.equal(segments.map(segment => segment.lyrics).join(' '), song.sections[0]
 assert.ok(segments.some(segment => segment.chords.length === 1));
 assert.equal(ChartPageLayout.plan({ ...song, layout: { columns: 2, fontSize: 11 } }).spec.fontSize, 11);
 assert.equal(ChartPageLayout.plan({ ...song, layout: { columns: 2, fontSize: 99 } }).spec.fontSize, 18);
-console.log('9/9 shared A4 layout planning checks passed');
+const anchored = JSON.parse(JSON.stringify(song));
+anchored.sections.forEach((section, sectionIndex) => { section.id = `s${sectionIndex}`; section.lines.forEach((line, lineIndex) => { line.id = `s${sectionIndex}l${lineIndex}`; }); });
+anchored.layout = { columns: 2, fontSize: 13, margin: 'wide', sectionSpacing: 'spacious', balance: 'off',
+  breaks: [{ id: 'b1', type: 'column', sectionId: 's0', lineId: 's0l1', edge: 'after' }],
+  sectionRules: { s1: { keepTogether: true, start: 'column' }, s2: { spanColumns: true } } };
+const directed = ChartPageLayout.plan(anchored);
+assert.equal(directed.spec.margin, 54);
+assert.ok(directed.pages.some(page => page.spanSectionId === 's2'), 'spanning section gets full-width page');
+assert.ok(directed.pages[0].columns[0].some(row => row.lineId === 's0l1'));
+assert.ok(!directed.pages[0].columns[0].some(row => row.lineId === 's0l2'), 'manual column termination honored');
+assert.ok(directed.pages.some(page => page.columns.some(rows => rows.filter(row => row.sectionId === 's0' && row.sectionGap).length === 2)), 'spacious gap honored');
+assert.ok(Array.isArray(directed.warnings));
+console.log('15/15 shared A4 layout planning checks passed');

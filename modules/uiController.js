@@ -1017,6 +1017,7 @@ class UIController {
     if (!this.elements.sidebarSongControls || !song) return;
     const songId = this.escapeHtml(String(song.id));
     const transposition = Number(song.transposition) || 0;
+    const customPresets = this.savedLayoutPresets();
     this.elements.sidebarSongControls.innerHTML = `
       <div class="sidebar-song-heading"><span class="sidebar-eyebrow">Now editing</span><h2>${this.escapeHtml(song.title)}</h2><p><strong id="keyIndicator-${song.id}">Key of ${this.escapeHtml(song.currentKey)}</strong><span>Original ${this.escapeHtml(song.originalKey)}</span></p></div>
       <button class="sidebar-edit-state edit-song-button" data-action="focus-chart" data-song-id="${songId}" type="button">Editing on chart</button>
@@ -1029,6 +1030,15 @@ class UIController {
       <div class="sidebar-transpose" aria-label="Transpose ${this.escapeHtml(song.title)}"><span>Transpose</span><div><button data-action="transpose-song" data-song-id="${songId}" data-semitones="-1" type="button" aria-label="Transpose down">−</button><output id="transposeValue-${song.id}">${transposition > 0 ? `+${transposition}` : transposition}<small>semitones</small></output><button data-action="transpose-song" data-song-id="${songId}" data-semitones="1" type="button" aria-label="Transpose up">+</button></div></div>
       <fieldset class="sidebar-columns"><legend>Columns</legend><div role="group" aria-label="Chart columns">${[1, 2, 3].map(columns => `<button type="button" data-action="set-layout-columns" data-song-id="${songId}" data-columns="${columns}" aria-pressed="${Number(song.layout?.columns || 1) === columns}">${columns}</button>`).join('')}</div><small>Wide chart and PDF</small></fieldset>
       <label class="sidebar-font-size">Text size<select data-action="set-chart-font-size" data-song-id="${songId}" aria-label="Chart text size for ${this.escapeHtml(song.title)}">${Array.from({length: 9}, (_, index) => index + 10).map(size => `<option value="${size}"${Number(song.layout?.fontSize || 13) === size ? ' selected' : ''}>${size} pt</option>`).join('')}</select><small>Editor and PDF</small></label>
+      <div class="sidebar-layout-director">
+        <button type="button" data-action="toggle-layout-mode" data-song-id="${songId}" aria-pressed="${Boolean(song.layout?.layoutMode)}">${song.layout?.layoutMode ? 'Done arranging layout' : 'Arrange page layout'}</button>
+        <label>Preset<select data-action="set-layout-preset" data-song-id="${songId}">${[['custom','Custom'],['lead-sheet','Single-page lead sheet'],['stage','Two-column stage chart'],['large-print','Large print']].map(([value,label]) => `<option value="${value}"${song.layout?.preset === value ? ' selected' : ''}>${label}</option>`).join('')}${Object.keys(customPresets).map(name => `<option value="saved:${this.escapeHtml(name)}"${song.layout?.preset === `saved:${name}` ? ' selected' : ''}>${this.escapeHtml(name)}</option>`).join('')}</select></label>
+        <button type="button" data-action="save-layout-preset" data-song-id="${songId}">Save current as preset</button>
+        <label>Margins<select data-action="set-layout-field" data-layout-field="margin" data-song-id="${songId}">${['narrow','standard','wide'].map(value => `<option value="${value}"${song.layout?.margin === value ? ' selected' : ''}>${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>
+        <label>Section space<select data-action="set-layout-field" data-layout-field="sectionSpacing" data-song-id="${songId}">${['compact','normal','spacious'].map(value => `<option value="${value}"${song.layout?.sectionSpacing === value ? ' selected' : ''}>${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>
+        <label class="layout-check"><input type="checkbox" data-action="set-layout-balance" data-song-id="${songId}"${song.layout?.balance !== 'off' ? ' checked' : ''}> Auto-balance final page</label>
+        ${(song.layout?.breaks || []).length ? `<button type="button" data-action="clear-layout-breaks" data-song-id="${songId}">Reset ${song.layout.breaks.length} manual break${song.layout.breaks.length === 1 ? '' : 's'}</button>` : ''}
+      </div>
       <div class="sidebar-tool-links"><button data-action="reset-song" data-song-id="${songId}" type="button">↺ Reset original key</button><button data-action="open-history" data-song-id="${songId}" type="button">◷ Version history</button></div>`;
   }
 
@@ -1056,6 +1066,66 @@ class UIController {
       this.track('chart.layout.changed', { columns: saved.layout.columns, fontSize: saved.layout.fontSize }, saved);
       return true;
     } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  async updateSongLayout(songId, patch, status = 'Layout saved') {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return false;
+    const previous = SongModel.create(song); const edited = SongModel.create(song);
+    edited.layout = { ...edited.layout, ...patch, preset: patch.preset || (Object.keys(patch).length ? 'custom' : edited.layout.preset) };
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous); this.displaySongs(); this.updateStatus(status, 'success');
+      this.track('chart.layout.changed', { fields: Object.keys(patch) }, saved); return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  setSongLayoutField(songId, field, value) { return this.updateSongLayout(songId, { [field]: value }); }
+  toggleSongLayoutMode(songId) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    return this.updateSongLayout(songId, { layoutMode: !song?.layout?.layoutMode }, song?.layout?.layoutMode ? 'Layout locked' : 'Drag dotted boundaries or use right-click');
+  }
+  clearSongLayoutBreaks(songId) { return this.updateSongLayout(songId, { breaks: [] }, 'Automatic flow restored'); }
+  removeSongLayoutBreak(songId, breakId) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    return this.updateSongLayout(songId, { breaks: (song?.layout?.breaks || []).filter(item => item.id !== breakId) }, 'Automatic termination restored');
+  }
+  setSongLayoutPreset(songId, preset) {
+    const presets = {
+      'lead-sheet': { columns: 1, fontSize: 12, margin: 'narrow', sectionSpacing: 'compact', balance: 'auto' },
+      stage: { columns: 2, fontSize: 13, margin: 'standard', sectionSpacing: 'normal', balance: 'auto' },
+      'large-print': { columns: 1, fontSize: 16, margin: 'wide', sectionSpacing: 'spacious', balance: 'off' }
+    };
+    const custom = preset.startsWith('saved:') ? this.savedLayoutPresets()[preset.slice(6)] : null;
+    return this.updateSongLayout(songId, { ...(custom || presets[preset] || {}), preset }, `${preset.replace(/^saved:/, '').replace(/-/g, ' ')} preset applied`);
+  }
+
+  savedLayoutPresets() {
+    try { return JSON.parse(localStorage.getItem('transposepdf.layout-presets.v1') || '{}'); } catch (_) { return {}; }
+  }
+  saveSongLayoutPreset(songId) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId)); if (!song) return false;
+    const name = String(window.prompt('Preset name', song.title) || '').trim(); if (!name) return false;
+    const presets = this.savedLayoutPresets();
+    presets[name] = { columns: song.layout.columns, fontSize: song.layout.fontSize, margin: song.layout.margin,
+      sectionSpacing: song.layout.sectionSpacing, balance: song.layout.balance };
+    localStorage.setItem('transposepdf.layout-presets.v1', JSON.stringify(presets));
+    return this.updateSongLayout(songId, { preset: `saved:${name}` }, `${name} preset saved`);
+  }
+
+  setSectionLayoutRule(songId, sectionIndex, patch) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId)); const section = song?.sections?.[sectionIndex];
+    if (!section) return false;
+    const rules = { ...(song.layout?.sectionRules || {}), [section.id]: { ...(song.layout?.sectionRules?.[section.id] || {}), ...patch } };
+    return this.updateSongLayout(songId, { sectionRules: rules }, 'Section layout saved');
+  }
+
+  setLayoutBreak(songId, sectionIndex, lineIndex, type, edge = 'after', replaceId = null) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId)); const section = song?.sections?.[sectionIndex];
+    const line = Number.isFinite(lineIndex) ? section?.lines?.[lineIndex] : null; if (!section) return false;
+    const breaks = (song.layout?.breaks || []).filter(item => item.id !== replaceId && !(item.sectionId === section.id && item.lineId === (line?.id || null) && item.edge === edge));
+    breaks.push({ id: replaceId || SongModel.createId('break'), type, sectionId: section.id, lineId: line?.id || null, edge });
+    return this.updateSongLayout(songId, { breaks }, `${type === 'page' ? 'Page' : 'Column'} ends here`);
   }
 
   async useInferredArrangement(songId) {

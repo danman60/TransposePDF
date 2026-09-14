@@ -75,7 +75,21 @@ class SongModel {
       columns: Math.max(1, Math.min(3, Math.trunc(Number(input.layout?.columns) || 1))),
       fontSize: Math.max(10, Math.min(18, Math.round(Number(input.layout?.fontSize) || 13))),
       columnsProvenance: ['default', 'manual', 'imported'].includes(input.layout?.columnsProvenance)
-        ? input.layout.columnsProvenance : 'default'
+        ? input.layout.columnsProvenance : 'default',
+      margin: ['narrow', 'standard', 'wide'].includes(input.layout?.margin) ? input.layout.margin : 'standard',
+      sectionSpacing: ['compact', 'normal', 'spacious'].includes(input.layout?.sectionSpacing) ? input.layout.sectionSpacing : 'normal',
+      balance: input.layout?.balance === 'off' ? 'off' : 'auto',
+      preset: String(input.layout?.preset || 'custom'),
+      layoutMode: Boolean(input.layout?.layoutMode),
+      breaks: (Array.isArray(input.layout?.breaks) ? input.layout.breaks : []).filter(item =>
+        item && ['column', 'page'].includes(item.type) && item.sectionId).map(item => ({
+        id: item.id || this.createId('break'), type: item.type, sectionId: String(item.sectionId),
+        lineId: item.lineId == null ? null : String(item.lineId), edge: item.edge === 'after' ? 'after' : 'before'
+      })),
+      sectionRules: Object.fromEntries(Object.entries(input.layout?.sectionRules || {}).map(([id, rule]) => [String(id), {
+        keepTogether: Boolean(rule?.keepTogether), start: ['column', 'page'].includes(rule?.start) ? rule.start : 'auto',
+        spanColumns: Boolean(rule?.spanColumns), spacing: ['compact', 'normal', 'spacious'].includes(rule?.spacing) ? rule.spacing : 'inherit'
+      }]))
     };
     const inferredValue = input.arrangement?.inferredValue || this.inferArrangement(sections);
     const mode = input.arrangement?.mode === 'manual' ? 'manual' : 'auto';

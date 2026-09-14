@@ -1,8 +1,9 @@
 /** Shared, deterministic A4 layout plan for editor and structured PDF output. */
 class ChartPageLayout {
-  static spec(columns = 1, requestedFontSize = 13) {
+  static spec(columns = 1, requestedFontSize = 13, marginName = 'standard') {
     const count = Math.max(1, Math.min(3, Math.trunc(Number(columns) || 1)));
-    const pageWidth = 595.28; const pageHeight = 841.89; const margin = 36; const gutter = 18;
+    const pageWidth = 595.28; const pageHeight = 841.89; const margins = { narrow: 24, standard: 36, wide: 54 };
+    const margin = margins[marginName] || margins.standard; const gutter = 18;
     // One song-level point size drives wrapping and both renderers.
     const fontSize = Math.max(10, Math.min(18, Math.round(Number(requestedFontSize) || 13)));
     const lineHeight = fontSize * 1.2; const headerHeight = 44;
@@ -30,15 +31,18 @@ class ChartPageLayout {
     return segments;
   }
 
-  static sectionRows(section, sectionIndex, spec) {
-    const rows = [{ type: 'section', content: String(section?.label || ''), sectionIndex }];
+  static sectionRows(section, sectionIndex, spec, spacing = 'normal') {
+    const rows = [{ type: 'section', content: String(section?.label || ''), sectionIndex, sectionId: section.id }];
     (section?.lines || []).forEach((line, lineIndex) => {
-      this.wrapLine(line, spec.maxCharacters).forEach(segment => {
-        if (segment.chords.length) rows.push({ type: 'chords', ...segment, sectionIndex, lineIndex });
-        rows.push({ type: segment.lyrics ? 'text' : 'empty', content: segment.lyrics, ...segment, sectionIndex, lineIndex });
+      const segments = this.wrapLine(line, spec.maxCharacters);
+      segments.forEach((segment, segmentIndex) => {
+        const segmentState = { firstSegment: segmentIndex === 0, finalSegment: segmentIndex === segments.length - 1 };
+        if (segment.chords.length) rows.push({ type: 'chords', ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
+        rows.push({ type: segment.lyrics ? 'text' : 'empty', content: segment.lyrics, ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
       });
     });
-    rows.push({ type: 'empty', content: '', sectionIndex });
+    const gapCount = spacing === 'compact' ? 0 : spacing === 'spacious' ? 2 : 1;
+    for (let count = 0; count < gapCount; count += 1) rows.push({ type: 'empty', content: '', sectionIndex, sectionId: section.id, sectionGap: true });
     rows.forEach(row => { row.sectionLabel = String(section?.label || 'Section'); });
     return rows;
   }
@@ -58,12 +62,22 @@ class ChartPageLayout {
   }
 
   static plan(song, options = {}) {
-    const spec = this.spec(song?.layout?.columns, song?.layout?.fontSize);
+    const layout = song?.layout || {};
+    const spec = this.spec(layout.columns, layout.fontSize, layout.margin);
     const pages = [{ columns: Array.from({ length: spec.columns }, () => []) }];
     let page = 0; let column = 0; let used = 0;
     const advance = () => { column += 1; used = 0; if (column >= spec.columns) { column = 0; page += 1; pages.push({ columns: Array.from({ length: spec.columns }, () => []) }); } };
-    const place = rows => {
+    const manualBreaks = new Map((layout.breaks || []).map(item => [`${item.sectionId}:${item.lineId || ''}:${item.edge || 'before'}`, item]));
+    const breakBefore = unit => unit[0]?.firstSegment === false ? null : manualBreaks.get(`${unit[0]?.sectionId}:${unit[0]?.lineId || ''}:before`);
+    const breakAfter = unit => unit[unit.length - 1]?.finalSegment === false ? null : manualBreaks.get(`${unit[unit.length - 1]?.sectionId}:${unit[unit.length - 1]?.lineId || ''}:after`);
+    const advanceType = type => { if (type === 'page' && (column || used)) { while (column || used) advance(); } else advance(); };
+    const place = (rows, rule = {}) => {
+      if (rule.start === 'page' && (page || column || used)) advanceType('page');
+      else if (rule.start === 'column' && used) advance();
+      if (rule.keepTogether && used && rows.length <= spec.rowsPerColumn && used + rows.length > spec.rowsPerColumn) advance();
       for (const unit of this.rowUnits(rows)) {
+        if (!used && unit.every(row => row.sectionGap)) continue;
+        const before = breakBefore(unit); if (before && used) advanceType(before.type);
         if (used && used + unit.length > spec.rowsPerColumn) {
           const previous = pages[page].columns[column][used - 1];
           advance();
@@ -73,9 +87,22 @@ class ChartPageLayout {
           }
         }
         pages[page].columns[column].push(...unit); used += unit.length;
+        const after = breakAfter(unit); if (after) {
+          pages[page].terminations ||= []; pages[page].terminations.push({ column, breakId: after.id, type: after.type }); advanceType(after.type);
+        }
       }
     };
-    (song?.sections || []).forEach((section, index) => place(this.sectionRows(section, index, spec)));
+    (song?.sections || []).forEach((section, index) => {
+      const rule = layout.sectionRules?.[section.id] || {};
+      const spacing = rule.spacing === 'inherit' || !rule.spacing ? (layout.sectionSpacing || 'normal') : rule.spacing;
+      const rows = this.sectionRows(section, index, spec, spacing);
+      if (rule.spanColumns && spec.columns > 1) {
+        if (pages[page].columns.some(items => items.length)) { while (column || used) advance(); }
+        pages[page].spanRows = rows; pages[page].spanSectionId = section.id;
+        page += 1; column = 0; used = 0; pages.push({ columns: Array.from({ length: spec.columns }, () => []) });
+      } else place(rows, rule);
+    });
+    while (pages.length > 1 && !pages[pages.length - 1].spanRows && pages[pages.length - 1].columns.every(rows => !rows.length)) pages.pop();
     const metadata = [];
     const writer = String(song?.credits?.writer?.value || '').trim(); const arranger = String(song?.credits?.arranger?.value || '').trim();
     const arrangement = String(song?.arrangement?.mode === 'manual' ? song?.arrangement?.value || '' : song?.arrangement?.inferredValue || '').trim();
@@ -99,7 +126,8 @@ class ChartPageLayout {
       });
       finalPage.columns = balanced;
     };
-    balanceFinalPage(metadataRows);
+    const canBalanceFinalPage = () => layout.balance !== 'off' && !pages[pages.length - 1].terminations?.length && !pages[pages.length - 1].spanRows;
+    if (canBalanceFinalPage()) balanceFinalPage(metadataRows);
     const lastPage = pages[pages.length - 1];
     const maxUsed = Math.max(...lastPage.columns.map(rows => rows.length), 0);
     if (metadata.length && maxUsed + metadataRows > spec.rowsPerColumn) {
@@ -111,8 +139,14 @@ class ChartPageLayout {
       next.columns[0].push(...moved);
       pages.push(next);
     }
-    balanceFinalPage(metadataRows);
-    return { spec, pages, metadata, metadataRows };
+    if (canBalanceFinalPage()) balanceFinalPage(metadataRows);
+    const warnings = [];
+    pages.forEach((item, pageIndex) => item.columns.forEach((rows, columnIndex) => {
+      if (rows.length > spec.rowsPerColumn) warnings.push({ type: 'overflow', page: pageIndex + 1, column: columnIndex + 1, message: `Page ${pageIndex + 1}, column ${columnIndex + 1} overflows by ${rows.length - spec.rowsPerColumn} rows` });
+      const termination = item.terminations?.find(value => value.column === columnIndex);
+      if (termination && rows.length && rows.length < Math.floor(spec.rowsPerColumn * .35)) warnings.push({ type: 'sparse', page: pageIndex + 1, column: columnIndex + 1, breakId: termination.breakId, message: `Manual ${termination.type} break leaves page ${pageIndex + 1}, column ${columnIndex + 1} sparse` });
+    }));
+    return { spec, pages, metadata, metadataRows, warnings };
   }
 }
 

@@ -88,6 +88,9 @@ class WorkspaceController {
       'delete-section': () => this.ui.deleteInlineSection(songId, Number(target.dataset.sectionIndex)),
       'move-section': () => this.ui.moveInlineSection(songId, Number(target.dataset.sectionIndex), target.dataset.direction === 'up' ? -1 : 1),
       'set-layout-columns': () => this.ui.setSongLayoutColumns(songId, Number(target.dataset.columns)),
+      'toggle-layout-mode': () => this.ui.toggleSongLayoutMode(songId),
+      'clear-layout-breaks': () => this.ui.clearSongLayoutBreaks(songId),
+      'save-layout-preset': () => this.ui.saveSongLayoutPreset(songId),
       'use-song-order': () => this.ui.useInferredArrangement(songId),
       'move-song': () => this.moveSong(target, songId),
       'remove-song': () => this.ui.removeSessionSong(songId)
@@ -105,9 +108,19 @@ class WorkspaceController {
     if (target.dataset.action === 'set-spelling') this.ui.setSpellingPolicy(target.dataset.songId, target.value);
     if (target.dataset.action === 'set-chart-view') this.ui.setChartView(target.dataset.songId, target.dataset.field, target.value);
     if (target.dataset.action === 'set-chart-font-size') this.ui.setSongFontSize(target.dataset.songId, Number(target.value));
+    if (target.dataset.action === 'set-layout-field') this.ui.setSongLayoutField(target.dataset.songId, target.dataset.layoutField, target.value);
+    if (target.dataset.action === 'set-layout-balance') this.ui.setSongLayoutField(target.dataset.songId, 'balance', target.checked ? 'auto' : 'off');
+    if (target.dataset.action === 'set-layout-preset') this.ui.setSongLayoutPreset(target.dataset.songId, target.value);
   }
 
   handleDragStart(event) {
+    const layoutBoundary = event.target.closest?.('.layout-break-target.has-layout-break');
+    if (layoutBoundary && this.root.contains(layoutBoundary)) {
+      this.layoutDrag = { songId: layoutBoundary.dataset.songId, type: layoutBoundary.dataset.breakType || 'column', breakId: layoutBoundary.dataset.breakId };
+      event.dataTransfer?.setData('text/layout-break', this.layoutDrag.type);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      return;
+    }
     const chord = event.target.closest?.('.inline-chord-anchor');
     if (chord && this.root.contains(chord)) {
       this.inlineDrag = {
@@ -136,6 +149,11 @@ class WorkspaceController {
   }
 
   handleDragOver(event) {
+    const layoutTarget = event.target.closest?.('.layout-break-target');
+    if (layoutTarget && this.layoutDrag) {
+      event.preventDefault(); this.root.querySelectorAll('.layout-drop-active').forEach(item => item.classList.remove('layout-drop-active'));
+      layoutTarget.classList.add('layout-drop-active'); if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'; return;
+    }
     const chart = event.target.closest?.('.structured-chart');
     if (chart && this.sectionDrag) {
       event.preventDefault();
@@ -157,6 +175,12 @@ class WorkspaceController {
   }
 
   handleDrop(event) {
+    const layoutTarget = event.target.closest?.('.layout-break-target');
+    if (layoutTarget && this.layoutDrag) {
+      event.preventDefault(); const drag = this.layoutDrag; this.layoutDrag = null;
+      this.root.querySelectorAll('.layout-drop-active').forEach(item => item.classList.remove('layout-drop-active'));
+      this.ui.setLayoutBreak(drag.songId, Number(layoutTarget.dataset.sectionIndex), Number(layoutTarget.dataset.lineIndex), drag.type, 'after', drag.breakId); return;
+    }
     const chart = event.target.closest?.('.structured-chart');
     if (chart && this.sectionDrag) {
       event.preventDefault();
@@ -216,6 +240,8 @@ class WorkspaceController {
       item.classList.remove('dragging', 'author-drop-target'); item.style.removeProperty('--drop-caret-left');
     });
     this.inlineDrag = null;
+    this.layoutDrag = null;
+    this.root.querySelectorAll('.layout-drop-active').forEach(item => item.classList.remove('layout-drop-active'));
   }
 
   moveSong(target, songId) {
@@ -356,6 +382,13 @@ class WorkspaceController {
   }
 
   handlePointerDown(event) {
+    const boundary = event.target.closest?.('.layout-break-target.has-layout-break');
+    if (boundary && this.root.contains(boundary)) {
+      event.preventDefault();
+      this.layoutPointerDrag = { pointerId: event.pointerId, songId: boundary.dataset.songId,
+        type: boundary.dataset.breakType || 'column', breakId: boundary.dataset.breakId, source: boundary };
+      boundary.setPointerCapture?.(event.pointerId); boundary.classList.add('layout-dragging'); return;
+    }
     const chord = event.target.closest?.('.inline-chord-anchor');
     if (!chord || !this.root.contains(chord)) return;
     this.pointerDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false,
@@ -366,6 +399,13 @@ class WorkspaceController {
   }
 
   handlePointerMove(event) {
+    if (this.layoutPointerDrag?.pointerId === event.pointerId) {
+      event.preventDefault();
+      const target = this.nearestLayoutTarget(event.clientX, event.clientY);
+      this.root.querySelectorAll('.layout-drop-active').forEach(item => item.classList.remove('layout-drop-active'));
+      if (target) { target.classList.add('layout-drop-active'); this.layoutPointerDrag.target = target; }
+      return;
+    }
     const drag = this.pointerDrag;
     if (!drag || drag.pointerId !== event.pointerId) return;
     if (!drag.active && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 5) return;
@@ -386,6 +426,13 @@ class WorkspaceController {
   }
 
   handlePointerUp(event) {
+    if (this.layoutPointerDrag?.pointerId === event.pointerId) {
+      const drag = this.layoutPointerDrag; this.layoutPointerDrag = null;
+      const target = this.nearestLayoutTarget(event.clientX, event.clientY) || drag.target;
+      this.root.querySelectorAll('.layout-drop-active, .layout-dragging').forEach(item => item.classList.remove('layout-drop-active', 'layout-dragging'));
+      if (target) this.ui.setLayoutBreak(drag.songId, Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), drag.type, 'after', drag.breakId);
+      return;
+    }
     const drag = this.pointerDrag;
     if (!drag || drag.pointerId !== event.pointerId) return;
     const line = document.elementFromPoint(event.clientX, event.clientY)?.closest('.lead-sheet .chord-line[data-section-index]');
@@ -399,6 +446,9 @@ class WorkspaceController {
   }
 
   handlePointerCancel(event) {
+    if (this.layoutPointerDrag?.pointerId === event.pointerId) {
+      this.layoutPointerDrag = null; this.root.querySelectorAll('.layout-drop-active, .layout-dragging').forEach(item => item.classList.remove('layout-drop-active', 'layout-dragging')); return;
+    }
     if (!this.pointerDrag || this.pointerDrag.pointerId !== event.pointerId) return;
     this.pointerDrag = null;
     this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
@@ -407,7 +457,18 @@ class WorkspaceController {
     });
   }
 
+  nearestLayoutTarget(x, y) {
+    const targets = [...this.root.querySelectorAll('.layout-break-target')]; let nearest = null; let distance = Infinity;
+    targets.forEach(item => { const rect = item.getBoundingClientRect(); const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
+      const dy = Math.abs(y - (rect.top + rect.height / 2)); const value = Math.hypot(dx, dy); if (value < distance) { distance = value; nearest = item; } });
+    return nearest;
+  }
+
   handleDoubleClick(event) {
+    const boundary = event.target.closest?.('.layout-break-target.has-layout-break');
+    if (boundary && this.root.contains(boundary)) {
+      event.preventDefault(); this.ui.removeSongLayoutBreak(boundary.dataset.songId, boundary.dataset.breakId); return;
+    }
     if (event.target.closest?.('.inline-chord-anchor')) return;
     const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
     if (!chordLine || !this.root.contains(chordLine)) return;
@@ -454,6 +515,7 @@ class WorkspaceController {
       (song?.sections || []).forEach((item, index) => { if (index !== sectionIndex) actions.push([`Copy to ${item.label || `section ${index + 1}`}`, 'copy-chord-section', '', index]); });
     } else if (lyric) {
       actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
+        ['End column after this line', 'column-break'], ['Start new page after this line', 'page-break'],
         ['Join with previous', 'join-prev'], ['Join with next', 'join-next'], ['Paste lyrics here', 'paste-lyrics'],
         ['Clear chords from line', 'clear-line-chords', 'danger'], ['Copy chord pattern from matching section', 'copy-line-pattern']];
     } else if (lane) {
@@ -462,6 +524,7 @@ class WorkspaceController {
     } else if (Number.isFinite(sectionIndex)) {
       actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Rename section', 'rename-section'],
         ['Duplicate section', 'duplicate-section-context'], ['Copy matching chords', 'copy-matching-section'], ['Copy entire section', 'duplicate-section-context'],
+        ['Keep section together', 'keep-section'], ['Start in next column', 'start-section-column'], ['Start on next page', 'start-section-page'], ['Span all columns', 'span-section'], ['Reset section flow', 'reset-section-flow'], ['Compact section spacing', 'section-space-compact'], ['Normal section spacing', 'section-space-normal'], ['Spacious section spacing', 'section-space-spacious'],
         ['Move left / up', 'section-prev'], ['Move right / down', 'section-next'], ['Delete section', 'delete-section-context', 'danger']];
     } else {
       this.contextState.sectionIndex = this.nearestSectionInsertion(sheet, event.clientX, event.clientY);
@@ -526,6 +589,8 @@ class WorkspaceController {
       'paste-lyrics': async () => this.ui.replaceInlineLyrics(state.songId, state.sectionIndex, state.lineIndex, await navigator.clipboard.readText()),
       'clear-line-chords': () => this.ui.clearInlineLineChords(state.songId, state.sectionIndex, state.lineIndex),
       'copy-line-pattern': () => this.ui.copyMatchingLinePattern(state.songId, state.sectionIndex, state.lineIndex),
+      'column-break': () => this.ui.setLayoutBreak(state.songId, state.sectionIndex, state.lineIndex, 'column'),
+      'page-break': () => this.ui.setLayoutBreak(state.songId, state.sectionIndex, state.lineIndex, 'page'),
       'add-chord': () => this.ui.insertInlineChord(state.songId, state.sectionIndex, state.lineIndex, state.characterOffset),
       'paste-chord': () => this.ui.pasteInlineChord(this.copiedChord, state),
       'paste-chord-sequence': () => this.ui.insertInlineChordSequence(state),
@@ -541,6 +606,14 @@ class WorkspaceController {
       'section-prev': () => this.ui.moveInlineSection(state.songId, state.sectionIndex, -1),
       'section-next': () => this.ui.moveInlineSection(state.songId, state.sectionIndex, 1),
       'delete-section-context': () => this.ui.deleteInlineSection(state.songId, state.sectionIndex)
+      ,'keep-section': () => this.ui.setSectionLayoutRule(state.songId, state.sectionIndex, { keepTogether: true })
+      ,'start-section-column': () => this.ui.setSectionLayoutRule(state.songId, state.sectionIndex, { start: 'column' })
+      ,'start-section-page': () => this.ui.setSectionLayoutRule(state.songId, state.sectionIndex, { start: 'page' })
+      ,'span-section': () => this.ui.setSectionLayoutRule(state.songId, state.sectionIndex, { spanColumns: true })
+      ,'reset-section-flow': () => this.ui.setSectionLayoutRule(state.songId, state.sectionIndex, { keepTogether: false, start: 'auto', spanColumns: false, spacing: 'inherit' })
+      ,'section-space-compact': () => this.ui.setSectionLayoutRule(state.songId, state.sectionIndex, { spacing: 'compact' })
+      ,'section-space-normal': () => this.ui.setSectionLayoutRule(state.songId, state.sectionIndex, { spacing: 'normal' })
+      ,'section-space-spacious': () => this.ui.setSectionLayoutRule(state.songId, state.sectionIndex, { spacing: 'spacious' })
     };
     try { await commands[command]?.(); } catch (error) { this.ui.updateStatus(error?.message || 'Action could not be completed', 'error'); }
   }

@@ -215,7 +215,14 @@ class PDFGenerator {
     for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex += 1) {
       if (pageIndex > 0) pdf.addPage();
       const top = this.renderPlannedSongHeader(pdf, song, plan.spec, pageIndex > 0);
-      for (let columnIndex = 0; columnIndex < plan.spec.columns; columnIndex += 1) {
+      if (plan.pages[pageIndex].spanRows) {
+        let y = top;
+        for (const plannedRow of plan.pages[pageIndex].spanRows) {
+          const row = { ...plannedRow, structured: true };
+          if (row.type === 'chords') row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
+          await this.renderLine(pdf, row, plan.spec.margin, y); y += plan.spec.lineHeight;
+        }
+      } else for (let columnIndex = 0; columnIndex < plan.spec.columns; columnIndex += 1) {
         const x = plan.spec.margin + columnIndex * (plan.spec.columnWidth + plan.spec.gutter);
         let y = top;
         for (const plannedRow of plan.pages[pageIndex].columns[columnIndex]) {

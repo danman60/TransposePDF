@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-14 AOG Recovery and Section Spacing
+## Active Task — 2026-09-14 Layout Director
 
-FIRMAMENT v46 deployed. Editor now renders shared one-row gaps between sections. Version history can recover deleted sections without rolling back newer edits. Exact AOG recovery target is revision 175: repeated Verse 1 before Bridge, 6 lines and 14 chords.
+v47 candidate implements semantic draggable column/page termination, section flow constraints, shared editor/PDF margins and spacing, fit warnings, layout guides, and built-in/custom presets. Exact AOG recovery remains available from revision 175: repeated Verse 1 before Bridge, 6 lines and 14 chords.
 
 ## Recent Changes
 
+- v47 candidate: Layout mode exposes pointer-draggable dotted termination lines anchored to stable lyric-line IDs. Right-click adds column/page breaks, keep-together, next-column/page, full-width section, and per-section spacing. Sidebar adds margins, spacing, balance, presets, saved custom presets, and reset. Shared planner/PDF consume the same constraints without rewriting chart content.
 - v46 live: restored visible section whitespace already reserved by PDF planner; added section-only recovery from any checkpoint. Recovery preserves all current sections and later edits.
 - AOG primary IndexedDB audit: revision 175 had 10 sections/52 lines/139 chords; revision 176 dropped section `20564478-f7c9-4c12-9625-99c16d2847ae` (Verse 1, 6 lines, 14 chords); current revision 192 has 9 sections/46 lines/125 chords. All other section IDs survived.
 - v45 live: persisted font-size selector in sidebar; 13pt default; exact editor/PDF/ChordPro font round-trip; restored `+ line` after v42 planned renderer dropped it. Live Armor snapshot retains six exact Verse 1 lines and renders without overflow.
@@ -46,6 +47,7 @@ FIRMAMENT v46 deployed. Editor now renders shared one-row gaps between sections.
 
 ## Verification
 
+- v47 candidate: layout director browser lifecycle 6/6; existing editor/PDF parity 6/6; layout/metadata regression 21/21; planner 15/15; full JavaScript syntax and diff checks pass. Content-count invariant verified across layout edits. Visual iteration DM `17015`.
 - v46 deployed through FIRMAMENT tunnel: section recovery 4/4; editor/PDF parity and spacing 6/6; cache `transpose-app-v46`. Exact live Armor render has 3 pages and zero overflow; spacing screenshot sent to Telegram (`17008`).
 - v45 deployed through FIRMAMENT tunnel: font/layout 21/21; canonical line insertion 9/9; editor/PDF parity 6/6; structured PDF 9/9; inline edit/drag 10/10; section move/copy/undo 6/6. Full Armor lifecycle passed with two analyses, immutable raw evidence, exact edits, transpose/reset, 34,916-byte PDF, and zero console errors. Exact saved Armor screenshot inspected and sent to Telegram (`16981`).
 - v44 deployed through FIRMAMENT tunnel: live cache `transpose-app-v44`; editor/PDF parity 6/6 with zero page overflow; inline editing/freeform drag 10/10; searchable structured PDF 9/9. Live composite visually reviewed and sent to Telegram (`16965`).
