@@ -85,7 +85,10 @@ class ChartRenderer {
           chordIndex,
           displaySymbol: this.displayStoredChord(chord, song, musicTheory)
         }));
-        return `<div class="chart-line">
+        const visualColumns = Math.max(24, String(line.lyrics || '').length,
+          ...chords.map(chord => (Number(chord.characterOffset) || 0) + String(chord.displaySymbol || chord.symbol || '').length));
+        const lineFit = (150 / visualColumns).toFixed(4);
+        return `<div class="chart-line" style="--line-columns:${visualColumns};--line-fit:${lineFit}cqi">
           <div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex })}</div>
           <div class="lyric-line${line.lyrics ? '' : ' inline-edit-empty'}"${options.editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit lyrics" spellcheck="true" data-inline-field="lyrics" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-placeholder="Type lyrics"` : ''}>${this.escape(line.lyrics || '')}${!line.lyrics && !options.editable ? '&nbsp;' : ''}</div>
           ${options.editable ? `<button type="button" class="inline-add-line" data-action="add-chart-line" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" aria-label="Add lyric line after this line" title="Add line">+ line</button>` : ''}

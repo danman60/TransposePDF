@@ -81,6 +81,7 @@ class UIController {
       songSelectorList: document.getElementById('songSelectorList'),
       sidebarSongControls: document.getElementById('sidebarSongControls'),
       songLibrarySidebar: document.getElementById('songLibrarySidebar'),
+      sidebarCollapseToggle: document.getElementById('sidebarCollapseToggle'),
       songToolsToggle: document.getElementById('songToolsToggle'),
       songToolsClose: document.getElementById('songToolsClose'),
       activeSongSelect: document.getElementById('activeSongSelect'),
@@ -236,6 +237,11 @@ class UIController {
   }
 
   attachEventListeners() {
+    const sidebarCollapsed = localStorage.getItem('transposepdf.sidebar-collapsed') === 'true';
+    this.setSidebarCollapsed(sidebarCollapsed);
+    this.elements.sidebarCollapseToggle?.addEventListener('click', () => {
+      this.setSidebarCollapsed(!this.elements.sessionWorkspace?.classList.contains('sidebar-collapsed'));
+    });
     this.elements.songToolsToggle?.addEventListener('click', () => {
       const open = this.elements.songLibrarySidebar?.dataset.mobileOpen !== 'true';
       if (this.elements.songLibrarySidebar) this.elements.songLibrarySidebar.dataset.mobileOpen = String(open);
@@ -352,6 +358,19 @@ class UIController {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') this.flushDraftSave();
     });
+  }
+
+  setSidebarCollapsed(collapsed) {
+    const isDesktop = window.matchMedia('(min-width: 901px)').matches;
+    const next = Boolean(collapsed && isDesktop);
+    this.elements.sessionWorkspace?.classList.toggle('sidebar-collapsed', next);
+    this.elements.sidebarCollapseToggle?.setAttribute('aria-expanded', String(!next));
+    this.elements.sidebarCollapseToggle?.setAttribute('title', next ? 'Expand song tools' : 'Collapse song tools');
+    const icon = this.elements.sidebarCollapseToggle?.querySelector('[aria-hidden="true"]');
+    const label = this.elements.sidebarCollapseToggle?.querySelector('.sidebar-collapse-label');
+    if (icon) icon.textContent = next ? '›' : '‹';
+    if (label) label.textContent = next ? 'Expand' : 'Collapse';
+    try { localStorage.setItem('transposepdf.sidebar-collapsed', String(next)); } catch (_) { /* optional preference */ }
   }
 
   async initializePersistence() {

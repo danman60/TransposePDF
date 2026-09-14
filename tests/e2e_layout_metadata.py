@@ -19,9 +19,9 @@ def main():
         page.locator("#createChartButton").click()
         page.locator("#authorTitle").fill("Layout Metadata Proof")
         page.locator("#authorContent").fill(
-            "Verse 1\nC             G\nA first line of lyrics\n\n"
-            "Chorus\nF             C\nSing the chorus here\n\n"
-            "Verse 2\nAm            G\nA second line of lyrics"
+            "Verse 1\nC             G                         Am\nBrokenness surrounds me, sickness and death close in around me\n\n"
+            "Chorus\nF             C                         G\nArmor of God gives me strength within every battle I face\n\n"
+            "Verse 2\nAm            G                         F\nI put the belt of truth and the breastplate of righteousness on"
         )
         page.locator("#saveChartButton").click()
         page.locator(".lead-sheet").wait_for()
@@ -31,6 +31,32 @@ def main():
             page.wait_for_function("n => window.transposeApp.currentSongs[0].layout.columns === n", arg=columns)
             checks[f"desktop_{columns}_columns"] = page.locator(".lead-sheet .structured-chart").get_attribute("data-layout-columns") == str(columns)
             page.screenshot(path=str(ARTIFACTS / f"layout-metadata-desktop-{columns}.png"))
+
+        page.locator('[data-action="set-layout-columns"][data-columns="2"]').click()
+        page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.columns === 2")
+        bounds = page.locator(".lead-sheet .section-block").evaluate_all("""sections => sections.map(section => {
+          const box = section.getBoundingClientRect();
+          const descendants = [...section.querySelectorAll('.lyric-line, .chord-line, .inline-chord-anchor')];
+          return { left: box.left, right: box.right, clientWidth: section.clientWidth, scrollWidth: section.scrollWidth,
+            widest: descendants.map(node => ({className:node.className, right:node.getBoundingClientRect().right, scrollWidth:node.scrollWidth, clientWidth:node.clientWidth})).sort((a,b)=>(b.scrollWidth-b.clientWidth)-(a.scrollWidth-a.clientWidth))[0],
+            scrolls: section.scrollWidth > section.clientWidth + 1,
+            escapes: descendants.some(node => { const b=node.getBoundingClientRect(); return b.right > box.right + 1 || b.left < box.left - 1; }) };
+        })""")
+        checks["two_column_no_scrollbars"] = all(not box["scrolls"] for box in bounds)
+        if not checks["two_column_no_scrollbars"]:
+            print("OVERFLOW_DIAGNOSTIC", bounds)
+        checks["two_column_no_overlap"] = all(not box["escapes"] for box in bounds)
+        expanded_width = page.locator(".song-library-sidebar").evaluate("e => e.getBoundingClientRect().width")
+        page.locator("#sidebarCollapseToggle").click()
+        collapsed_width = page.locator(".song-library-sidebar").evaluate("e => e.getBoundingClientRect().width")
+        page.screenshot(path=str(ARTIFACTS / "layout-metadata-desktop-2-collapsed.png"))
+        checks["sidebar_collapses"] = collapsed_width < 70 and expanded_width <= 225
+        checks["chart_grows_when_collapsed"] = page.locator(".workspace-chart-pane").evaluate("e => e.getBoundingClientRect().width") > 1250
+        page.reload(); page.wait_for_function("() => window.transposeApp?.currentSongs?.length === 1")
+        checks["sidebar_collapse_persists"] = page.locator("#sessionWorkspace").evaluate("e => e.classList.contains('sidebar-collapsed')")
+        page.locator("#sidebarCollapseToggle").click()
+        page.locator('[data-action="set-layout-columns"][data-columns="3"]').click()
+        page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.columns === 3")
 
         writer = page.locator('[data-inline-field="writer"]')
         writer.fill("Ada Writer"); writer.blur()

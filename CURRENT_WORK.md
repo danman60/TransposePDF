@@ -2,10 +2,11 @@
 
 ## Active Task — 2026-09-13 Chart Layout and Canonical Metadata
 
-FIRMAMENT v36 deployed. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical. Automation supplies defaults only.
+FIRMAMENT v37 ready for deployment. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical. Automation supplies defaults only.
 
 ## Recent Changes
 
+- v37 viewport editor: editor expands from the old 800px cap to the available 1680px workspace; desktop song-tools rail is 220px expanded/56px collapsed with persisted state; 2/3-column lines fit inside their column without section scrollbars or cross-column overlap.
 - `5290675` deployed as FIRMAMENT v36: audio-imported and other canonical section charts now use structured 1/2/3-column PDF export; positional imported PDFs retain source layout only when `source.preserveLayout === true`.
 - `db86809` deployed as FIRMAMENT v35: legacy `NS`/`No section`/`New section` blocks merge into prior labeled section or disappear when empty; pending labels resolve on blur; 2/3-column cells contain long lyric/chord rows without cross-column collision.
 - `6f6791d` deployed as FIRMAMENT v34: context menu stays open while internally scrolling; empty sections show named `Use chords from <section>` choices with same-family matches first.
@@ -32,6 +33,7 @@ FIRMAMENT v36 deployed. User-entered chords, lyrics, labels, credits, arrangemen
 
 ## Verification
 
+- v37 browser layout: 16/16 passed at desktop/mobile. Proves 1/2/3-column state, zero two-column overlap, zero per-section horizontal scrollbars, collapsed rail width, chart expansion, reload persistence, metadata/history, and mobile one-column fallback. PDF/schema/ChordPro deterministic gates: 31/31.
 - v36 deployed final hop: live service worker `transpose-app-v36`; 31/31 deterministic PDF/schema/ChordPro checks; 9/9 real Chromium-generated audio-source PDF checks. A4 output uses both columns, searchable text, clean continuation pages, credits, arrangement, and manual chord spelling. QA Agent cloud route executed 0/15 steps because MiniMax returned HTTP 402; no local model used.
 - v31 deterministic gates: 26/26; JavaScript syntax and diff checks pass; FIRMAMENT serves `transpose-app-v31`. QA Agent cloud browser routes remain unavailable (400/402); no local model used.
 - v29 deterministic gates: 26/26. FIRMAMENT serves `transpose-app-v29`.
