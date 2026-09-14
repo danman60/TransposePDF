@@ -1263,11 +1263,22 @@ class UIController {
     } catch (_) { this.updateLeadSheetDisplay(song); return false; }
   }
 
-  addInlineSection(songId, index) {
-    return this.mutateInlineSections(songId, 'chart.section.added', sections => sections.splice(index, 0, {
+  async addInlineSection(songId, index) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const insertionIndex = Number.isFinite(index) ? Math.max(0, Math.min(song?.sections?.length || 0, index)) : (song?.sections?.length || 0);
+    const saved = await this.mutateInlineSections(songId, 'chart.section.added', sections => sections.splice(insertionIndex, 0, {
       id: SongModel.createId('section'), type: 'section', label: 'New section', labelProvenance: 'manual',
       lines: [{ id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null, endTime: null, lyricConfidence: null, timedWords: [] }]
     }));
+    if (saved) requestAnimationFrame(() => {
+      const target = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] [data-inline-field="section-label"][data-section-index="${insertionIndex}"]`);
+      target?.focus();
+      if (target) {
+        const selection = window.getSelection?.(); const range = document.createRange();
+        range.selectNodeContents(target); selection?.removeAllRanges(); selection?.addRange(range);
+      }
+    });
+    return saved;
   }
 
   duplicateInlineSection(songId, index) {

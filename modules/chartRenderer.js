@@ -88,7 +88,7 @@ class ChartRenderer {
         </div>`;
       }).join('');
       return `<section class="section-block" data-section-reorder-index="${sectionIndex}">${label}${lines}</section>`;
-    }).join('')}${metadata}</div>`;
+    }).join('')}${editable ? `<button type="button" class="add-section-primary" data-action="add-section-end" data-song-id="${this.escape(song.id)}">+ Add section</button>` : ''}${metadata}</div>`;
   }
 
   renderMetadataField(label, field, value, editable, songId) {

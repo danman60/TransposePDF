@@ -58,6 +58,7 @@ class WorkspaceController {
       'add-chart-line': () => this.ui.insertInlineChartLine(songId, Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), null),
       'add-section-before': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex)),
       'add-section-after': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex) + 1),
+      'add-section-end': () => this.ui.addInlineSection(songId),
       'duplicate-section': () => this.ui.duplicateInlineSection(songId, Number(target.dataset.sectionIndex)),
       'delete-section': () => this.ui.deleteInlineSection(songId, Number(target.dataset.sectionIndex)),
       'move-section': () => this.ui.moveInlineSection(songId, Number(target.dataset.sectionIndex), target.dataset.direction === 'up' ? -1 : 1),

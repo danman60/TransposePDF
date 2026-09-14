@@ -1428,6 +1428,8 @@ body {
 
 .section-block { break-inside: avoid; min-width: 0; }
 .chart-metadata { grid-column: 1 / -1; display: grid; gap: .45rem; margin-top: 1.8rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-family: inherit; }
+.add-section-primary { grid-column: 1 / -1; justify-self: start; min-height: 40px; margin-top: .65rem; padding: .5rem .9rem; border: 1px solid var(--primary-color); border-radius: .4rem; background: rgba(79,195,247,.1); color: var(--primary-color); font-family: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; }
+.add-section-primary:hover, .add-section-primary:focus-visible { background: var(--primary-color); color: #07151b; }
 .chart-metadata-row { display: grid; grid-template-columns: 8.5rem minmax(8rem, 1fr) auto; align-items: baseline; gap: .6rem; }
 .chart-metadata-label { color: var(--text-secondary); font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .chart-metadata-value { min-height: 1.45rem; border-radius: .25rem; color: var(--text-primary); outline: none; white-space: pre; }
