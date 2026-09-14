@@ -71,6 +71,7 @@ def main():
         arranger.fill("Ray Arranger"); arranger.blur()
         arrangement = page.locator('[data-inline-field="arrangement"]')
         arrangement.fill("I V1 C V2 C"); arrangement.blur()
+        page.wait_for_function("() => window.transposeApp.currentSongs[0].arrangement?.mode === 'manual'")
         arrangement_style = arrangement.evaluate("""element => {
           const box = element.getBoundingClientRect();
           const style = getComputedStyle(element);
@@ -79,7 +80,6 @@ def main():
         checks["arrangement_follow_along_size"] = arrangement_style["height"] >= 80 and arrangement_style["fontSize"] >= 18 and arrangement_style["whiteSpace"] != "pre"
         if not checks["arrangement_follow_along_size"]:
             print("ARRANGEMENT_STYLE_DIAGNOSTIC", arrangement_style)
-        page.wait_for_function("() => window.transposeApp.currentSongs[0].arrangement?.mode === 'manual'")
         checks["manual_metadata_canonical"] = page.evaluate("""() => {
           const s=window.transposeApp.currentSongs[0];
           return s.credits.writer.value==='Ada Writer' && s.credits.writer.provenance==='manual'
