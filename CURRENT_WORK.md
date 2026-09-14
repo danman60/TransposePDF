@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-14 Independent Editor Columns
 
-Preparing FIRMAMENT v39. Two- and three-column editor sections now use independent newspaper-style flow instead of shared-height Grid rows. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical.
+FIRMAMENT v39 deployed. Two- and three-column editor sections now use independent newspaper-style flow instead of shared-height Grid rows. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical.
 
 ## Recent Changes
 
@@ -35,6 +35,7 @@ Preparing FIRMAMENT v39. Two- and three-column editor sections now use independe
 
 ## Verification
 
+- v39 deployed through FIRMAMENT tunnel: layout 17/17, section move/copy/undo 6/6, inline lyric/chord editing and freeform drag 10/10. Deterministic PDF/schema/ChordPro checks 40/40. Live cache is `transpose-app-v39`. Cloud QA Agent attempted 5/5 checklist items but Anthropic returned HTTP 400 before browser control; direct real-browser regression is authoritative.
 - v38 deployed section lifecycle: 6/6 real-browser checks pass through FIRMAMENT tunnel for boundary move, marker cleanup, body-focused Ctrl+Z, Alt-drag copy, unique IDs, and reload persistence. Existing inline lyric/chord drag lifecycle passes 10/10; anchor/schema 12 groups; structured PDF 16/16. Live cache is `transpose-app-v38`.
 - v37 deployed browser layout: 16/16 passed through FIRMAMENT tunnel at desktop/mobile. Proves 1/2/3-column state, zero two-column overlap, zero per-section horizontal scrollbars, collapsed rail width, chart expansion, reload persistence, metadata/history, and mobile one-column fallback. PDF/schema/ChordPro deterministic gates: 31/31. Live assets serve `transpose-app-v37`.
 - v36 deployed final hop: live service worker `transpose-app-v36`; 31/31 deterministic PDF/schema/ChordPro checks; 9/9 real Chromium-generated audio-source PDF checks. A4 output uses both columns, searchable text, clean continuation pages, credits, arrangement, and manual chord spelling. QA Agent cloud route executed 0/15 steps because MiniMax returned HTTP 402; no local model used.

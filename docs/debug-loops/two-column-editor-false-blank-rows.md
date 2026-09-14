@@ -1,7 +1,7 @@
 # Loop Debug: two-column editor has no false blank rows
 URL: http://127.0.0.1:18000
 Started: 2026-09-14 11:23 EDT
-Status: IN_PROGRESS
+Status: RESOLVED
 
 ## Attempt 1 — 2026-09-14 11:26 EDT
 
@@ -17,5 +17,6 @@ Status: IN_PROGRESS
 - `tests/e2e_layout_metadata.py`: assert independent desktop flow and mobile single-column behavior.
 
 ### Result After Deploy
-- PENDING
-
+- PASS: FIRMAMENT serves cache v39 and the independent-column stylesheet.
+- PASS: deployed real-browser checks: layout 17/17, section lifecycle 6/6, inline editing/drag 10/10.
+- PASS: composited FIRMAMENT screenshot reviewed and sent to Telegram.
