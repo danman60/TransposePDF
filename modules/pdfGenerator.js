@@ -113,6 +113,11 @@ class PDFGenerator {
    * Add individual song to PDF
    */
   async addSongToPDF(pdf, song) {
+    const usesStructuredEditor = song.sourceType === 'manual' || song.source?.preserveLayout === false;
+    if (usesStructuredEditor && Array.isArray(song.sections) && song.sections.length > 0) {
+      await this.addStructuredSongToPDF(pdf, song);
+      return;
+    }
     let yPos = this.margin;
     
     // Song title
@@ -144,6 +149,113 @@ class PDFGenerator {
       await this.renderLine(pdf, line, this.margin, yPos);
       yPos += this.lineHeight;
     }
+  }
+
+  getSongHeader(song, continuation = false) {
+    let keyText = `Original Key: ${song.originalKey}`;
+    if (song.transposition !== 0) {
+      keyText += ` | Transposed Key: ${song.currentKey} (${song.transposition > 0 ? '+' : ''}${song.transposition})`;
+    }
+    return { title: `${song.title}${continuation ? ' (continued)' : ''}`, keyText };
+  }
+
+  renderSongHeader(pdf, song, continuation = false) {
+    const header = this.getSongHeader(song, continuation);
+    let y = this.margin;
+    pdf.setFontSize(this.titleFontSize);
+    pdf.setFont(undefined, 'bold');
+    pdf.text(header.title, this.margin, y);
+    y += this.titleFontSize + 10;
+    pdf.setFontSize(this.fontSize);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(header.keyText, this.margin, y);
+    return y + this.lineHeight + 5;
+  }
+
+  getCreditsRows(song) {
+    const rows = [];
+    const writer = String(song.credits?.writer?.value || '').trim();
+    const arranger = String(song.credits?.arranger?.value || '').trim();
+    const arrangement = String(song.arrangement?.mode === 'manual'
+      ? song.arrangement?.value || ''
+      : song.arrangement?.inferredValue || '').trim();
+    if (writer) rows.push(`Written by: ${writer}`);
+    if (arranger) rows.push(`Arrangement by: ${arranger}`);
+    if (arrangement) rows.push(`Arrangement: ${arrangement}`);
+    return rows;
+  }
+
+  buildStructuredBlocks(song, maxCharacters) {
+    return song.sections.map(section => {
+      const rows = [];
+      if (section.label) rows.push({ type: 'section', content: section.label, structured: true });
+      (section.lines || []).forEach(line => {
+        this.wrapStructuredLine(line, maxCharacters).forEach(segment => {
+          if (segment.chords.length) rows.push({
+            type: 'chords',
+            content: this.buildChordRow(segment.chords, song.transposition, new MusicTheory(), song),
+            structured: true
+          });
+          rows.push({ type: segment.lyrics ? 'text' : 'empty', content: segment.lyrics || '', structured: true });
+        });
+      });
+      return rows;
+    });
+  }
+
+  /** Render canonical songs in newspaper order: down a column, then across. */
+  async addStructuredSongToPDF(pdf, song) {
+    const columns = Math.max(1, Math.min(3, Math.trunc(Number(song.layout?.columns) || 1)));
+    const gutter = 18;
+    const columnWidth = (this.pageWidth - (2 * this.margin) - ((columns - 1) * gutter)) / columns;
+    const maxCharacters = Math.max(12, Math.floor(columnWidth / (this.fontSize * 0.6)));
+    const bottom = this.pageHeight - this.margin;
+    let pageIndex = 0;
+    let column = 0;
+    let y = this.renderSongHeader(pdf, song, false);
+    const top = y;
+    const xForColumn = value => this.margin + value * (columnWidth + gutter);
+
+    const advanceColumn = () => {
+      column += 1;
+      if (column >= columns) {
+        pdf.addPage();
+        pageIndex += 1;
+        column = 0;
+        y = this.renderSongHeader(pdf, song, true);
+      } else {
+        y = top;
+      }
+    };
+
+    const renderRows = async rows => {
+      for (const row of rows) {
+        if (y + this.lineHeight > bottom) advanceColumn();
+        await this.renderLine(pdf, row, xForColumn(column), y);
+        y += this.lineHeight;
+      }
+    };
+
+    for (const block of this.buildStructuredBlocks(song, maxCharacters)) {
+      if (!block.length) continue;
+      const blockHeight = block.length * this.lineHeight;
+      const columnCapacity = bottom - top;
+      if (blockHeight <= columnCapacity && y + blockHeight > bottom) advanceColumn();
+      // A label never sits alone at the bottom. Sections taller than a column flow normally.
+      const minimum = block[0].type === 'section' && block.length > 1 ? 2 * this.lineHeight : this.lineHeight;
+      if (y + minimum > bottom) advanceColumn();
+      await renderRows(block);
+      y += this.lineHeight;
+    }
+
+    const credits = this.getCreditsRows(song);
+    if (credits.length) {
+      const rows = [{ type: 'empty', content: '', structured: true },
+        ...credits.map(content => ({ type: 'text', content, structured: true }))];
+      if (y + rows.length * this.lineHeight > bottom) advanceColumn();
+      await renderRows(rows);
+    }
+    return { pagesUsed: pageIndex + 1, columns };
   }
 
   /**
@@ -230,7 +342,10 @@ class PDFGenerator {
 
   wrapStructuredLine(line, maxCharacters = 68) {
     const lyrics = line.lyrics || '';
-    const chords = line.chords || [];
+    const chords = (line.chords || []).map(chord => ({
+      ...chord,
+      characterOffset: this.resolveSemanticOffset(chord, lyrics)
+    }));
     const chordExtent = chords.reduce((extent, chord) => {
       return Math.max(extent, (Number(chord.characterOffset) || 0) + String(chord.symbol || '').length);
     }, 0);
@@ -259,6 +374,17 @@ class PDFGenerator {
       start = end;
     }
     return segments;
+  }
+
+  resolveSemanticOffset(chord, lyrics) {
+    const fallback = Math.max(0, Number(chord.characterOffset) || 0);
+    const anchor = chord.anchor;
+    if (!anchor?.version || !anchor.token || typeof LyricAnchor === 'undefined') return fallback;
+    const words = LyricAnchor.words(lyrics);
+    const matches = words.filter(word => word.normalized === anchor.token);
+    const word = matches[Math.max(0, Number(anchor.tokenOccurrence) || 0)];
+    if (!word) return fallback;
+    return Math.min(word.end, word.start + Math.max(0, Number(anchor.graphemeOffset) || 0));
   }
 
   buildChordRow(chords, semitones, musicTheory, song = null) {
