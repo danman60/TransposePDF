@@ -13,6 +13,7 @@ const CACHE_FILES = [
   '/styles/mobile.css',
   '/modules/pdfProcessor.js',
   '/modules/songSeparator.js',
+  '/modules/chartPageLayout.js',
   '/modules/musicTheory.js',
   '/modules/lyricAnchor.js',
   '/modules/arrangement.js',
