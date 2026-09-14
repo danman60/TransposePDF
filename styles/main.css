@@ -753,6 +753,11 @@ body {
   cursor: grab;
 }
 .lead-sheet .inline-chord-edit:focus { cursor: text; }
+.lead-sheet .inline-chord-edit.inline-edit-invalid {
+  color: #b42318;
+  text-decoration: underline wavy #d92d20;
+  text-underline-offset: 3px;
+}
 .lead-sheet .inline-chord-drag-handle {
   width: 0.65rem;
   margin-left: 0.08rem;

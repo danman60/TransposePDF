@@ -13,6 +13,8 @@ class SongModel {
         chords: (line.chords || []).map((chord, chordIndex) => ({
           id: chord.id || `chord-${sectionIndex + 1}-${lineIndex + 1}-${chordIndex + 1}`,
           symbol: chord.symbol || '',
+          ...(chord.originalSymbol ? { originalSymbol: chord.originalSymbol } : {}),
+          ...(chord.manualEntry?.provenance === 'manual' ? { manualEntry: { ...chord.manualEntry } } : {}),
           characterOffset: Math.max(0, Number(chord.characterOffset) || 0),
           timestamp: chord.timestamp ?? null,
           confidence: chord.confidence ?? null

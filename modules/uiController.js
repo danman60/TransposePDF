@@ -1080,7 +1080,23 @@ class UIController {
       const index = line.chords.findIndex(chord => String(chord.id) === String(chordId));
       if (index < 0) return false;
       const symbol = String(value).replace(/\s+/g, '').trim();
-      if (symbol) line.chords[index].symbol = symbol;
+      const view = { ...(edited.sessionView || {}), spellingPolicy: edited.spellingPolicy };
+      const converted = new MusicTheory().canonicalChordFromDisplay(symbol, edited, view);
+      if (!converted.ok) {
+        target.dataset.inlineSaving = 'false';
+        target.classList.add('inline-edit-invalid');
+        target.setAttribute('aria-invalid', 'true');
+        target.title = converted.error;
+        this.updateStatus(converted.error, 'error');
+        this.track('chart.inline_edit.invalid', { field: 'chord', value: symbol }, song);
+        return false;
+      }
+      if (symbol) {
+        line.chords[index].symbol = converted.canonical;
+        line.chords[index].originalSymbol = converted.canonical;
+        line.chords[index].manualEntry = converted.manualEntry;
+        delete line.chords[index].displaySpelling;
+      }
       else line.chords.splice(index, 1);
     }
     edited.songText = SongModel.toSongText(edited);
@@ -1205,8 +1221,15 @@ class UIController {
     const previous = SongModel.create(song);
     const edited = SongModel.create(song);
     const line = edited.sections[sectionIndex].lines[lineIndex];
+    const view = { ...(edited.sessionView || {}), spellingPolicy: edited.spellingPolicy };
+    const placeholder = new MusicTheory().canonicalChordFromDisplay('C', edited, view);
+    if (!placeholder.ok) {
+      this.updateStatus(placeholder.error, 'error');
+      return false;
+    }
     const chord = {
-      id: this.createStableChordId(), symbol: 'C', originalSymbol: 'C', confidence: null,
+      id: this.createStableChordId(), symbol: placeholder.canonical, originalSymbol: placeholder.canonical,
+      manualEntry: placeholder.manualEntry, confidence: null,
       characterOffset: this.authoringController.availableChordOffset(line.chords, desiredOffset, 'C'),
       timestamp: null
     };
@@ -1701,7 +1724,7 @@ class UIController {
     if (!this.currentSongs.length) return;
     const musicTheory = new MusicTheory();
     const content = this.currentSongs.map(song => ChordPro.serialize(song, {
-      chordDisplay: symbol => this.transposeForSong(symbol, song, musicTheory)
+      chordDisplay: (symbol, chord) => this.chartRenderer.displayStoredChord(chord, song, musicTheory)
     }).trimEnd()).join('\n{new_song}\n');
     const blob = new Blob([`${content}\n`], { type: 'text/plain;charset=utf-8' });
     const link = document.createElement('a');

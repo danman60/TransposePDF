@@ -67,7 +67,7 @@ class ChartRenderer {
         const chords = (line.chords || []).map((chord, chordIndex) => ({
           ...chord,
           chordIndex,
-          displaySymbol: this.transposeForSong(chord.symbol, song, musicTheory)
+          displaySymbol: this.displayStoredChord(chord, song, musicTheory)
         }));
         return `<div class="chart-line">
           <div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex })}</div>
@@ -108,6 +108,19 @@ class ChartRenderer {
       view.spellingPolicy = shapeKey.includes('b') ? 'flats' : 'sharps';
     }
     return musicTheory.displayChord(symbol, song, view);
+  }
+
+  displayStoredChord(chord, song, musicTheory = this.musicTheory()) {
+    const view = { ...(song.sessionView || {}), spellingPolicy: song.spellingPolicy };
+    return chord.manualEntry
+      ? musicTheory.displayManualChord(chord.symbol, chord.manualEntry, song, view)
+      : this.transposeForSong(chord.symbol, song, musicTheory);
+  }
+
+  chordViewSignature(song) {
+    const view = song.sessionView || {};
+    return [Number(song.transposition) || 0, view.notation || 'chords', Number(view.capo) || 0,
+      view.instrument || 'concert'].join('|');
   }
 
   groupTextItemsByPage(textItems = []) {

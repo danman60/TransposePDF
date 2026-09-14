@@ -138,6 +138,8 @@ class WorkspaceController {
     if (!target) return;
     target.dataset.originalText = target.textContent || '';
     target.classList.remove('inline-edit-empty');
+    target.classList.remove('inline-edit-invalid');
+    target.removeAttribute('aria-invalid');
   }
 
   handleFocusOut(event) {

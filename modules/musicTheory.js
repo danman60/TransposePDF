@@ -383,6 +383,45 @@ class MusicTheory {
     return this.transposeChord(concertChord, displayOffset, { policy });
   }
 
+  /** Validate a chord and capture the view where the user declared its spelling authoritative. */
+  canonicalChordFromDisplay(displaySymbol, song = {}, view = {}) {
+    const value = String(displaySymbol || '').replace(/\s+/g, '').trim();
+    if (!value) return { ok: true, canonical: '', display: '' };
+    if ((view.notation || song.view?.notation || 'chords') === 'nashville') {
+      return { ok: false, value, error: 'Switch Notation to Chord symbols before typing a chord.' };
+    }
+    if (!this.parseChordParts(value)) {
+      return { ok: false, value, error: `“${value}” is not a valid chord symbol.` };
+    }
+    return { ok: true, canonical: value, display: value, manualEntry: this.manualEntryBaseline(song, view, value) };
+  }
+
+  manualEntryBaseline(song = {}, view = {}, value = '') {
+    const transposition = Number(song.transposition) || 0;
+    const instrument = view.instrument || song.view?.instrument || 'concert';
+    const capo = Math.max(0, Math.min(11, Number(view.capo ?? song.view?.capo) || 0));
+    return { provenance: 'manual', transposition,
+      instrumentOffset: this.concertToWrittenOffset(instrument), capo,
+      totalDisplayOffset: transposition + this.concertToWrittenOffset(instrument) - capo,
+      spellingPolicy: /b/.test(value) ? 'flats' : /#/.test(value) ? 'sharps' : 'contextual' };
+  }
+
+  displayManualChord(symbol, manualEntry, song = {}, view = {}) {
+    if (!manualEntry || manualEntry.provenance !== 'manual') return this.displayChord(symbol, song, view);
+    const transposition = Number(song.transposition) || 0;
+    const policy = manualEntry.spellingPolicy || 'contextual';
+    if ((view.notation || song.view?.notation || 'chords') === 'nashville') {
+      const concertChord = this.transposeChord(symbol,
+        transposition - Number(manualEntry.totalDisplayOffset || 0), { policy });
+      const concertKey = this.transposeKey(song.originalKey || 'C', transposition, policy);
+      return this.toNashville(concertChord, concertKey, { prefer: policy });
+    }
+    const instrument = view.instrument || song.view?.instrument || 'concert';
+    const capo = Math.max(0, Math.min(11, Number(view.capo ?? song.view?.capo) || 0));
+    const currentTotal = transposition + this.concertToWrittenOffset(instrument) - capo;
+    return this.transposeChord(symbol, currentTotal - Number(manualEntry.totalDisplayOffset || 0), { policy });
+  }
+
   /**
    * Get enharmonic equivalent
    */
