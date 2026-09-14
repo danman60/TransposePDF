@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-13 Chart Layout and Canonical Metadata
 
-FIRMAMENT v37 ready for deployment. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical. Automation supplies defaults only.
+FIRMAMENT v37 deployed. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical. Automation supplies defaults only.
 
 ## Recent Changes
 
@@ -33,7 +33,7 @@ FIRMAMENT v37 ready for deployment. User-entered chords, lyrics, labels, credits
 
 ## Verification
 
-- v37 browser layout: 16/16 passed at desktop/mobile. Proves 1/2/3-column state, zero two-column overlap, zero per-section horizontal scrollbars, collapsed rail width, chart expansion, reload persistence, metadata/history, and mobile one-column fallback. PDF/schema/ChordPro deterministic gates: 31/31.
+- v37 deployed browser layout: 16/16 passed through FIRMAMENT tunnel at desktop/mobile. Proves 1/2/3-column state, zero two-column overlap, zero per-section horizontal scrollbars, collapsed rail width, chart expansion, reload persistence, metadata/history, and mobile one-column fallback. PDF/schema/ChordPro deterministic gates: 31/31. Live assets serve `transpose-app-v37`.
 - v36 deployed final hop: live service worker `transpose-app-v36`; 31/31 deterministic PDF/schema/ChordPro checks; 9/9 real Chromium-generated audio-source PDF checks. A4 output uses both columns, searchable text, clean continuation pages, credits, arrangement, and manual chord spelling. QA Agent cloud route executed 0/15 steps because MiniMax returned HTTP 402; no local model used.
 - v31 deterministic gates: 26/26; JavaScript syntax and diff checks pass; FIRMAMENT serves `transpose-app-v31`. QA Agent cloud browser routes remain unavailable (400/402); no local model used.
 - v29 deterministic gates: 26/26. FIRMAMENT serves `transpose-app-v29`.
