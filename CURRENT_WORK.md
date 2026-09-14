@@ -6,6 +6,8 @@ FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangemen
 
 ## Recent Changes
 
+- `592b7f5` deployed as FIRMAMENT v29: explicit labels drive section family; empty Verse/Pre-Chorus/Chorus repeats offer chord changes from the earlier matching section without replacing lyrics.
+- `f890e8e` deployed as FIRMAMENT v28: persistent main-chart `+ Add section` appends a blank section and selects its label for immediate naming.
 - `4d4dafe` deployed as FIRMAMENT v27: single-click chord selection, Shift-click multi-selection, Delete batch removal, and Alt+Z exact deletion undo.
 - `d652ca6` deployed as FIRMAMENT v26: persistent 1/2/3-column charts, labeled/reorderable sections, syllable-stable chord anchors, editable writer/arranger credits, inferred arrangement order with exact manual override, and matching searchable PDF/ChordPro metadata.
 - `3a6aa41` deployed as FIRMAMENT v22: loaded sessions hide the large create/import card section; compact create/import navigation now lives in the desktop sidebar and mobile Song tools sheet.
@@ -23,6 +25,8 @@ FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangemen
 
 ## Verification
 
+- v29 deterministic gates: 26/26. FIRMAMENT serves `transpose-app-v29`.
+- User ArmorOfGod state verified in live telemetry snapshot: active session `98015584-762a-44b3-b0b9-4692c2553e35`, one saved song, edits through 11:03 PM Eastern. FIRMAMENT Chrome Local Storage contains correction key `transposepdf.chord-corrections.v1`, schema v2, with persisted ArmorOfGod harmonic records.
 - v27 JavaScript syntax and diff checks pass; FIRMAMENT serves `transpose-app-v27`. Browser interaction gate not executed: configured QA Agent cloud routes returned 400/402 and local models remain prohibited. Existing clean-HEAD `lyric_anchor_schema.test.js` has an unrelated stale expectation (`Verse 1` vs current `Sec1`).
 - Local release gates: 73/73 passed. Armor lifecycle: zero failures and zero console errors. Desktop/mobile composited screenshots reviewed; blank credit fields expose visible edit affordances.
 - FIRMAMENT live primary source: loopback HTTP 200; service worker `transpose-app-v26`; arrangement module served. Final deployed QA Agent run executed 0/10 app steps because three configured cloud routes returned HTTP 400/402 before browser control. No local model used.
