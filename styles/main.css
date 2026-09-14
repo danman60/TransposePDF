@@ -266,6 +266,11 @@ body {
 
 .mobile-tools-toggle { display: none; }
 .mobile-tools-close { display: none; }
+.sidebar-create-nav { display: grid; gap: .35rem; padding: .25rem .25rem .85rem; border-bottom: 1px solid #354147; margin-bottom: .85rem; }
+.sidebar-create-nav .sidebar-eyebrow { margin-bottom: .15rem; }
+.sidebar-create-nav button { display: grid; grid-template-columns: 2rem 1fr; align-items: center; min-height: 36px; border: 1px solid #46575e; border-radius: 6px; background: transparent; color: var(--text-primary); padding: .35rem .5rem; text-align: left; font-weight: 700; cursor: pointer; }
+.sidebar-create-nav button span { color: #81cbe7; font-size: .72rem; font-weight: 850; letter-spacing: -.02em; }
+.sidebar-create-nav button:hover, .sidebar-create-nav button:focus-visible { border-color: var(--primary-color); background: rgba(79,195,247,.1); outline: none; }
 .sidebar-song-controls { padding: .25rem .25rem 1rem; border-bottom: 1px solid #354147; margin-bottom: 1rem; }
 .sidebar-eyebrow { color: #81cbe7; font-size: .66rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
 .sidebar-song-heading h2 { margin: .1rem 0; color: var(--text-primary); font-size: 1.15rem; line-height: 1.2; }

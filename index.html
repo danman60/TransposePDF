@@ -229,6 +229,13 @@
             <div class="session-workspace" id="sessionWorkspace">
                 <aside class="song-library-sidebar" id="songLibrarySidebar" aria-label="Song tools and songs in this session">
                     <button class="mobile-tools-close" id="songToolsClose" type="button">Close song tools</button>
+                    <nav class="sidebar-create-nav" aria-label="Create or import a chord sheet">
+                        <span class="sidebar-eyebrow">Create or import</span>
+                        <button id="sidebarCreateChartButton" type="button"><span aria-hidden="true">＋</span>Create sheet</button>
+                        <button id="sidebarImportPdfButton" type="button"><span aria-hidden="true">PDF</span>Import PDF</button>
+                        <button id="sidebarImportChordProButton" type="button"><span aria-hidden="true">{c}</span>Import ChordPro</button>
+                        <button id="sidebarImportAudioButton" type="button"><span aria-hidden="true">♪</span>Import recording</button>
+                    </nav>
                     <div class="sidebar-song-controls" id="sidebarSongControls"></div>
                     <div class="library-sidebar-heading">
                         <strong>Session songs</strong>

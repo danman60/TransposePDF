@@ -83,7 +83,8 @@ def main():
             ("Gamma", "E B\nGamma exact lyric"),
         )
         for title, content in fixtures:
-            page.locator("#createChartButton").click()
+            create_button = "#createChartButton" if page.locator("#createChartButton").is_visible() else "#sidebarCreateChartButton"
+            page.locator(create_button).click()
             page.locator("#authorTitle").fill(title)
             page.locator("#authorContent").fill(content)
             page.locator("#saveChartButton").click()

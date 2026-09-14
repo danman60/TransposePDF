@@ -142,6 +142,10 @@ class UIController {
       createChartButton: document.getElementById('createChartButton'),
       importPdfButton: document.getElementById('importPdfButton'),
       importChordProButton: document.getElementById('importChordProButton'),
+      sidebarCreateChartButton: document.getElementById('sidebarCreateChartButton'),
+      sidebarImportPdfButton: document.getElementById('sidebarImportPdfButton'),
+      sidebarImportChordProButton: document.getElementById('sidebarImportChordProButton'),
+      sidebarImportAudioButton: document.getElementById('sidebarImportAudioButton'),
       chordProFileInput: document.getElementById('chordProFileInput'),
       cancelImportButton: document.getElementById('cancelImportButton'),
       cancelAuthorButton: document.getElementById('cancelAuthorButton'),
@@ -250,6 +254,9 @@ class UIController {
     this.elements.createChartButton.addEventListener('click', () => this.openAuthoring());
     this.elements.importPdfButton.addEventListener('click', () => this.showStartView('pdf'));
     this.elements.importAudioButton.addEventListener('click', () => this.showStartView('audio'));
+    this.elements.sidebarCreateChartButton?.addEventListener('click', () => this.openAuthoring());
+    this.elements.sidebarImportPdfButton?.addEventListener('click', () => this.showStartView('pdf'));
+    this.elements.sidebarImportAudioButton?.addEventListener('click', () => this.showStartView('audio'));
     this.elements.cancelImportButton.addEventListener('click', () => this.showStartView());
     this.elements.cancelAuthorButton.addEventListener('click', () => this.closeAuthoring());
     this.elements.cancelAudioButton.addEventListener('click', () => this.cancelAudioAnalysis());
@@ -307,6 +314,7 @@ class UIController {
     this.elements.librarySearch?.addEventListener('input', event => this.searchLibrary(event.target.value));
     this.elements.closeHistoryButton?.addEventListener('click', () => { this.elements.historyDrawer.hidden = true; });
     this.elements.importChordProButton?.addEventListener('click', () => this.elements.chordProFileInput.click());
+    this.elements.sidebarImportChordProButton?.addEventListener('click', () => this.elements.chordProFileInput.click());
     this.elements.chordProFileInput?.addEventListener('change', event => this.importChordPro(event));
     this.elements.companionButton?.addEventListener('click', () => this.openCompanion());
     this.elements.performanceButton?.addEventListener('click', () => this.performance.enter({ fullscreen: true, fullscreenElement: this.elements.performanceShell }));
@@ -496,7 +504,7 @@ class UIController {
   }
 
   showStartView(mode = 'start') {
-    this.elements.startSection.style.display = mode === 'start' ? 'block' : 'none';
+    this.elements.startSection.style.display = mode === 'start' && !this.currentSongs.length ? 'block' : 'none';
     this.elements.uploadSection.style.display = mode === 'pdf' ? 'block' : 'none';
     this.elements.audioSection.style.display = mode === 'audio' ? 'block' : 'none';
     this.elements.authorSection.style.display = 'none';
@@ -961,7 +969,7 @@ class UIController {
     
     // Show sections
     this.elements.uploadSection.style.display = 'none';
-    this.elements.startSection.style.display = 'block';
+    this.elements.startSection.style.display = 'none';
     this.elements.authorSection.style.display = 'none';
     this.elements.songsSection.style.display = 'block';
     this.elements.exportButton.disabled = false;
