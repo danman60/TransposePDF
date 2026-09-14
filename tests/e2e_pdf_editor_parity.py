@@ -29,6 +29,12 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
       const plan=ChartPageLayout.plan(song,{includeEmptyMetadata:true});
       const editor={pages:document.querySelectorAll('.chart-page').length,
         font:parseFloat(getComputedStyle(document.querySelector('.chart-page-columns')).fontSize),
+        overflow:[...document.querySelectorAll('.chart-page')].some(e=>e.scrollHeight>e.clientHeight+1),
+        pageMetrics:[...document.querySelectorAll('.chart-page')].map(e=>({client:e.clientHeight,scroll:e.scrollHeight,
+          columns:e.querySelector('.chart-page-columns')?.getBoundingClientRect().height,
+          footer:e.querySelector('.chart-page-footer')?.getBoundingClientRect().height || 0})),
+        textOnlyHeight:document.querySelector('.planned-text-only')?.getBoundingClientRect().height || 0,
+        chordHeight:document.querySelector('.planned-chart-line:not(.planned-text-only)')?.getBoundingClientRect().height || 0,
         lines:[...document.querySelectorAll('.chart-page .lyric-line')].map(e=>e.textContent.trim()).filter(Boolean)};
       const pdf=await new PDFGenerator().generatePDF([song],'Parity Proof');
       return {editor,plan,pdf:pdf.output('datauristring').split(',')[1]};
@@ -40,6 +46,9 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
     pages = [node for node in ET.parse(bbox_path).getroot().iter() if node.tag.endswith("page")]
     assert len(pages) == proof["editor"]["pages"], (len(pages), proof["editor"]["pages"])
     assert proof["editor"]["font"] >= 18, proof["editor"]["font"]
+    assert not proof["editor"]["overflow"], proof["editor"]
+    assert proof["editor"]["textOnlyHeight"] <= proof["editor"]["font"] * 1.3, proof["editor"]
+    assert proof["editor"]["chordHeight"] <= proof["editor"]["font"] * 2.7, proof["editor"]
     words_by_page = [[word for word in node.iter() if word.tag.endswith("word")] for node in pages]
     for label in ("Alpha", "Beta", "Gamma"):
         planned = next((page_index, column_index) for page_index, planned_page in enumerate(proof["plan"]["pages"])

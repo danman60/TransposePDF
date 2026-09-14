@@ -186,8 +186,8 @@ class ChartRenderer {
     const chords = (chordRow?.chords || []).map(chord => ({ ...chord,
       chordIndex: (original?.chords || []).findIndex(item => String(item.id) === String(chord.id)),
       displaySymbol: this.displayStoredChord(chord, song, this.musicTheory()) }));
-    return `<div class="chart-line planned-chart-line" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">
-      <div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex, sourceStart })}</div>
+    return `<div class="chart-line planned-chart-line${chordRow ? '' : ' planned-text-only'}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">
+      ${chordRow ? `<div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex, sourceStart })}</div>` : ''}
       <div class="lyric-line${row.content ? '' : ' inline-edit-empty'}"${options.editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit lyrics" data-inline-field="lyrics" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}" data-placeholder="Type lyrics"` : ''}>${this.escape(row.content || '')}</div>
     </div>`;
   }

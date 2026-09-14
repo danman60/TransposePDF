@@ -3,7 +3,10 @@ class ChartPageLayout {
   static spec(columns = 1) {
     const count = Math.max(1, Math.min(3, Math.trunc(Number(columns) || 1)));
     const pageWidth = 595.28; const pageHeight = 841.89; const margin = 36; const gutter = 18;
-    const fontSize = 16; const lineHeight = 21.5; const headerHeight = 44;
+    // Keep 16pt chart type while using a compact professional lead-sheet rhythm.
+    // 1.2 line-height prevents a nearly full sheet from spilling a few rows onto
+    // an otherwise blank credits page.
+    const fontSize = 16; const lineHeight = 19.2; const headerHeight = 44;
     const columnWidth = (pageWidth - margin * 2 - gutter * (count - 1)) / count;
     return { columns: count, pageWidth, pageHeight, margin, gutter, fontSize, lineHeight, headerHeight,
       columnWidth, maxCharacters: Math.max(18, Math.floor(columnWidth / (fontSize * .6))),
