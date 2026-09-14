@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-13 Ten-and-Ten Release
+## Active Task — 2026-09-13 Chart Layout and Canonical Metadata
 
-All 20 selected feature/streamline items implemented in local release tree. Dedicated team sync is configuration-ready but intentionally unbound until a TransposePDF Supabase project is provisioned.
+FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical. Automation supplies defaults only.
 
 ## Recent Changes
 
+- `d652ca6` deployed as FIRMAMENT v26: persistent 1/2/3-column charts, labeled/reorderable sections, syllable-stable chord anchors, editable writer/arranger credits, inferred arrangement order with exact manual override, and matching searchable PDF/ChordPro metadata.
 - `3a6aa41` deployed as FIRMAMENT v22: loaded sessions hide the large create/import card section; compact create/import navigation now lives in the desktop sidebar and mobile Song tools sheet.
 - `fc48dc9` deployed as FIRMAMENT v21: Alt-drag copies chords, chord-lane double-click inserts/focuses a new chord, and song controls moved from the blue chart header into responsive sidebar navigation.
 - Authoritative lyric files are awaited before audio submission, eliminating mismatched recording fingerprints during immediate imports.
@@ -21,6 +22,8 @@ All 20 selected feature/streamline items implemented in local release tree. Dedi
 
 ## Verification
 
+- Local release gates: 73/73 passed. Armor lifecycle: zero failures and zero console errors. Desktop/mobile composited screenshots reviewed; blank credit fields expose visible edit affordances.
+- FIRMAMENT live primary source: loopback HTTP 200; service worker `transpose-app-v26`; arrangement module served. Final deployed QA Agent run executed 0/10 app steps because three configured cloud routes returned HTTP 400/402 before browser control. No local model used.
 - FIRMAMENT v22: start section computed `display:none` and `0x0` after song load on desktop/mobile; persistent 17/17, copy/insert 10/10, inline edit/drag and line operations pass; zero console/page/telemetry errors.
 - FIRMAMENT v21: chord copy/insert 10/10, persistent desktop/mobile 17/17, inline mouse/touch edit/drag 9/9; gesture telemetry HTTP 202; zero console/page/telemetry failures.
 - FIRMAMENT v20: line insertion 9/9, inline editing/drag 9/9, persistent lifecycle 17/17; zero console/page/telemetry errors.
@@ -37,9 +40,8 @@ All 20 selected feature/streamline items implemented in local release tree. Dedi
 
 ## Next Steps
 
-1. Commit/push release tree.
-2. Deploy to FIRMAMENT and rerun full remote lifecycle.
-3. Provision dedicated Supabase project when live cross-device sync is desired.
+1. Run final deployed QA Agent lifecycle when a configured cloud route accepts requests.
+2. Provision dedicated Supabase project when live cross-device sync is desired.
 
 ## Last Session Summary
 
