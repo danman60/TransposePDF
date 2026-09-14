@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-14 Editor/PDF Layout Parity
 
-Preparing FIRMAMENT v41. PDF export captures the visible editor's section columns and relative line font geometry; editor lyric rows remain intact instead of being independently rewrapped by PDF heuristics.
+FIRMAMENT v41 deployed. PDF export captures the visible editor's section columns and relative line font geometry; editor lyric rows remain intact instead of being independently rewrapped by PDF heuristics.
 
 ## Recent Changes
 
@@ -37,6 +37,7 @@ Preparing FIRMAMENT v41. PDF export captures the visible editor's section column
 
 ## Verification
 
+- v41 deployed through FIRMAMENT tunnel: editor/export geometry capture 20/20, searchable structured PDF 9/9, persistent session and actual download 17/17, full Armor manual-entry/transpose lifecycle clean with a 36,324-byte PDF. Live cache is `transpose-app-v41`; rendered A4 output inspected and sent to Telegram.
 - v40 deployed through FIRMAMENT tunnel: export/arrangement/layout 19/19, inline editing/drag 10/10, persistent session/export/telemetry 17/17, section lifecycle 6/6, deterministic PDF/schema/ChordPro 31/31. Live cache is `transpose-app-v40`. Cloud QA Agent attempted 5/5 checklist items but Anthropic returned HTTP 400 before browser control.
 - v39 deployed through FIRMAMENT tunnel: layout 17/17, section move/copy/undo 6/6, inline lyric/chord editing and freeform drag 10/10. Deterministic PDF/schema/ChordPro checks 40/40. Live cache is `transpose-app-v39`. Cloud QA Agent attempted 5/5 checklist items but Anthropic returned HTTP 400 before browser control; direct real-browser regression is authoritative.
 - v38 deployed section lifecycle: 6/6 real-browser checks pass through FIRMAMENT tunnel for boundary move, marker cleanup, body-focused Ctrl+Z, Alt-drag copy, unique IDs, and reload persistence. Existing inline lyric/chord drag lifecycle passes 10/10; anchor/schema 12 groups; structured PDF 16/16. Live cache is `transpose-app-v38`.
