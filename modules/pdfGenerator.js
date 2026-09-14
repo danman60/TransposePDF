@@ -17,7 +17,7 @@ class PDFGenerator {
   /**
    * Generate PDF from songs with transposed chords
    */
-  async generatePDF(songsInput, filename = 'Transposed Songbook', options = {}) {
+  async generatePDF(songsInput, filename = 'Transposed Songbook') {
     try {
       logger.status('Generating PDF...', 'info');
       logger.startTimer('pdfExport');
@@ -49,7 +49,7 @@ class PDFGenerator {
         logger.status(`Processing song ${i + 1}/${songs.length}: ${song.title}`, 'info');
         
         pdf.addPage();
-        await this.addSongToPDF(pdf, song, options.layoutSnapshots?.[String(song.id)]);
+        await this.addSongToPDF(pdf, song);
       }
 
       logger.endTimer('pdfExport');
@@ -112,10 +112,10 @@ class PDFGenerator {
   /**
    * Add individual song to PDF
    */
-  async addSongToPDF(pdf, song, layoutSnapshot = null) {
+  async addSongToPDF(pdf, song) {
     const usesStructuredEditor = Array.isArray(song.sections) && song.sections.length > 0 && song.source?.preserveLayout !== true;
     if (usesStructuredEditor && Array.isArray(song.sections) && song.sections.length > 0) {
-      await this.addStructuredSongToPDF(pdf, song, layoutSnapshot);
+      await this.addStructuredSongToPDF(pdf, song);
       return;
     }
     let yPos = this.margin;
@@ -205,75 +205,27 @@ class PDFGenerator {
     });
   }
 
-  /** Render canonical songs in newspaper order: down a column, then across. */
-  async addStructuredSongToPDF(pdf, song, layoutSnapshot = null) {
-    const columns = Math.max(1, Math.min(3, Math.trunc(Number(song.layout?.columns) || 1)));
-    const gutter = 18;
-    const columnWidth = (this.pageWidth - (2 * this.margin) - ((columns - 1) * gutter)) / columns;
-    const maxCharacters = Math.max(12, Math.floor(columnWidth / (this.fontSize * 0.6)));
-    const bottom = this.pageHeight - this.margin;
-    let pageIndex = 0;
-    let column = 0;
-    let y = this.renderSongHeader(pdf, song, false);
-    const top = y;
-    const xForColumn = value => this.margin + value * (columnWidth + gutter);
-
-    const advanceColumn = () => {
-      column += 1;
-      if (column >= columns) {
-        pdf.addPage();
-        pageIndex += 1;
-        column = 0;
-        y = this.renderSongHeader(pdf, song, true);
-      } else {
-        y = top;
-      }
-    };
-
-    const renderRows = async rows => {
-      for (const row of rows) {
-        if (y + this.lineHeight > bottom) advanceColumn();
-        const renderedRow = row.fontRatio
-          ? { ...row, capturedFontSize: Math.max(6.6, Math.min(this.fontSize, row.fontRatio * columnWidth)) }
-          : row;
-        await this.renderLine(pdf, renderedRow, xForColumn(column), y);
-        y += this.lineHeight;
-      }
-    };
-
-    const blocks = this.buildStructuredBlocks(song, layoutSnapshot ? Number.POSITIVE_INFINITY : maxCharacters, layoutSnapshot);
-    for (let sectionIndex = 0; sectionIndex < blocks.length; sectionIndex += 1) {
-      const block = blocks[sectionIndex];
-      if (!block.length) continue;
-      const desiredColumn = Number(layoutSnapshot?.sectionColumns?.[sectionIndex]);
-      if (Number.isInteger(desiredColumn) && desiredColumn >= 0 && desiredColumn < columns && desiredColumn !== column) {
-        if (desiredColumn < column) {
-          pdf.addPage();
-          pageIndex += 1;
-          y = this.renderSongHeader(pdf, song, true);
-        } else {
-          y = top;
+  /** Render the exact shared A4 page plan used by the editor. */
+  async addStructuredSongToPDF(pdf, song) {
+    if (typeof ChartPageLayout === 'undefined') throw new Error('Shared chart page layout is unavailable');
+    const plan = ChartPageLayout.plan(song);
+    this.fontSize = plan.spec.fontSize;
+    this.lineHeight = plan.spec.lineHeight;
+    for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex += 1) {
+      if (pageIndex > 0) pdf.addPage();
+      const top = this.renderSongHeader(pdf, song, pageIndex > 0);
+      for (let columnIndex = 0; columnIndex < plan.spec.columns; columnIndex += 1) {
+        const x = plan.spec.margin + columnIndex * (plan.spec.columnWidth + plan.spec.gutter);
+        let y = top;
+        for (const plannedRow of plan.pages[pageIndex].columns[columnIndex]) {
+          const row = { ...plannedRow, structured: true };
+          if (row.type === 'chords') row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
+          await this.renderLine(pdf, row, x, y);
+          y += plan.spec.lineHeight;
         }
-        column = desiredColumn;
       }
-      const blockHeight = block.length * this.lineHeight;
-      const columnCapacity = bottom - top;
-      if (blockHeight <= columnCapacity && y + blockHeight > bottom) advanceColumn();
-      // A label never sits alone at the bottom. Sections taller than a column flow normally.
-      const minimum = block[0].type === 'section' && block.length > 1 ? 2 * this.lineHeight : this.lineHeight;
-      if (y + minimum > bottom) advanceColumn();
-      await renderRows(block);
-      y += this.lineHeight;
     }
-
-    const credits = this.getCreditsRows(song);
-    if (credits.length) {
-      const rows = [{ type: 'empty', content: '', structured: true },
-        ...credits.map(content => ({ type: 'text', content, structured: true }))];
-      if (y + rows.length * this.lineHeight > bottom) advanceColumn();
-      await renderRows(rows);
-    }
-    return { pagesUsed: pageIndex + 1, columns };
+    return { pagesUsed: plan.pages.length, columns: plan.spec.columns, plan };
   }
 
   /**
@@ -469,10 +421,9 @@ class PDFGenerator {
    * Render a line in the PDF
    */
   async renderLine(pdf, line, x, y) {
-    const capturedFontSize = Number(line.capturedFontSize) || null;
     switch (line.type) {
       case 'chords':
-        pdf.setFontSize(capturedFontSize || (line.structured ? this.fontSize : this.chordFontSize));
+        pdf.setFontSize(line.structured ? this.fontSize : this.chordFontSize);
         pdf.setFont(line.structured ? 'courier' : undefined, 'bold');
         pdf.setTextColor(0, 0, 200); // Blue for chords
         pdf.text(line.content, x, y);
@@ -480,7 +431,7 @@ class PDFGenerator {
         break;
         
       case 'text':
-        pdf.setFontSize(capturedFontSize || this.fontSize);
+        pdf.setFontSize(this.fontSize);
         pdf.setFont(line.structured ? 'courier' : undefined, 'normal');
         pdf.text(line.content, x, y);
         break;

@@ -7,6 +7,7 @@ FIRMAMENT v41 deployed. PDF export captures the visible editor's section columns
 ## Recent Changes
 
 - Shared A4 parity engine started: fixed 11pt typography, deterministic wrapping with canonical source ranges, section-aware page/column planning, and credits packing that prevents metadata-only pages. Planner gate passes 7/7; renderer integration remains active work and is not deployed yet.
+- Structured PDF renderer now consumes `ChartPageLayout` pages directly; v41 geometry snapshots and 6.6pt scaling removed. Local searchable PDF gate passes 9/9 at fixed 11pt. Editor integration remains before deployment.
 - v41 candidate: active structured chart geometry is captured at export; PDF consumes editor section-column assignments and row font ratios, removing its separate character-count wrapping decisions.
 - v40 candidate: moved the existing Export PDF action into the always-visible sidebar area and enlarged Arrangement to a 5.8rem, 1.25rem-type wrapping panel.
 - v39 candidate: independent CSS columns remove false vertical gaps beside uneven section heights; sections stay intact, full-width, editable, and draggable; credits and Add section span all columns; mobile remains one column.
