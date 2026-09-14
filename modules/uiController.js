@@ -1093,6 +1093,27 @@ class UIController {
     return this.chartRenderer.renderLeadSheetContent(song, { editable: options.editable ?? true, ...options });
   }
 
+  recordInlineUndo(song) {
+    if (!song) return;
+    this.inlineUndoStack ||= [];
+    this.inlineUndoStack.push({ songId: String(song.id), song: SongModel.create(song) });
+    if (this.inlineUndoStack.length > 50) this.inlineUndoStack.shift();
+  }
+
+  hasInlineUndo() { return Boolean(this.inlineUndoStack?.length); }
+
+  async undoInlineEdit() {
+    const undo = this.inlineUndoStack?.pop();
+    if (!undo) return false;
+    try {
+      const saved = await this.persistSong(SongModel.create(undo.song), { addToSession: false });
+      this.updateLeadSheetDisplay(saved);
+      this.updateStatus('Chart change undone', 'success');
+      this.track('chart.edit.undone', {}, saved);
+      return true;
+    } catch (_) { this.inlineUndoStack.push(undo); return false; }
+  }
+
   async commitInlineChartEdit(target, value) {
     const sheet = target.closest('.lead-sheet[data-song-id]');
     const song = this.currentSongs.find(item => String(item.id) === String(sheet?.dataset.songId));
@@ -1146,6 +1167,7 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
       this.updateStatus('Chart edit saved', 'success');
@@ -1173,6 +1195,7 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
       requestAnimationFrame(() => {
@@ -1203,6 +1226,7 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
       requestAnimationFrame(() => {
@@ -1229,6 +1253,7 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
       requestAnimationFrame(() => {
@@ -1258,6 +1283,7 @@ class UIController {
     mutate(edited.sections); this.updateInferredArrangement(edited); edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved); this.track(eventName, {}, saved); return true;
     } catch (_) { this.updateLeadSheetDisplay(song); return false; }
@@ -1323,6 +1349,7 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
       this.updateStatus(`${copied} chord${copied === 1 ? '' : 's'} copied from ${source.label || `section ${sourceIndex + 1}`}`, 'success');
@@ -1386,6 +1413,7 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
       this.updateStatus(`${placedChord.symbol} ${copy ? 'copied' : 'moved'} to column ${placedChord.characterOffset + 1}`, 'success');
@@ -1410,26 +1438,17 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
-      this.inlineChordUndo = { songId: String(songId), song: previous };
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
-      this.updateStatus(`${removed} chord${removed === 1 ? '' : 's'} deleted · Alt+Z to undo`, 'success');
+      this.updateStatus(`${removed} chord${removed === 1 ? '' : 's'} deleted · Ctrl+Z to undo`, 'success');
       this.track('chart.chord.deleted', { count: removed }, saved);
       return true;
     } catch (_) { return false; }
   }
 
   async undoInlineChordDelete() {
-    const undo = this.inlineChordUndo;
-    if (!undo) return false;
-    try {
-      const saved = await this.persistSong(SongModel.create(undo.song), { addToSession: false });
-      this.inlineChordUndo = null;
-      this.updateLeadSheetDisplay(saved);
-      this.updateStatus('Chord deletion undone', 'success');
-      this.track('chart.chord.delete_undone', {}, saved);
-      return true;
-    } catch (_) { return false; }
+    return this.undoInlineEdit();
   }
 
   focusInlineChord(songId, chordId) {
@@ -1452,6 +1471,7 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved); this.updateStatus(status, 'success'); this.track(eventName, {}, saved); return true;
     } catch (_) { this.updateLeadSheetDisplay(song); return false; }
@@ -1567,6 +1587,7 @@ class UIController {
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
       requestAnimationFrame(() => {

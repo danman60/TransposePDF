@@ -212,10 +212,12 @@ class WorkspaceController {
       this.closeContextMenu();
       return;
     }
-    if (event.altKey && event.key.toLowerCase() === 'z' && !event.isComposing) {
+    const activeEdit = this.inlineTarget(event);
+    const hasUnsavedText = activeEdit && (activeEdit.textContent || '') !== (activeEdit.dataset.originalText || '');
+    if ((event.altKey || event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.isComposing && !hasUnsavedText && this.ui.hasInlineUndo?.()) {
       event.preventDefault();
       this.selectedChordIds.clear();
-      this.ui.undoInlineChordDelete();
+      this.ui.undoInlineEdit();
       return;
     }
     if (event.key === 'Delete' && this.selectedChordIds.size && !event.isComposing) {
@@ -367,9 +369,10 @@ class WorkspaceController {
     if (!sheet || !this.root.contains(sheet)) return;
     const chord = event.target.closest?.('.inline-chord-anchor[data-chord-id]');
     const lyric = event.target.closest?.('[data-inline-field="lyrics"]');
+    const sectionLabel = event.target.closest?.('[data-inline-field="section-label"]');
     const lane = event.target.closest?.('.chord-line[data-section-index]');
     const editable = event.target.closest?.('[contenteditable="true"], [contenteditable="plaintext-only"]');
-    if (editable && !chord && !lyric) return;
+    if (editable && !chord && !lyric && !sectionLabel) return;
     event.preventDefault();
     this.closeContextMenu();
     const section = event.target.closest?.('.section-block[data-section-reorder-index]');
@@ -384,16 +387,16 @@ class WorkspaceController {
     const song = this.ui.currentSongs.find(item => String(item.id) === String(songId));
     let actions;
     if (chord) {
-      actions = [['Edit chord', 'edit-chord'], ['Delete chord', 'delete-chord', 'danger'], ['Duplicate chord', 'duplicate-chord'], ['Copy chord', 'copy-chord'],
+      actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Edit chord', 'edit-chord'], ['Delete chord', 'delete-chord', 'danger'], ['Duplicate chord', 'duplicate-chord'], ['Copy chord', 'copy-chord'],
         ['Move to previous lyric line', 'move-chord-prev'], ['Move to next lyric line', 'move-chord-next'],
         ['Mark spelling canonical', 'canonical-chord'], ['Set exact timing…', 'time-chord'], ['Flag for review', 'review-chord']];
       (song?.sections || []).forEach((item, index) => { if (index !== sectionIndex) actions.push([`Copy to ${item.label || `section ${index + 1}`}`, 'copy-chord-section', '', index]); });
     } else if (lyric) {
-      actions = [['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
+      actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
         ['Join with previous', 'join-prev'], ['Join with next', 'join-next'], ['Paste lyrics here', 'paste-lyrics'],
         ['Clear chords from line', 'clear-line-chords', 'danger'], ['Copy chord pattern from matching section', 'copy-line-pattern']];
     } else if (lane) {
-      actions = [['Add chord here', 'add-chord'], ['Paste copied chord', 'paste-chord'], ['Paste chord sequence…', 'paste-chord-sequence'],
+      actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add chord here', 'add-chord'], ['Paste copied chord', 'paste-chord'], ['Paste chord sequence…', 'paste-chord-sequence'],
         ['Add N.C.', 'add-no-chord'], ['Copy matching section chords', 'copy-matching-section']];
     } else if (Number.isFinite(sectionIndex)) {
       actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Rename section', 'rename-section'],
