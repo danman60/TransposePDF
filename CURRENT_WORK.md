@@ -2,10 +2,11 @@
 
 ## Active Task — 2026-09-13 Chart Layout and Canonical Metadata
 
-FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical. Automation supplies defaults only.
+FIRMAMENT v36 deployed. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical. Automation supplies defaults only.
 
 ## Recent Changes
 
+- `5290675` deployed as FIRMAMENT v36: audio-imported and other canonical section charts now use structured 1/2/3-column PDF export; positional imported PDFs retain source layout only when `source.preserveLayout === true`.
 - `db86809` deployed as FIRMAMENT v35: legacy `NS`/`No section`/`New section` blocks merge into prior labeled section or disappear when empty; pending labels resolve on blur; 2/3-column cells contain long lyric/chord rows without cross-column collision.
 - `6f6791d` deployed as FIRMAMENT v34: context menu stays open while internally scrolling; empty sections show named `Use chords from <section>` choices with same-family matches first.
 - `35b1f7f` deployed as FIRMAMENT v33: `Add section here` splits a long section at the clicked lyric-row boundary instead of placing the new section after the entire chart.
@@ -31,6 +32,7 @@ FIRMAMENT v26 deployed. User-entered chords, lyrics, labels, credits, arrangemen
 
 ## Verification
 
+- v36 deployed final hop: live service worker `transpose-app-v36`; 31/31 deterministic PDF/schema/ChordPro checks; 9/9 real Chromium-generated audio-source PDF checks. A4 output uses both columns, searchable text, clean continuation pages, credits, arrangement, and manual chord spelling. QA Agent cloud route executed 0/15 steps because MiniMax returned HTTP 402; no local model used.
 - v31 deterministic gates: 26/26; JavaScript syntax and diff checks pass; FIRMAMENT serves `transpose-app-v31`. QA Agent cloud browser routes remain unavailable (400/402); no local model used.
 - v29 deterministic gates: 26/26. FIRMAMENT serves `transpose-app-v29`.
 - User ArmorOfGod state verified in live telemetry snapshot: active session `98015584-762a-44b3-b0b9-4692c2553e35`, one saved song, edits through 11:03 PM Eastern. FIRMAMENT Chrome Local Storage contains correction key `transposepdf.chord-corrections.v1`, schema v2, with persisted ArmorOfGod harmonic records.
