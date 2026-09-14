@@ -379,24 +379,27 @@ class WorkspaceController {
     const sectionIndex = section ? Number(section.dataset.sectionReorderIndex) : null;
     const songId = sheet.dataset.songId;
     const lineIndex = lyric ? Number(lyric.dataset.lineIndex) : lane ? Number(lane.dataset.lineIndex) : null;
+    const chartLine = (lyric || lane)?.closest?.('.chart-line');
+    const lineRect = chartLine?.getBoundingClientRect();
+    const insertionLineIndex = Number.isFinite(lineIndex) ? lineIndex + (lineRect && event.clientY > lineRect.top + lineRect.height / 2 ? 1 : 0) : null;
     const width = lane ? this.ui.authoringController.measureAuthorCharacterWidth(lane) : 1;
     const offset = lane ? Math.max(0, Math.round((event.clientX - lane.getBoundingClientRect().left) / width)) : 0;
     this.contextState = { songId, sectionIndex, lineIndex, chordId: chord?.dataset.chordId || null,
       characterOffset: chord ? Number(chord.dataset.characterOffset) || 0 : offset,
-      caretOffset: lyric ? this.caretOffset(lyric) : 0, lyricText: lyric?.textContent || '' };
+      insertionLineIndex, caretOffset: lyric ? this.caretOffset(lyric) : 0, lyricText: lyric?.textContent || '' };
     const song = this.ui.currentSongs.find(item => String(item.id) === String(songId));
     let actions;
     if (chord) {
-      actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Edit chord', 'edit-chord'], ['Delete chord', 'delete-chord', 'danger'], ['Duplicate chord', 'duplicate-chord'], ['Copy chord', 'copy-chord'],
+      actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Edit chord', 'edit-chord'], ['Delete chord', 'delete-chord', 'danger'], ['Duplicate chord', 'duplicate-chord'], ['Copy chord', 'copy-chord'],
         ['Move to previous lyric line', 'move-chord-prev'], ['Move to next lyric line', 'move-chord-next'],
         ['Mark spelling canonical', 'canonical-chord'], ['Set exact timing…', 'time-chord'], ['Flag for review', 'review-chord']];
       (song?.sections || []).forEach((item, index) => { if (index !== sectionIndex) actions.push([`Copy to ${item.label || `section ${index + 1}`}`, 'copy-chord-section', '', index]); });
     } else if (lyric) {
-      actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
+      actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
         ['Join with previous', 'join-prev'], ['Join with next', 'join-next'], ['Paste lyrics here', 'paste-lyrics'],
         ['Clear chords from line', 'clear-line-chords', 'danger'], ['Copy chord pattern from matching section', 'copy-line-pattern']];
     } else if (lane) {
-      actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add chord here', 'add-chord'], ['Paste copied chord', 'paste-chord'], ['Paste chord sequence…', 'paste-chord-sequence'],
+      actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add chord here', 'add-chord'], ['Paste copied chord', 'paste-chord'], ['Paste chord sequence…', 'paste-chord-sequence'],
         ['Add N.C.', 'add-no-chord'], ['Copy matching section chords', 'copy-matching-section']];
     } else if (Number.isFinite(sectionIndex)) {
       actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Rename section', 'rename-section'],
@@ -464,6 +467,7 @@ class WorkspaceController {
       'section-above': () => this.ui.addInlineSection(state.songId, state.sectionIndex),
       'section-below': () => this.ui.addInlineSection(state.songId, state.sectionIndex + 1),
       'section-here': () => this.ui.addInlineSection(state.songId, state.sectionIndex),
+      'section-here-line': () => this.ui.splitInlineSectionAt(state.songId, state.sectionIndex, state.insertionLineIndex),
       'rename-section': () => this.ui.focusInlineSectionLabel(state.songId, state.sectionIndex),
       'duplicate-section-context': () => this.ui.duplicateInlineSection(state.songId, state.sectionIndex),
       'section-prev': () => this.ui.moveInlineSection(state.songId, state.sectionIndex, -1),

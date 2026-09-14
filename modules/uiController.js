@@ -1307,6 +1307,22 @@ class UIController {
     return saved;
   }
 
+  async splitInlineSectionAt(songId, sectionIndex, lineIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const lines = song?.sections?.[sectionIndex]?.lines || [];
+    const splitIndex = Math.max(0, Math.min(lines.length, Number(lineIndex) || 0));
+    if (splitIndex === 0) return this.addInlineSection(songId, sectionIndex);
+    if (splitIndex >= lines.length) return this.addInlineSection(songId, sectionIndex + 1);
+    const newSectionIndex = sectionIndex + 1;
+    const saved = await this.mutateInlineSections(songId, 'chart.section.split', sections => {
+      const source = sections[sectionIndex];
+      const movedLines = source.lines.splice(splitIndex);
+      sections.splice(newSectionIndex, 0, { id: SongModel.createId('section'), type: 'section', label: 'New section', labelProvenance: 'manual', lines: movedLines });
+    });
+    if (saved) requestAnimationFrame(() => this.focusInlineSectionLabel(songId, newSectionIndex));
+    return saved;
+  }
+
   async copyInlineSectionChords(songId, sourceIndex, targetIndex) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     const source = song?.sections?.[sourceIndex];

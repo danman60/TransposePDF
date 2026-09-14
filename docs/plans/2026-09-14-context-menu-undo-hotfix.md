@@ -14,6 +14,7 @@ Purpose: This exists so Ctrl+Z undoes chart changes and Add section remains avai
 3. Record pre-mutation snapshots for direct chart edits, drag/copy, insertion/deletion, lines, sections, copied patterns, and context actions.
 4. Add section above/below commands to chord, line, lane, and section menus.
 5. Bump cache, verify, deploy.
+6. For long single-section charts, `Add section here` splits at clicked lyric-line boundary so insertion is spatially exact.
 
 ## Acceptance
 
