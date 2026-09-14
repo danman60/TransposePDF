@@ -2,23 +2,40 @@
  * Canonical song model shared by manual, PDF, and future audio imports.
  */
 class SongModel {
+  static SCHEMA_VERSION = 2;
+
+  static createId(prefix) {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
   static create(input = {}) {
+    const Anchor = typeof LyricAnchor !== 'undefined'
+      ? LyricAnchor
+      : (typeof require === 'function' ? require('./lyricAnchor') : null);
+    const imported = input.sourceType && input.sourceType !== 'manual';
     const sections = (input.sections || []).map((section, sectionIndex) => ({
-      id: section.id || `section-${sectionIndex + 1}`,
+      ...section,
+      id: section.id || this.createId('section'),
       type: section.type || 'section',
       label: section.label || '',
+      labelProvenance: section.labelProvenance || (imported ? 'imported' : 'inferred'),
       lines: (section.lines || []).map((line, lineIndex) => ({
-        id: line.id || `line-${sectionIndex + 1}-${lineIndex + 1}`,
+        ...line,
+        id: line.id || this.createId('line'),
         lyrics: line.lyrics || '',
-        chords: (line.chords || []).map((chord, chordIndex) => ({
-          id: chord.id || `chord-${sectionIndex + 1}-${lineIndex + 1}-${chordIndex + 1}`,
-          symbol: chord.symbol || '',
-          ...(chord.originalSymbol ? { originalSymbol: chord.originalSymbol } : {}),
-          ...(chord.manualEntry?.provenance === 'manual' ? { manualEntry: { ...chord.manualEntry } } : {}),
-          characterOffset: Math.max(0, Number(chord.characterOffset) || 0),
-          timestamp: chord.timestamp ?? null,
-          confidence: chord.confidence ?? null
-        })),
+        chords: (line.chords || []).map(chord => {
+          const characterOffset = Math.max(0, Number(chord.characterOffset) || 0);
+          const provenance = chord.anchor?.provenance
+            || (chord.manualEntry?.provenance === 'manual' ? 'manual' : imported ? 'imported' : 'inferred');
+          return { ...chord, id: chord.id || this.createId('chord'), symbol: chord.symbol ?? '',
+            ...(chord.originalSymbol ? { originalSymbol: chord.originalSymbol } : {}),
+            ...(chord.manualEntry?.provenance === 'manual' ? { manualEntry: { ...chord.manualEntry } } : {}),
+            characterOffset,
+            anchor: chord.anchor?.version === 1 ? { ...chord.anchor, provenance }
+              : Anchor.create(line.lyrics || '', characterOffset, provenance),
+            timestamp: chord.timestamp ?? null, confidence: chord.confidence ?? null };
+        }),
         startTime: line.startTime ?? null,
         endTime: line.endTime ?? null,
         lyricConfidence: line.lyricConfidence ?? null,
@@ -27,6 +44,8 @@ class SongModel {
     }));
 
     const song = {
+      ...input,
+      schemaVersion: this.SCHEMA_VERSION,
       id: input.id ?? Date.now(),
       title: input.title || 'Untitled Song',
       artist: input.artist || '',
@@ -47,8 +66,34 @@ class SongModel {
       chords: input.chords || []
     };
 
+    song.credits = {
+      writer: this.normalizeCredit(input.credits?.writer),
+      arranger: this.normalizeCredit(input.credits?.arranger)
+    };
+    song.layout = {
+      columns: Math.max(1, Math.min(3, Math.trunc(Number(input.layout?.columns) || 1))),
+      columnsProvenance: ['default', 'manual', 'imported'].includes(input.layout?.columnsProvenance)
+        ? input.layout.columnsProvenance : 'default'
+    };
+    const inferredValue = input.arrangement?.inferredValue || this.inferArrangement(sections);
+    const mode = input.arrangement?.mode === 'manual' ? 'manual' : 'auto';
+    song.arrangement = { mode,
+      value: mode === 'manual' ? String(input.arrangement?.value ?? '') : String(input.arrangement?.value || inferredValue),
+      inferredValue, updatedAt: input.arrangement?.updatedAt ?? null };
+
     song.songText = this.toSongText(song);
     return song;
+  }
+
+  static normalizeCredit(value) {
+    const credit = value && typeof value === 'object' ? value : { value: value || '' };
+    return { value: String(credit.value || ''),
+      provenance: ['manual', 'imported', 'inferred'].includes(credit.provenance) ? credit.provenance : 'inferred',
+      updatedAt: credit.updatedAt ?? null };
+  }
+
+  static inferArrangement(sections) {
+    return (sections || []).map(section => String(section.label || section.type || '').trim()).filter(Boolean).join(' ');
   }
 
   static fromManual({ title, originalKey, content, artist = '' }) {
@@ -78,7 +123,7 @@ class SongModel {
   static parseEditorText(text) {
     const rows = String(text).replace(/\r/g, '').split('\n');
     const sections = [];
-    let current = { id: 'section-1', type: 'section', label: '', lines: [] };
+    let current = { id: this.createId('section'), type: 'section', label: '', lines: [] };
 
     const pushSection = () => {
       if (current.lines.length || current.label) sections.push(current);
@@ -99,7 +144,7 @@ class SongModel {
         pushSection();
         const typeMatch = headerLabel.match(/^(?:final\s+)?(verse|chorus|bridge|pre-chorus|intro|outro|instrumental|tag|interlude|vamp|refrain)/i);
         current = {
-          id: `section-${sections.length + 1}`,
+          id: this.createId('section'),
           type: typeMatch ? typeMatch[1].toLowerCase() : 'section',
           label: headerLabel,
           lines: []
@@ -123,7 +168,7 @@ class SongModel {
     }
 
     pushSection();
-    return sections.length ? sections : [{ id: 'section-1', type: 'section', label: '', lines: [] }];
+    return sections.length ? sections : [{ id: this.createId('section'), type: 'section', label: '', lines: [] }];
   }
 
   static isChordRow(row) {

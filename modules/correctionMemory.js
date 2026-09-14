@@ -147,7 +147,9 @@ class ChordCorrectionMemory {
     state.records
       .filter(record => record.kind === 'harmonic' && record.songFingerprint === songFingerprint)
       .forEach(record => {
-        const candidates = anchors.filter(anchor => !appliedAnchors.has(anchor));
+        const candidates = anchors.filter(anchor => !appliedAnchors.has(anchor)
+          && anchor.anchor.manualEntry?.provenance !== 'manual'
+          && anchor.anchor.anchor?.provenance !== 'manual');
         if (!candidates.length) return;
         const sameLyrics = record.lyrics
           ? candidates.filter(anchor => anchor.lyrics === record.lyrics)
@@ -186,6 +188,8 @@ class ChordCorrectionMemory {
 
     anchors.forEach((anchor, index) => {
       if (appliedAnchors.has(anchor)) return;
+      if (anchor.anchor.manualEntry?.provenance === 'manual'
+        || anchor.anchor.anchor?.provenance === 'manual') return;
       const context = {
         key: output.originalKey || 'C',
         previous: index ? rawSymbols[index - 1] : null,

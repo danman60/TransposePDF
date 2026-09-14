@@ -159,7 +159,8 @@ class LibraryStore {
     expectedRevision = null, checkpoint = false, checkpointLabel = '', checkpointReason = 'save'
   } = {}) {
     await this.open();
-    const id = String(song?.id || this.createId());
+    const canonicalSong = typeof SongModel !== 'undefined' ? SongModel.create(song) : song;
+    const id = String(canonicalSong?.id || this.createId());
     const storeNames = checkpoint ? ['songs', 'versions'] : 'songs';
     return this.runTransaction(storeNames, 'readwrite', async stores => {
       const songStore = checkpoint ? stores.songs : stores;
@@ -168,14 +169,14 @@ class LibraryStore {
       const now = new Date().toISOString();
       const record = this.withSearchFields({
         id,
-        schemaVersion: 1,
-        song: this.sanitizeSong({ ...song, id }),
+        schemaVersion: 2,
+        song: this.sanitizeSong({ ...canonicalSong, id }),
         createdAt: existing?.createdAt || now,
         updatedAt: now,
         revision: (existing?.revision || 0) + 1,
         archivedAt: existing?.archivedAt || null,
         sourceSummary: {
-          type: song?.sourceType || 'manual',
+          type: canonicalSong?.sourceType || 'manual',
           importedAt: existing?.sourceSummary?.importedAt || now
         }
       });
@@ -189,11 +190,12 @@ class LibraryStore {
   }
 
   async getSong(id) {
-    return this.getRecord('songs', String(id));
+    const record = await this.getRecord('songs', String(id));
+    return this.normalizeSongRecord(record);
   }
 
   async listSongs({ includeArchived = false } = {}) {
-    const records = await this.getAllRecords('songs');
+    const records = (await this.getAllRecords('songs')).map(record => this.normalizeSongRecord(record));
     return records
       .filter(record => includeArchived || !record.archivedAt)
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
@@ -201,6 +203,14 @@ class LibraryStore {
 
   listLibrary(options = {}) {
     return this.listSongs(options);
+  }
+
+  normalizeSongRecord(record) {
+    if (!record) return null;
+    const output = this.clone(record);
+    if (typeof SongModel !== 'undefined') output.song = SongModel.create(output.song || {});
+    output.schemaVersion = output.song?.schemaVersion || output.schemaVersion || 1;
+    return output;
   }
 
   async searchSongs(query, { includeArchived = false, limit = 100 } = {}) {
@@ -393,6 +403,9 @@ class LibraryStore {
   async listSongVersions(songId) {
     const records = await this.getAllRecords('versions');
     return records.filter(version => version.songId === String(songId))
+      .map(version => ({ ...version,
+        schemaVersion: 2,
+        song: typeof SongModel !== 'undefined' ? SongModel.create(version.song || {}) : version.song }))
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt)
         || right.revision - left.revision);
   }
@@ -422,7 +435,11 @@ class LibraryStore {
       const now = new Date().toISOString();
       const record = this.withSearchFields({
         ...existing,
-        song: this.sanitizeSong({ ...this.clone(version.song), id: version.songId }),
+        schemaVersion: 2,
+        song: this.sanitizeSong({
+          ...(typeof SongModel !== 'undefined' ? SongModel.create(this.clone(version.song)) : this.clone(version.song)),
+          id: version.songId
+        }),
         updatedAt: now,
         revision: existing.revision + 1
       });
@@ -437,7 +454,7 @@ class LibraryStore {
     const cleanLabel = String(label || '').trim();
     const version = {
       id: this.createId(),
-      schemaVersion: 1,
+      schemaVersion: 2,
       songId: songRecord.id,
       revision: songRecord.revision,
       song: this.clone(songRecord.song),

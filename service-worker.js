@@ -3,7 +3,7 @@
  * Handles caching for offline functionality
  */
 
-const CACHE_NAME = 'transpose-app-v24';
+const CACHE_NAME = 'transpose-app-v25';
 const CACHE_FILES = [
   '/',
   '/index.html',
@@ -14,6 +14,7 @@ const CACHE_FILES = [
   '/modules/pdfProcessor.js',
   '/modules/songSeparator.js',
   '/modules/musicTheory.js',
+  '/modules/lyricAnchor.js',
   '/modules/songModel.js',
   '/modules/chordPro.js',
   '/modules/correctionMemory.js',
