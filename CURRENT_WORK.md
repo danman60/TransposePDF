@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-13 Chart Layout and Canonical Metadata
+## Active Task — 2026-09-14 Independent Editor Columns
 
-FIRMAMENT v38 deployed. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical. Automation supplies defaults only.
+Preparing FIRMAMENT v39. Two- and three-column editor sections now use independent newspaper-style flow instead of shared-height Grid rows. User-entered chords, lyrics, labels, credits, arrangement, and placement remain canonical.
 
 ## Recent Changes
 
+- v39 candidate: independent CSS columns remove false vertical gaps beside uneven section heights; sections stay intact, full-width, editable, and draggable; credits and Add section span all columns; mobile remains one column.
 - v38 section gestures: drag targets insertion boundaries in blank chart space with a visible cyan rule; Ctrl/Cmd/Alt+Z works even after drag leaves focus outside workspace; Alt-drag duplicates an entire section with independent section/line/chord IDs.
 - v37 viewport editor: editor expands from the old 800px cap to the available 1680px workspace; desktop song-tools rail is 220px expanded/56px collapsed with persisted state; 2/3-column lines fit inside their column without section scrollbars or cross-column overlap.
 - `5290675` deployed as FIRMAMENT v36: audio-imported and other canonical section charts now use structured 1/2/3-column PDF export; positional imported PDFs retain source layout only when `source.preserveLayout === true`.

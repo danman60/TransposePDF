@@ -34,6 +34,11 @@ def main():
 
         page.locator('[data-action="set-layout-columns"][data-columns="2"]').click()
         page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.columns === 2")
+        column_style = page.locator(".lead-sheet .structured-chart").evaluate("""chart => {
+          const style = getComputedStyle(chart);
+          return { display: style.display, columnCount: style.columnCount };
+        }""")
+        checks["two_column_independent_flow"] = column_style["display"] != "grid" and column_style["columnCount"] == "2"
         bounds = page.locator(".lead-sheet .section-block").evaluate_all("""sections => sections.map(section => {
           const box = section.getBoundingClientRect();
           const descendants = [...section.querySelectorAll('.lyric-line, .chord-line, .inline-chord-anchor')];
@@ -95,7 +100,7 @@ def main():
             page.evaluate("n => window.transposeApp.setSongLayoutColumns(window.transposeApp.activeSongId, n)", columns)
             page.wait_for_function("n => window.transposeApp.currentSongs[0].layout.columns === n", arg=columns)
             page.locator(".lead-sheet").screenshot(path=str(ARTIFACTS / f"layout-metadata-mobile-{columns}.png"))
-        checks["mobile_forces_one_column"] = page.locator(".lead-sheet .structured-chart").evaluate("e => getComputedStyle(e).gridTemplateColumns.split(' ').length === 1")
+        checks["mobile_forces_one_column"] = page.locator(".lead-sheet .structured-chart").evaluate("e => getComputedStyle(e).columnCount === '1'")
 
         page.set_viewport_size({"width": 1440, "height": 1000})
         page.locator("#performanceButton").click()

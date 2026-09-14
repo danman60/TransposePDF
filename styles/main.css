@@ -1430,21 +1430,28 @@ body {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   white-space: normal;
   overflow-x: hidden;
-  display: grid;
-  grid-template-columns: repeat(var(--chart-columns, 1), minmax(0, 1fr));
-  align-items: start;
-  gap: 1.8rem;
+  display: block;
+  column-count: var(--chart-columns, 1);
+  column-gap: 1.8rem;
 }
 
-.section-block { break-inside: avoid; min-width: 0; container-type: inline-size; }
+.section-block {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 1.8rem;
+  break-inside: avoid-column;
+  min-width: 0;
+  vertical-align: top;
+  container-type: inline-size;
+}
 .structured-chart[data-layout-columns="2"] .chart-line,
 .structured-chart[data-layout-columns="3"] .chart-line { width: 100%; min-width: 0; font-size: clamp(.55rem, var(--line-fit, .95rem), .95rem); }
 .structured-chart[data-layout-columns="2"] .chord-line,
 .structured-chart[data-layout-columns="2"] .lyric-line,
 .structured-chart[data-layout-columns="3"] .chord-line,
 .structured-chart[data-layout-columns="3"] .lyric-line { font-size: inherit; }
-.chart-metadata { grid-column: 1 / -1; display: grid; gap: .45rem; margin-top: 1.8rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-family: inherit; }
-.add-section-primary { grid-column: 1 / -1; justify-self: start; min-height: 40px; margin-top: .65rem; padding: .5rem .9rem; border: 1px solid var(--primary-color); border-radius: .4rem; background: rgba(79,195,247,.1); color: var(--primary-color); font-family: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; }
+.chart-metadata { column-span: all; display: grid; gap: .45rem; margin-top: 0; padding-top: 1rem; border-top: 1px solid var(--border-color); font-family: inherit; }
+.add-section-primary { column-span: all; display: flex; width: max-content; min-height: 40px; margin: .65rem 0 0; padding: .5rem .9rem; border: 1px solid var(--primary-color); border-radius: .4rem; background: rgba(79,195,247,.1); color: var(--primary-color); font-family: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; }
 .add-section-primary:hover, .add-section-primary:focus-visible { background: var(--primary-color); color: #07151b; }
 .copy-section-chords { margin: .25rem 0 .6rem 1.55rem; padding: .38rem .65rem; border: 1px solid var(--primary-color); border-radius: .35rem; background: rgba(79,195,247,.1); color: var(--primary-color); font-family: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; }
 .copy-section-chords:hover, .copy-section-chords:focus-visible { background: var(--primary-color); color: #07151b; }
@@ -1565,7 +1572,7 @@ button.chord-token.dragging { opacity: 0.45; cursor: grabbing; }
 }
 
 @media (max-width: 700px) {
-  .structured-chart { grid-template-columns: minmax(0, 1fr) !important; gap: 1.35rem; }
+  .structured-chart { column-count: 1 !important; column-gap: 0; }
   .chart-metadata-row { grid-template-columns: 1fr; gap: .15rem; }
   .use-song-order { justify-self: start; }
   .chord-edit-bar { align-items: flex-start; flex-wrap: wrap; }
