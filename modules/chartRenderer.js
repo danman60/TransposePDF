@@ -61,7 +61,17 @@ class ChartRenderer {
   renderStructuredContent(song, options = {}) {
     const musicTheory = this.musicTheory();
     const sections = song.sections || [];
-    return `<div class="structured-chart">${sections.map((section, sectionIndex) => {
+    const columns = Math.max(1, Math.min(3, Number(options.columns ?? song.layout?.columns) || 1));
+    const editable = Boolean(options.editable);
+    const arrangement = song.arrangement?.mode === 'manual'
+      ? String(song.arrangement?.value || '')
+      : String(song.arrangement?.inferredValue || (typeof Arrangement !== 'undefined' ? Arrangement.infer(sections) : ''));
+    const metadata = `<footer class="chart-metadata" aria-label="Song credits and arrangement">
+      ${this.renderMetadataField('Writer', 'writer', song.credits?.writer?.value, editable, song.id)}
+      ${this.renderMetadataField('Arrangement by', 'arranger', song.credits?.arranger?.value, editable, song.id)}
+      <div class="chart-metadata-row chart-arrangement-row"><span class="chart-metadata-label">Arrangement</span><div class="chart-metadata-value${arrangement ? '' : ' inline-edit-empty'}"${editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit arrangement order" spellcheck="false" data-inline-field="arrangement" data-placeholder="${this.escape(song.arrangement?.inferredValue || 'V1 C V2 C B C')}"` : ''}>${this.escape(arrangement)}</div>${editable && song.arrangement?.mode === 'manual' ? `<button type="button" class="use-song-order" data-action="use-song-order" data-song-id="${this.escape(song.id)}">Use song order</button>` : ''}</div>
+    </footer>`;
+    return `<div class="structured-chart" data-layout-columns="${columns}" style="--chart-columns:${columns}">${sections.map((section, sectionIndex) => {
       const label = options.editable
         ? `<div class="section-heading"><span class="section-drag-handle" draggable="true" tabindex="0" aria-label="Drag to reorder section" title="Drag section">⠿</span><div class="section-label${section.label ? '' : ' inline-edit-empty'}" contenteditable="plaintext-only" role="textbox" aria-label="Edit section label" spellcheck="true" data-inline-field="section-label" data-section-index="${sectionIndex}" data-placeholder="Section">${this.escape(section.label || '')}</div><div class="section-actions" aria-label="Section actions"><button type="button" data-action="add-section-before" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Add section before">+ before</button><button type="button" data-action="add-section-after" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Add section after">+ after</button><button type="button" data-action="duplicate-section" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Duplicate section">Duplicate</button><button type="button" data-action="move-section" data-direction="up" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" aria-label="Move section up">↑</button><button type="button" data-action="move-section" data-direction="down" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" aria-label="Move section down">↓</button><button type="button" data-action="delete-section" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Delete section">Delete</button></div></div>`
         : (section.label ? `<div class="section-label">${this.escape(section.label)}</div>` : '');
@@ -78,7 +88,13 @@ class ChartRenderer {
         </div>`;
       }).join('');
       return `<section class="section-block" data-section-reorder-index="${sectionIndex}">${label}${lines}</section>`;
-    }).join('')}</div>`;
+    }).join('')}${metadata}</div>`;
+  }
+
+  renderMetadataField(label, field, value, editable, songId) {
+    const text = String(value || '');
+    if (!editable && !text) return '';
+    return `<div class="chart-metadata-row"><span class="chart-metadata-label">${this.escape(label)}</span><div class="chart-metadata-value${text ? '' : ' inline-edit-empty'}"${editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit ${this.escape(label.toLowerCase())}" spellcheck="true" data-inline-field="${field}" data-placeholder="Add ${this.escape(label.toLowerCase())}" data-song-id="${this.escape(songId)}"` : ''}>${this.escape(text)}</div></div>`;
   }
 
   renderChordAnchors(chords, options = {}) {

@@ -56,7 +56,7 @@ def main():
 
         # Direct labels, keyboard reorder, duplicate/add/delete.
         label = page.locator('[data-inline-field="section-label"]').first; label.fill('Opening'); label.blur(); page.wait_for_timeout(200)
-        checks['manual_label'] = page.evaluate("() => {const s=window.transposeApp.currentSongs[0]; return s.sections[0].label==='Opening' && s.sections[0].labelProvenance==='manual' && s.arrangement.inferredValue.startsWith('Opening')}")
+        checks['manual_label'] = page.evaluate("() => {const s=window.transposeApp.currentSongs[0]; return s.sections[0].label==='Opening' && s.sections[0].labelProvenance==='manual' && s.arrangement.inferredValue===Arrangement.infer(s.sections)}")
         before = page.evaluate("() => window.transposeApp.currentSongs[0].sections.length")
         page.locator('[data-action="duplicate-section"]').first.click(); page.wait_for_timeout(150)
         page.locator('[data-action="add-section-after"]').first.click(); page.wait_for_timeout(150)

@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+"""Real-browser layout, credits, arrangement, persistence, and history coverage."""
+import os
+import tempfile
+from pathlib import Path
+from playwright.sync_api import sync_playwright
+
+URL = os.environ.get("TRANSPOSEPDF_URL", "http://127.0.0.1:8000")
+ARTIFACTS = Path(__file__).parents[1] / "artifacts/e2e"
+
+
+def main():
+    checks = {}
+    with tempfile.TemporaryDirectory(prefix="transposepdf-layout-") as profile, sync_playwright() as pw:
+        context = pw.chromium.launch_persistent_context(profile, headless=True, viewport={"width": 1440, "height": 1000})
+        page = context.pages[0]
+        page.goto(URL)
+        page.wait_for_function("() => window.transposeApp?.libraryStore")
+        page.locator("#createChartButton").click()
+        page.locator("#authorTitle").fill("Layout Metadata Proof")
+        page.locator("#authorContent").fill(
+            "Verse 1\nC             G\nA first line of lyrics\n\n"
+            "Chorus\nF             C\nSing the chorus here\n\n"
+            "Verse 2\nAm            G\nA second line of lyrics"
+        )
+        page.locator("#saveChartButton").click()
+        page.locator(".lead-sheet").wait_for()
+
+        for columns in (1, 2, 3):
+            page.locator(f'[data-action="set-layout-columns"][data-columns="{columns}"]').click()
+            page.wait_for_function("n => window.transposeApp.currentSongs[0].layout.columns === n", arg=columns)
+            checks[f"desktop_{columns}_columns"] = page.locator(".lead-sheet .structured-chart").get_attribute("data-layout-columns") == str(columns)
+            page.screenshot(path=str(ARTIFACTS / f"layout-metadata-desktop-{columns}.png"))
+
+        writer = page.locator('[data-inline-field="writer"]')
+        writer.fill("Ada Writer"); writer.blur()
+        arranger = page.locator('[data-inline-field="arranger"]')
+        arranger.fill("Ray Arranger"); arranger.blur()
+        arrangement = page.locator('[data-inline-field="arrangement"]')
+        arrangement.fill("I V1 C V2 C"); arrangement.blur()
+        page.wait_for_function("() => window.transposeApp.currentSongs[0].arrangement?.mode === 'manual'")
+        checks["manual_metadata_canonical"] = page.evaluate("""() => {
+          const s=window.transposeApp.currentSongs[0];
+          return s.credits.writer.value==='Ada Writer' && s.credits.writer.provenance==='manual'
+            && s.credits.arranger.value==='Ray Arranger' && s.arrangement.value==='I V1 C V2 C';
+        }""")
+        page.locator('[data-action="use-song-order"]').click()
+        page.wait_for_function("() => window.transposeApp.currentSongs[0].arrangement?.mode === 'auto'")
+        checks["use_song_order"] = page.evaluate("() => window.transposeApp.currentSongs[0].arrangement.value === Arrangement.infer(window.transposeApp.currentSongs[0].sections)")
+        page.screenshot(path=str(ARTIFACTS / "layout-metadata-desktop-final.png"))
+
+        song_id = page.evaluate("() => window.transposeApp.currentSongs[0].id")
+        page.reload(); page.wait_for_function("() => window.transposeApp?.currentSongs?.length === 1")
+        checks["reload_persistence"] = page.evaluate("id => {const s=window.transposeApp.currentSongs.find(x=>String(x.id)===String(id)); return s?.layout.columns===3 && s?.credits.writer.value==='Ada Writer' && s?.arrangement.mode==='auto'}", song_id)
+
+        versions = page.evaluate("id => window.transposeApp.sessionStore.listSongVersions(id).then(v => v.map(x => ({id:x.id,columns:x.song?.layout?.columns,revision:x.revision})))", song_id)
+        checks["version_history_created"] = len(versions) >= 3
+        restore = next((version for version in versions if version.get("columns") == 2), None)
+        if restore:
+            page.evaluate("id => window.transposeApp.sessionStore.restoreSongVersion(id).then(() => { window.transposeApp.syncFromSessionStore(); window.transposeApp.displaySongs(); })", restore["id"])
+            checks["history_restore"] = page.evaluate("() => window.transposeApp.currentSongs[0].layout.columns === 2")
+            page.evaluate("() => window.transposeApp.setSongLayoutColumns(window.transposeApp.activeSongId, 3)")
+            page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.columns === 3")
+        else:
+            checks["history_restore"] = False
+
+        page.set_viewport_size({"width": 390, "height": 844})
+        for columns in (1, 2, 3):
+            page.evaluate("n => window.transposeApp.setSongLayoutColumns(window.transposeApp.activeSongId, n)", columns)
+            page.wait_for_function("n => window.transposeApp.currentSongs[0].layout.columns === n", arg=columns)
+            page.locator(".lead-sheet").screenshot(path=str(ARTIFACTS / f"layout-metadata-mobile-{columns}.png"))
+        checks["mobile_forces_one_column"] = page.locator(".lead-sheet .structured-chart").evaluate("e => getComputedStyle(e).gridTemplateColumns.split(' ').length === 1")
+
+        page.set_viewport_size({"width": 1440, "height": 1000})
+        page.locator("#performanceButton").click()
+        page.locator("#performanceShell").wait_for(state="visible")
+        checks["performance_initial_columns"] = page.locator("#performanceColumns").input_value() == "3" and page.locator("#performanceChart .structured-chart").get_attribute("data-layout-columns") == "3"
+        page.locator("#performanceColumns").select_option("1")
+        page.locator("#performanceExit").click()
+        page.wait_for_function("() => !window.transposeApp.performance.state.active")
+        checks["performance_temporary_only"] = page.evaluate("() => window.transposeApp.currentSongs[0].layout.columns === 3")
+        context.close()
+
+    for name, ok in checks.items():
+        print(("PASS" if ok else "FAIL"), name)
+    failed = [name for name, ok in checks.items() if not ok]
+    if failed:
+        raise SystemExit("Failed: " + ", ".join(failed))
+    print(f"{sum(checks.values())}/{len(checks)} passed")
+
+
+if __name__ == "__main__":
+    ARTIFACTS.mkdir(parents=True, exist_ok=True)
+    main()

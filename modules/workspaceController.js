@@ -55,6 +55,8 @@ class WorkspaceController {
       'duplicate-section': () => this.ui.duplicateInlineSection(songId, Number(target.dataset.sectionIndex)),
       'delete-section': () => this.ui.deleteInlineSection(songId, Number(target.dataset.sectionIndex)),
       'move-section': () => this.ui.moveInlineSection(songId, Number(target.dataset.sectionIndex), target.dataset.direction === 'up' ? -1 : 1),
+      'set-layout-columns': () => this.ui.setSongLayoutColumns(songId, Number(target.dataset.columns)),
+      'use-song-order': () => this.ui.useInferredArrangement(songId),
       'move-song': () => this.moveSong(target, songId),
       'remove-song': () => this.ui.removeSessionSong(songId)
     };
@@ -171,7 +173,7 @@ class WorkspaceController {
     if (!target || target.dataset.inlineSaving === 'true') return;
     const next = (target.textContent || '').replace(/[\r\n]+/g, '');
     if (next === (target.dataset.originalText || '')) {
-      if (!next && target.dataset.inlineField === 'lyrics') target.classList.add('inline-edit-empty');
+      if (!next) target.classList.add('inline-edit-empty');
       return;
     }
     target.dataset.inlineSaving = 'true';

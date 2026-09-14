@@ -285,6 +285,12 @@ body {
 .sidebar-transpose button { height: 38px; border: 1px solid #52646b; border-radius: 6px; background: #26353a; color: #fff; font-size: 1.2rem; cursor: pointer; }
 .sidebar-transpose output { text-align: center; color: var(--text-primary); font-size: 1rem; font-weight: 800; }
 .sidebar-transpose output small { display: block; color: var(--text-secondary); font-size: .62rem; font-weight: 500; }
+.sidebar-columns { margin: .85rem 0 0; padding: .7rem 0 0; border: 0; border-top: 1px solid #354147; }
+.sidebar-columns legend { color: var(--text-secondary); font-size: .7rem; font-weight: 700; }
+.sidebar-columns > div { display: grid; grid-template-columns: repeat(3, 1fr); gap: .25rem; margin-top: .35rem; }
+.sidebar-columns button { min-height: 34px; border: 1px solid #52646b; border-radius: 5px; background: transparent; color: var(--text-primary); font-weight: 800; }
+.sidebar-columns button[aria-pressed="true"] { border-color: var(--primary-color); background: var(--primary-color); color: #07151b; }
+.sidebar-columns small { display: block; margin-top: .3rem; color: var(--text-secondary); font-size: .62rem; }
 .sidebar-tool-links { display: grid; gap: .4rem; margin-top: .75rem; }
 .sidebar-tool-links button { min-height: 34px; border: 1px solid #46575e; border-radius: 5px; background: transparent; color: var(--text-primary); text-align: left; padding: .35rem .55rem; cursor: pointer; }
 .sidebar-tool-links button:hover, .sidebar-transpose button:hover { border-color: var(--primary-color); background: rgba(79,195,247,.1); }
@@ -721,7 +727,9 @@ body {
   outline: 2px solid var(--primary-color);
 }
 
-.lead-sheet .lyric-line.inline-edit-empty::before {
+.lead-sheet .lyric-line.inline-edit-empty::before,
+.lead-sheet .section-label.inline-edit-empty::before,
+.lead-sheet .chart-metadata-value.inline-edit-empty::before {
   content: attr(data-placeholder);
   color: var(--text-secondary);
   font-style: italic;
@@ -1406,10 +1414,22 @@ body {
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   white-space: normal;
   overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(var(--chart-columns, 1), minmax(0, 1fr));
+  align-items: start;
+  gap: 1.8rem;
 }
 
+.section-block { break-inside: avoid; min-width: 0; }
+.chart-metadata { grid-column: 1 / -1; display: grid; gap: .45rem; margin-top: 1.8rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-family: inherit; }
+.chart-metadata-row { display: grid; grid-template-columns: 8.5rem minmax(8rem, 1fr) auto; align-items: baseline; gap: .6rem; }
+.chart-metadata-label { color: var(--text-secondary); font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.chart-metadata-value { min-height: 1.45rem; border-radius: .25rem; color: var(--text-primary); outline: none; white-space: pre; }
+.chart-metadata-value[contenteditable]:hover, .chart-metadata-value[contenteditable]:focus { background: rgba(79,195,247,.08); box-shadow: inset 0 -1px var(--primary-color); }
+.use-song-order { border: 1px solid var(--border-color); border-radius: .35rem; background: transparent; color: var(--primary-color); padding: .25rem .5rem; font-size: .7rem; }
+
 .section-block + .section-block {
-  margin-top: 1.35rem;
+  margin-top: 0;
 }
 
 .section-block { border-radius: .45rem; padding: .25rem; }
@@ -1508,6 +1528,9 @@ button.chord-token.dragging { opacity: 0.45; cursor: grabbing; }
 }
 
 @media (max-width: 700px) {
+  .structured-chart { grid-template-columns: minmax(0, 1fr) !important; gap: 1.35rem; }
+  .chart-metadata-row { grid-template-columns: 1fr; gap: .15rem; }
+  .use-song-order { justify-self: start; }
   .chord-edit-bar { align-items: flex-start; flex-wrap: wrap; }
   .chord-edit-bar small { flex-basis: 100%; margin-left: 0; }
 }
@@ -1637,7 +1660,7 @@ button.chord-token.dragging { opacity: 0.45; cursor: grabbing; }
 }
 
 .section-label { color: #d5e5ec; }
-.section-block + .section-block { margin-top: 1.75rem; }
+.section-block + .section-block { margin-top: 0; }
 
 button.chord-token {
   position: relative;

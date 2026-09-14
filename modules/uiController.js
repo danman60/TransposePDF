@@ -317,7 +317,7 @@ class UIController {
     this.elements.sidebarImportChordProButton?.addEventListener('click', () => this.elements.chordProFileInput.click());
     this.elements.chordProFileInput?.addEventListener('change', event => this.importChordPro(event));
     this.elements.companionButton?.addEventListener('click', () => this.openCompanion());
-    this.elements.performanceButton?.addEventListener('click', () => this.performance.enter({ fullscreen: true, fullscreenElement: this.elements.performanceShell }));
+    this.elements.performanceButton?.addEventListener('click', () => this.enterPerformance());
     this.elements.performanceExit?.addEventListener('click', () => this.performance.exit());
     this.elements.performancePrev?.addEventListener('click', () => this.performance.previous());
     this.elements.performanceNext?.addEventListener('click', () => this.performance.next());
@@ -1008,7 +1008,34 @@ class UIController {
         <label>Instrument<select class="view-instrument" data-action="set-chart-view" data-field="instrument" data-song-id="${songId}">${[['concert','Concert'],['bb','B♭'],['eb','E♭'],['f','F']].map(([value,label]) => `<option value="${value}"${(song.sessionView?.instrument || 'concert') === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
       </div>
       <div class="sidebar-transpose" aria-label="Transpose ${this.escapeHtml(song.title)}"><span>Transpose</span><div><button data-action="transpose-song" data-song-id="${songId}" data-semitones="-1" type="button" aria-label="Transpose down">−</button><output id="transposeValue-${song.id}">${transposition > 0 ? `+${transposition}` : transposition}<small>semitones</small></output><button data-action="transpose-song" data-song-id="${songId}" data-semitones="1" type="button" aria-label="Transpose up">+</button></div></div>
+      <fieldset class="sidebar-columns"><legend>Columns</legend><div role="group" aria-label="Chart columns">${[1, 2, 3].map(columns => `<button type="button" data-action="set-layout-columns" data-song-id="${songId}" data-columns="${columns}" aria-pressed="${Number(song.layout?.columns || 1) === columns}">${columns}</button>`).join('')}</div><small>Wide chart and PDF</small></fieldset>
       <div class="sidebar-tool-links"><button data-action="reset-song" data-song-id="${songId}" type="button">↺ Reset original key</button><button data-action="open-history" data-song-id="${songId}" type="button">◷ Version history</button></div>`;
+  }
+
+  async setSongLayoutColumns(songId, value) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return false;
+    const edited = SongModel.create(song);
+    edited.layout = { columns: Math.max(1, Math.min(3, Math.round(Number(value) || 1))), columnsProvenance: 'manual' };
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      this.displaySongs();
+      this.track('chart.layout.changed', { columns: saved.layout.columns }, saved);
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  async useInferredArrangement(songId) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return false;
+    const edited = SongModel.create(song);
+    const inferredValue = typeof Arrangement !== 'undefined' ? Arrangement.infer(edited.sections) : SongModel.inferArrangement(edited.sections);
+    edited.arrangement = { mode: 'auto', value: inferredValue, inferredValue, updatedAt: Date.now() };
+    try {
+      await this.persistSong(edited, { addToSession: false });
+      this.displaySongs();
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
   }
 
   async reorderSessionSong(songId, index) {
@@ -1062,25 +1089,32 @@ class UIController {
   /**
    * Render the actual lead sheet content exactly like the PDF layout
    */
-  renderLeadSheetContent(song, { editable = true } = {}) {
-    return this.chartRenderer.renderLeadSheetContent(song, { editable });
+  renderLeadSheetContent(song, options = {}) {
+    return this.chartRenderer.renderLeadSheetContent(song, { editable: options.editable ?? true, ...options });
   }
 
   async commitInlineChartEdit(target, value) {
     const sheet = target.closest('.lead-sheet[data-song-id]');
     const song = this.currentSongs.find(item => String(item.id) === String(sheet?.dataset.songId));
-    if (!song || !song.sections?.[Number(target.dataset.sectionIndex)]) return false;
+    if (!song) return false;
     const previous = SongModel.create(song);
     const edited = SongModel.create(song);
+    const field = target.dataset.inlineField;
+    if (field === 'writer' || field === 'arranger') {
+      edited.credits[field] = { value: String(value).replace(/[\r\n]+/g, '').trim(), provenance: 'manual', updatedAt: Date.now() };
+    } else if (field === 'arrangement') {
+      edited.arrangement = { ...(edited.arrangement || {}), mode: 'manual', value: String(value).replace(/[\r\n]+/g, ''), updatedAt: Date.now() };
+    }
     const sectionIndex = Number(target.dataset.sectionIndex);
     const section = edited.sections[sectionIndex];
+    if (!['writer', 'arranger', 'arrangement'].includes(field) && !section) return false;
     if (target.dataset.inlineField === 'section-label') {
       section.label = String(value).replace(/[\r\n]+/g, '').trim();
       section.labelProvenance = 'manual';
       this.updateInferredArrangement(edited);
     }
     const line = section?.lines?.[Number(target.dataset.lineIndex)];
-    if (target.dataset.inlineField !== 'section-label' && !line) return false;
+    if (!['section-label', 'writer', 'arranger', 'arrangement'].includes(field) && !line) return false;
     if (target.dataset.inlineField === 'lyrics') {
       const nextLyrics = String(value).replace(/[\r\n]+/g, '');
       Object.assign(line, LyricAnchor.reconcileLine(line, line.lyrics || '', nextLyrics));
@@ -1212,7 +1246,7 @@ class UIController {
   }
 
   updateInferredArrangement(song) {
-    const inferredValue = SongModel.inferArrangement(song.sections || []);
+    const inferredValue = typeof Arrangement !== 'undefined' ? Arrangement.infer(song.sections || []) : SongModel.inferArrangement(song.sections || []);
     song.arrangement = { ...(song.arrangement || {}), inferredValue };
     if (song.arrangement.mode !== 'manual') song.arrangement.value = inferredValue;
   }
@@ -1668,10 +1702,18 @@ class UIController {
     const song = this.currentSongs.find(item => String(item.id) === String(this.activeSongId));
     if (!song) return;
     this.elements.performanceTitle.textContent = song.title;
-    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(song, { editable: false });
+    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(song, { editable: false, columns: state.columns });
     this.elements.performanceChart.style.fontSize = `${state.fontScale}em`;
-    this.elements.performanceChart.style.columnCount = String(state.columns);
+    this.elements.performanceChart.style.removeProperty('column-count');
     this.elements.performanceChart.dataset.reducedMotion = String(state.reducedMotion);
+  }
+
+  enterPerformance() {
+    const song = this.currentSongs.find(item => String(item.id) === String(this.activeSongId));
+    const columns = Math.max(1, Math.min(3, Number(song?.layout?.columns) || 1));
+    this.performance.setColumns(columns);
+    if (this.elements.performanceColumns) this.elements.performanceColumns.value = String(columns);
+    return this.performance.enter({ fullscreen: true, fullscreenElement: this.elements.performanceShell });
   }
 
   renderBindings() {

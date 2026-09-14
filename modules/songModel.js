@@ -93,7 +93,12 @@ class SongModel {
   }
 
   static inferArrangement(sections) {
-    return (sections || []).map(section => String(section.label || section.type || '').trim()).filter(Boolean).join(' ');
+    const Engine = typeof Arrangement !== 'undefined'
+      ? Arrangement
+      : (typeof require === 'function' ? require('./arrangement') : null);
+    return Engine
+      ? Engine.infer(sections || [])
+      : (sections || []).map(section => String(section.label || section.type || '').trim()).filter(Boolean).join(' ');
   }
 
   static fromManual({ title, originalKey, content, artist = '' }) {
