@@ -24,7 +24,13 @@ class WorkspaceController {
     this.listeners.pointerup = event => this.handlePointerUp(event);
     this.listeners.pointercancel = event => this.handlePointerCancel(event);
     this.listeners.dblclick = event => this.handleDoubleClick(event);
+    this.listeners.contextmenu = event => this.handleContextMenu(event);
     Object.entries(this.listeners).forEach(([name, listener]) => this.root.addEventListener(name, listener));
+    this.documentPointerDown = event => { if (!event.target.closest?.('.chart-context-menu')) this.closeContextMenu(); };
+    this.windowDismissMenu = () => this.closeContextMenu();
+    document.addEventListener('pointerdown', this.documentPointerDown);
+    window.addEventListener('resize', this.windowDismissMenu);
+    window.addEventListener('scroll', this.windowDismissMenu, true);
     this.attached = true;
     return this;
   }
@@ -32,6 +38,10 @@ class WorkspaceController {
   detach() {
     if (!this.attached || !this.root) return;
     Object.entries(this.listeners).forEach(([name, listener]) => this.root.removeEventListener(name, listener));
+    document.removeEventListener('pointerdown', this.documentPointerDown);
+    window.removeEventListener('resize', this.windowDismissMenu);
+    window.removeEventListener('scroll', this.windowDismissMenu, true);
+    this.closeContextMenu();
     this.listeners = {};
     this.attached = false;
   }
@@ -70,6 +80,7 @@ class WorkspaceController {
     };
     if (actions[action]) {
       event.preventDefault();
+      this.closeContextMenu();
       actions[action]();
     }
   }
@@ -189,6 +200,11 @@ class WorkspaceController {
   }
 
   handleKeyDown(event) {
+    if (event.key === 'Escape' && this.contextMenu) {
+      event.preventDefault();
+      this.closeContextMenu();
+      return;
+    }
     if (event.altKey && event.key.toLowerCase() === 'z' && !event.isComposing) {
       event.preventDefault();
       this.selectedChordIds.clear();
@@ -337,6 +353,38 @@ class WorkspaceController {
     const offset = Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
     this.ui.insertInlineChord(sheet.dataset.songId, Number(chordLine.dataset.sectionIndex),
       Number(chordLine.dataset.lineIndex), offset);
+  }
+
+  handleContextMenu(event) {
+    const sheet = event.target.closest?.('.lead-sheet[data-song-id]');
+    if (!sheet || !this.root.contains(sheet) || event.target.closest?.('[contenteditable="true"], [contenteditable="plaintext-only"]')) return;
+    event.preventDefault();
+    this.closeContextMenu();
+    const section = event.target.closest?.('.section-block[data-section-reorder-index]');
+    const sectionIndex = section ? Number(section.dataset.sectionReorderIndex) : null;
+    const songId = sheet.dataset.songId;
+    const actions = Number.isFinite(sectionIndex)
+      ? [
+          ['Add section above', 'add-section-before', sectionIndex],
+          ['Add section below', 'add-section-after', sectionIndex]
+        ]
+      : [['Add section here', 'add-section-end', '']];
+    const menu = document.createElement('div');
+    menu.className = 'chart-context-menu';
+    menu.setAttribute('role', 'menu');
+    menu.setAttribute('aria-label', 'Chart actions');
+    menu.innerHTML = actions.map(([label, action, index]) => `<button type="button" role="menuitem" data-action="${action}" data-song-id="${songId}"${index === '' ? '' : ` data-section-index="${index}"`}>${label}</button>`).join('');
+    this.root.appendChild(menu);
+    const width = 210; const height = actions.length * 42 + 12;
+    menu.style.left = `${Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8))}px`;
+    menu.style.top = `${Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8))}px`;
+    this.contextMenu = menu;
+    menu.querySelector('button')?.focus();
+  }
+
+  closeContextMenu() {
+    this.contextMenu?.remove();
+    this.contextMenu = null;
   }
 }
 
