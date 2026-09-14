@@ -113,7 +113,7 @@ class PDFGenerator {
    * Add individual song to PDF
    */
   async addSongToPDF(pdf, song) {
-    const usesStructuredEditor = song.sourceType === 'manual' || song.source?.preserveLayout === false;
+    const usesStructuredEditor = Array.isArray(song.sections) && song.sections.length > 0 && song.source?.preserveLayout !== true;
     if (usesStructuredEditor && Array.isArray(song.sections) && song.sections.length > 0) {
       await this.addStructuredSongToPDF(pdf, song);
       return;
@@ -262,7 +262,7 @@ class PDFGenerator {
    * Process song content and transpose chords
    */
   processSongContent(song) {
-    const usesStructuredEditor = song.sourceType === 'manual' || song.source?.preserveLayout === false;
+    const usesStructuredEditor = Array.isArray(song.sections) && song.sections.length > 0 && song.source?.preserveLayout !== true;
     if (usesStructuredEditor && Array.isArray(song.sections) && song.sections.length > 0) {
       return this.processStructuredSongContent(song);
     }

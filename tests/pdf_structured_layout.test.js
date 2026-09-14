@@ -29,7 +29,7 @@ class FakePDF {
   };
   const song = {
     title: 'Layout Contract', originalKey: 'F', currentKey: 'E', transposition: -1,
-    sourceType: 'manual', spellingPolicy: 'sharps', layout: { columns: 3 },
+    sourceType: 'audio', source: { analysisId: 'audio-proof' }, spellingPolicy: 'sharps', layout: { columns: 3 },
     sessionView: {},
     credits: { writer: { value: 'Ada Writer' }, arranger: { value: 'Ray Arranger' } },
     arrangement: { mode: 'manual', value: 'V1 C V2 C', inferredValue: 'Wrong fallback' },
@@ -55,7 +55,18 @@ class FakePDF {
   assert.ok(pdf.calls.some(call => String(call.content).includes('Gb')), 'manual spelling must survive export');
   assert.equal(JSON.stringify(song), original, 'PDF layout must not mutate canonical song');
 
+  const routedAudioPdf = new FakePDF();
+  await generator.addSongToPDF(routedAudioPdf, song);
+  assert.ok(new Set(routedAudioPdf.calls.map(call => call.x)).size >= 3, 'audio imports must route through structured columns');
+
+  const wrapped = generator.wrapStructuredLine({
+    lyrics: 'one two three four five six seven eight nine ten',
+    chords: [{ symbol: 'C', characterOffset: 4 }, { symbol: 'G', characterOffset: 35 }]
+  }, 20);
+  assert.ok(wrapped.length >= 3, 'long lyrics must wrap to printable column width');
+  assert.ok(wrapped.slice(1).some(segment => segment.chords.some(chord => chord.symbol === 'G')), 'wrapped chord must move with its lyric segment');
+
   const blank = generator.getCreditsRows({ credits: {}, arrangement: {} });
   assert.equal(blank.length, 0);
-  console.log('12/12 structured PDF layout/content checks passed');
+  console.log('16/16 structured PDF layout/content checks passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });
