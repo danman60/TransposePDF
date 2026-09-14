@@ -47,6 +47,13 @@ class WorkspaceController {
   }
 
   handleClick(event) {
+    const contextAction = event.target.closest?.('[data-context-command]');
+    if (contextAction && this.contextState) {
+      event.preventDefault();
+      this.runContextCommand(contextAction.dataset.contextCommand, contextAction.dataset);
+      this.closeContextMenu();
+      return;
+    }
     const chord = event.target.closest?.('.inline-chord-anchor[data-chord-id]');
     if (chord && this.root.contains(chord)) {
       this.selectInlineChord(chord, event.shiftKey);
@@ -357,26 +364,53 @@ class WorkspaceController {
 
   handleContextMenu(event) {
     const sheet = event.target.closest?.('.lead-sheet[data-song-id]');
-    if (!sheet || !this.root.contains(sheet) || event.target.closest?.('[contenteditable="true"], [contenteditable="plaintext-only"]')) return;
+    if (!sheet || !this.root.contains(sheet)) return;
+    const chord = event.target.closest?.('.inline-chord-anchor[data-chord-id]');
+    const lyric = event.target.closest?.('[data-inline-field="lyrics"]');
+    const lane = event.target.closest?.('.chord-line[data-section-index]');
+    const editable = event.target.closest?.('[contenteditable="true"], [contenteditable="plaintext-only"]');
+    if (editable && !chord && !lyric) return;
     event.preventDefault();
     this.closeContextMenu();
     const section = event.target.closest?.('.section-block[data-section-reorder-index]');
     const sectionIndex = section ? Number(section.dataset.sectionReorderIndex) : null;
     const songId = sheet.dataset.songId;
-    const actions = Number.isFinite(sectionIndex)
-      ? [
-          ['Add section above', 'add-section-before', sectionIndex],
-          ['Add section below', 'add-section-after', sectionIndex]
-        ]
-      : [['Add section here', 'add-section-end', '']];
+    const lineIndex = lyric ? Number(lyric.dataset.lineIndex) : lane ? Number(lane.dataset.lineIndex) : null;
+    const width = lane ? this.ui.authoringController.measureAuthorCharacterWidth(lane) : 1;
+    const offset = lane ? Math.max(0, Math.round((event.clientX - lane.getBoundingClientRect().left) / width)) : 0;
+    this.contextState = { songId, sectionIndex, lineIndex, chordId: chord?.dataset.chordId || null,
+      characterOffset: chord ? Number(chord.dataset.characterOffset) || 0 : offset,
+      caretOffset: lyric ? this.caretOffset(lyric) : 0, lyricText: lyric?.textContent || '' };
+    const song = this.ui.currentSongs.find(item => String(item.id) === String(songId));
+    let actions;
+    if (chord) {
+      actions = [['Edit chord', 'edit-chord'], ['Delete chord', 'delete-chord', 'danger'], ['Duplicate chord', 'duplicate-chord'], ['Copy chord', 'copy-chord'],
+        ['Move to previous lyric line', 'move-chord-prev'], ['Move to next lyric line', 'move-chord-next'],
+        ['Mark spelling canonical', 'canonical-chord'], ['Set exact timing…', 'time-chord'], ['Flag for review', 'review-chord']];
+      (song?.sections || []).forEach((item, index) => { if (index !== sectionIndex) actions.push([`Copy to ${item.label || `section ${index + 1}`}`, 'copy-chord-section', '', index]); });
+    } else if (lyric) {
+      actions = [['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
+        ['Join with previous', 'join-prev'], ['Join with next', 'join-next'], ['Paste lyrics here', 'paste-lyrics'],
+        ['Clear chords from line', 'clear-line-chords', 'danger'], ['Copy chord pattern from matching section', 'copy-line-pattern']];
+    } else if (lane) {
+      actions = [['Add chord here', 'add-chord'], ['Paste copied chord', 'paste-chord'], ['Paste chord sequence…', 'paste-chord-sequence'],
+        ['Add N.C.', 'add-no-chord'], ['Copy matching section chords', 'copy-matching-section']];
+    } else if (Number.isFinite(sectionIndex)) {
+      actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Rename section', 'rename-section'],
+        ['Duplicate section', 'duplicate-section-context'], ['Copy matching chords', 'copy-matching-section'], ['Copy entire section', 'duplicate-section-context'],
+        ['Move left / up', 'section-prev'], ['Move right / down', 'section-next'], ['Delete section', 'delete-section-context', 'danger']];
+    } else {
+      this.contextState.sectionIndex = this.nearestSectionInsertion(sheet, event.clientX, event.clientY);
+      actions = [['Add section here', 'section-here']];
+    }
     const menu = document.createElement('div');
     menu.className = 'chart-context-menu';
     menu.setAttribute('role', 'menu');
     menu.setAttribute('aria-label', 'Chart actions');
-    menu.innerHTML = actions.map(([label, action, index]) => `<button type="button" role="menuitem" data-action="${action}" data-song-id="${songId}"${index === '' ? '' : ` data-section-index="${index}"`}>${label}</button>`).join('');
+    menu.innerHTML = actions.map(([label, command, tone, destination]) => `<button type="button" role="menuitem" data-context-command="${command}"${tone ? ` data-tone="${tone}"` : ''}${Number.isFinite(destination) ? ` data-destination-section="${destination}"` : ''}>${label}</button>`).join('');
     this.root.appendChild(menu);
-    const width = 210; const height = actions.length * 42 + 12;
-    menu.style.left = `${Math.max(8, Math.min(event.clientX, window.innerWidth - width - 8))}px`;
+    const menuWidth = 240; const height = Math.min(window.innerHeight * .72, actions.length * 42 + 12);
+    menu.style.left = `${Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8))}px`;
     menu.style.top = `${Math.max(8, Math.min(event.clientY, window.innerHeight - height - 8))}px`;
     this.contextMenu = menu;
     menu.querySelector('button')?.focus();
@@ -385,6 +419,55 @@ class WorkspaceController {
   closeContextMenu() {
     this.contextMenu?.remove();
     this.contextMenu = null;
+  }
+
+  nearestSectionInsertion(sheet, x, y) {
+    const sections = [...sheet.querySelectorAll('.section-block[data-section-reorder-index]')];
+    if (!sections.length) return 0;
+    let nearest = sections[0]; let distance = Infinity;
+    sections.forEach(item => { const rect = item.getBoundingClientRect(); const value = Math.hypot(x - (rect.left + rect.width / 2), y - (rect.top + rect.height / 2)); if (value < distance) { distance = value; nearest = item; } });
+    const rect = nearest.getBoundingClientRect(); const index = Number(nearest.dataset.sectionReorderIndex);
+    return index + ((y > rect.top + rect.height / 2 || (Math.abs(y - (rect.top + rect.height / 2)) < rect.height / 2 && x > rect.left + rect.width / 2)) ? 1 : 0);
+  }
+
+  async runContextCommand(command, data = {}) {
+    const state = this.contextState; if (!state) return;
+    const source = { songId: state.songId, sectionIndex: state.sectionIndex, lineIndex: state.lineIndex, chordId: state.chordId };
+    const adjacent = delta => ({ sectionIndex: state.sectionIndex, lineIndex: state.lineIndex + delta });
+    const commands = {
+      'edit-chord': () => this.ui.focusInlineChord(state.songId, state.chordId),
+      'delete-chord': () => this.ui.deleteInlineChords(state.songId, [state.chordId]),
+      'duplicate-chord': () => this.ui.moveInlineChord(source, adjacent(0), state.characterOffset + 2, { copy: true }),
+      'copy-chord': () => { this.copiedChord = source; this.ui.updateStatus('Chord copied', 'success'); },
+      'move-chord-prev': () => this.ui.moveInlineChord(source, adjacent(-1), state.characterOffset),
+      'move-chord-next': () => this.ui.moveInlineChord(source, adjacent(1), state.characterOffset),
+      'copy-chord-section': () => this.ui.copyInlineChordToSection(source, Number(data.destinationSection)),
+      'canonical-chord': () => this.ui.markInlineChordCanonical(source),
+      'time-chord': () => this.ui.setInlineChordTiming(source),
+      'review-chord': () => this.ui.flagInlineChordForReview(source),
+      'line-above': () => this.ui.addInlineChartLineAt(state.songId, state.sectionIndex, state.lineIndex),
+      'line-below': () => this.ui.addInlineChartLineAt(state.songId, state.sectionIndex, state.lineIndex + 1),
+      'split-line': () => this.ui.insertInlineChartLine(state.songId, state.sectionIndex, state.lineIndex, state.caretOffset, state.lyricText),
+      'join-prev': () => this.ui.joinInlineChartLine(state.songId, state.sectionIndex, state.lineIndex, -1),
+      'join-next': () => this.ui.joinInlineChartLine(state.songId, state.sectionIndex, state.lineIndex, 1),
+      'paste-lyrics': async () => this.ui.replaceInlineLyrics(state.songId, state.sectionIndex, state.lineIndex, await navigator.clipboard.readText()),
+      'clear-line-chords': () => this.ui.clearInlineLineChords(state.songId, state.sectionIndex, state.lineIndex),
+      'copy-line-pattern': () => this.ui.copyMatchingLinePattern(state.songId, state.sectionIndex, state.lineIndex),
+      'add-chord': () => this.ui.insertInlineChord(state.songId, state.sectionIndex, state.lineIndex, state.characterOffset),
+      'paste-chord': () => this.ui.pasteInlineChord(this.copiedChord, state),
+      'paste-chord-sequence': () => this.ui.insertInlineChordSequence(state),
+      'add-no-chord': () => this.ui.insertInlineChord(state.songId, state.sectionIndex, state.lineIndex, state.characterOffset, 'N.C.'),
+      'copy-matching-section': () => this.ui.copyMatchingSectionChords(state.songId, state.sectionIndex),
+      'section-above': () => this.ui.addInlineSection(state.songId, state.sectionIndex),
+      'section-below': () => this.ui.addInlineSection(state.songId, state.sectionIndex + 1),
+      'section-here': () => this.ui.addInlineSection(state.songId, state.sectionIndex),
+      'rename-section': () => this.ui.focusInlineSectionLabel(state.songId, state.sectionIndex),
+      'duplicate-section-context': () => this.ui.duplicateInlineSection(state.songId, state.sectionIndex),
+      'section-prev': () => this.ui.moveInlineSection(state.songId, state.sectionIndex, -1),
+      'section-next': () => this.ui.moveInlineSection(state.songId, state.sectionIndex, 1),
+      'delete-section-context': () => this.ui.deleteInlineSection(state.songId, state.sectionIndex)
+    };
+    try { await commands[command]?.(); } catch (error) { this.ui.updateStatus(error?.message || 'Action could not be completed', 'error'); }
   }
 }
 

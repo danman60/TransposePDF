@@ -1432,9 +1432,10 @@ body {
 .add-section-primary:hover, .add-section-primary:focus-visible { background: var(--primary-color); color: #07151b; }
 .copy-section-chords { margin: .25rem 0 .6rem 1.55rem; padding: .38rem .65rem; border: 1px solid var(--primary-color); border-radius: .35rem; background: rgba(79,195,247,.1); color: var(--primary-color); font-family: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; }
 .copy-section-chords:hover, .copy-section-chords:focus-visible { background: var(--primary-color); color: #07151b; }
-.chart-context-menu { position: fixed; z-index: 120; display: grid; width: 210px; padding: 6px; border: 1px solid #52646b; border-radius: 8px; background: #172024; box-shadow: 0 12px 32px rgba(0,0,0,.42); }
+.chart-context-menu { position: fixed; z-index: 120; display: grid; width: 240px; max-height: min(72vh, 560px); overflow-y: auto; padding: 6px; border: 1px solid #52646b; border-radius: 8px; background: #172024; box-shadow: 0 12px 32px rgba(0,0,0,.42); }
 .chart-context-menu button { min-height: 40px; padding: .55rem .7rem; border: 0; border-radius: 5px; background: transparent; color: var(--text-primary); font-family: inherit; font-size: .82rem; font-weight: 700; text-align: left; cursor: pointer; }
 .chart-context-menu button:hover, .chart-context-menu button:focus-visible { background: rgba(79,195,247,.16); color: var(--primary-color); outline: none; }
+.chart-context-menu button[data-tone="danger"] { margin-top: 4px; border-top: 1px solid #52646b; color: #ff9d98; }
 .chart-metadata-row { display: grid; grid-template-columns: 8.5rem minmax(8rem, 1fr) auto; align-items: baseline; gap: .6rem; }
 .chart-metadata-label { color: var(--text-secondary); font-size: .72rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
 .chart-metadata-value { min-height: 1.45rem; border-radius: .25rem; color: var(--text-primary); outline: none; white-space: pre; }

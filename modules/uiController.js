@@ -1432,7 +1432,116 @@ class UIController {
     } catch (_) { return false; }
   }
 
-  async insertInlineChord(songId, sectionIndex, lineIndex, desiredOffset) {
+  focusInlineChord(songId, chordId) {
+    const target = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] .inline-chord-anchor[data-chord-id="${CSS.escape(String(chordId))}"] [data-inline-field="chord"]`);
+    target?.focus();
+    if (target) { const selection = window.getSelection?.(); const range = document.createRange(); range.selectNodeContents(target); selection?.removeAllRanges(); selection?.addRange(range); }
+  }
+
+  focusInlineSectionLabel(songId, sectionIndex) {
+    const target = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] [data-inline-field="section-label"][data-section-index="${sectionIndex}"]`);
+    target?.focus();
+    if (target) { const selection = window.getSelection?.(); const range = document.createRange(); range.selectNodeContents(target); selection?.removeAllRanges(); selection?.addRange(range); }
+  }
+
+  async mutateInlineContext(songId, eventName, mutate, status) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song) return false;
+    const previous = SongModel.create(song); const edited = SongModel.create(song);
+    if (mutate(edited) === false) return false;
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved); this.updateStatus(status, 'success'); this.track(eventName, {}, saved); return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  async addInlineChartLineAt(songId, sectionIndex, insertionIndex) {
+    const saved = await this.mutateInlineContext(songId, 'chart.line.inserted', song => {
+      const lines = song.sections?.[sectionIndex]?.lines; if (!lines) return false;
+      lines.splice(Math.max(0, Math.min(lines.length, insertionIndex)), 0, { id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null, endTime: null, lyricConfidence: null, timedWords: [] });
+    }, 'New lyric line added');
+    if (saved) requestAnimationFrame(() => this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] [data-inline-field="lyrics"][data-section-index="${sectionIndex}"][data-line-index="${insertionIndex}"]`)?.focus());
+    return saved;
+  }
+
+  replaceInlineLyrics(songId, sectionIndex, lineIndex, text) {
+    return this.mutateInlineContext(songId, 'chart.inline_edit.saved', song => {
+      const line = song.sections?.[sectionIndex]?.lines?.[lineIndex]; if (!line) return false;
+      Object.assign(line, LyricAnchor.reconcileLine(line, line.lyrics || '', String(text || '').replace(/[\r\n]+/g, ' ')));
+    }, 'Lyrics pasted');
+  }
+
+  clearInlineLineChords(songId, sectionIndex, lineIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    return this.deleteInlineChords(songId, song?.sections?.[sectionIndex]?.lines?.[lineIndex]?.chords?.map(chord => chord.id) || []);
+  }
+
+  copyMatchingLinePattern(songId, sectionIndex, lineIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const sections = song?.sections || []; const target = sections[sectionIndex];
+    const targetType = Arrangement.normalizeType(target?.label || target?.type);
+    let sourceIndex = -1;
+    for (let index = sectionIndex - 1; index >= 0; index -= 1) { if (Arrangement.normalizeType(sections[index]?.label || sections[index]?.type) === targetType) { sourceIndex = index; break; } }
+    const sourceLine = song?.sections?.[sourceIndex]?.lines?.[lineIndex];
+    if (!sourceLine) return false;
+    return this.mutateInlineContext(songId, 'chart.line.chords_copied', edited => {
+      const target = edited.sections[sectionIndex].lines[lineIndex]; if (target.chords?.length) return false;
+      const sourceLength = Math.max(1, LyricAnchor.graphemes(sourceLine.lyrics || '').length); const targetLength = LyricAnchor.graphemes(target.lyrics || '').length;
+      target.chords = sourceLine.chords.map(chord => { const offset = targetLength ? Math.round((chord.characterOffset || 0) / sourceLength * targetLength) : chord.characterOffset || 0; return { ...chord, id: this.createStableChordId(), characterOffset: offset, confidence: null, timestamp: SongModel.timestampForCharacterOffset(target, offset, null), anchor: LyricAnchor.create(target.lyrics || '', offset, 'manual'), manualEntry: { provenance: 'manual', enteredSymbol: chord.symbol } }; });
+    }, 'Chord pattern copied');
+  }
+
+  copyInlineChordToSection(source, targetSectionIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(source.songId));
+    const targetLineIndex = Math.min(source.lineIndex, Math.max(0, (song?.sections?.[targetSectionIndex]?.lines?.length || 1) - 1));
+    return this.moveInlineChord(source, { sectionIndex: targetSectionIndex, lineIndex: targetLineIndex }, 0, { copy: true });
+  }
+
+  pasteInlineChord(copied, target) {
+    if (!copied) { this.updateStatus('Copy a chord first', 'info'); return false; }
+    return this.moveInlineChord(copied, { sectionIndex: target.sectionIndex, lineIndex: target.lineIndex }, target.characterOffset, { copy: true });
+  }
+
+  markInlineChordCanonical(source) {
+    return this.mutateInlineContext(source.songId, 'chart.chord.canonicalized', song => { const chord = song.sections?.[source.sectionIndex]?.lines?.[source.lineIndex]?.chords?.find(item => String(item.id) === String(source.chordId)); if (!chord) return false; chord.originalSymbol = chord.symbol; chord.manualEntry = { provenance: 'manual', enteredSymbol: chord.symbol }; chord.confidence = null; }, 'Chord spelling marked canonical');
+  }
+
+  setInlineChordTiming(source) {
+    const value = window.prompt('Exact chord time in seconds'); if (value === null) return false;
+    const timing = Number(value); if (!Number.isFinite(timing) || timing < 0) { this.updateStatus('Enter a valid time in seconds', 'error'); return false; }
+    return this.mutateInlineContext(source.songId, 'chart.chord.timing_changed', song => { const chord = song.sections?.[source.sectionIndex]?.lines?.[source.lineIndex]?.chords?.find(item => String(item.id) === String(source.chordId)); if (!chord) return false; chord.timestamp = timing; chord.timingEdited = true; chord.confidence = null; }, `Chord time set to ${timing.toFixed(2)} seconds`);
+  }
+
+  flagInlineChordForReview(source) {
+    return this.mutateInlineContext(source.songId, 'chart.chord.flagged', song => { const chord = song.sections?.[source.sectionIndex]?.lines?.[source.lineIndex]?.chords?.find(item => String(item.id) === String(source.chordId)); if (!chord) return false; chord.confidence = 0; chord.manualReview = true; }, 'Chord flagged for review');
+  }
+
+  copyMatchingSectionChords(songId, sectionIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const sourceIndex = this.chartRenderer.matchingChordSectionIndex(song?.sections || [], sectionIndex);
+    if (sourceIndex < 0) { this.updateStatus('No earlier matching section with chords', 'info'); return false; }
+    return this.copyInlineSectionChords(songId, sourceIndex, sectionIndex);
+  }
+
+  insertInlineChordSequence(state) {
+    const value = window.prompt('Chord sequence, separated by spaces'); if (!value) return false;
+    const symbols = value.trim().split(/\s+/).filter(Boolean); if (!symbols.length) return false;
+    const current = this.currentSongs.find(item => String(item.id) === String(state.songId));
+    const theory = new MusicTheory(); const view = { ...(current?.sessionView || {}), spellingPolicy: current?.spellingPolicy };
+    const convertedSymbols = symbols.map(symbol => theory.canonicalChordFromDisplay(symbol, current, view));
+    const invalid = convertedSymbols.find(item => !item.ok);
+    if (invalid) { this.updateStatus(invalid.error, 'error'); return false; }
+    return this.mutateInlineContext(state.songId, 'chart.chord.sequence_inserted', song => {
+      const line = song.sections?.[state.sectionIndex]?.lines?.[state.lineIndex]; if (!line) return false;
+      let offset = state.characterOffset;
+      convertedSymbols.forEach(converted => { const chord = { id: this.createStableChordId(), symbol: converted.canonical, originalSymbol: converted.canonical, manualEntry: converted.manualEntry, confidence: null, characterOffset: this.authoringController.availableChordOffset(line.chords, offset, converted.canonical), timestamp: null }; chord.anchor = LyricAnchor.create(line.lyrics || '', chord.characterOffset, 'manual'); chord.timestamp = SongModel.timestampForCharacterOffset(line, chord.characterOffset, null); line.chords.push(chord); offset = chord.characterOffset + chord.symbol.length + 1; });
+      line.chords.sort((a, b) => a.characterOffset - b.characterOffset);
+    }, `${convertedSymbols.length} chords inserted`);
+  }
+
+  async insertInlineChord(songId, sectionIndex, lineIndex, desiredOffset, enteredSymbol = 'C') {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     const sourceLine = song?.sections?.[sectionIndex]?.lines?.[lineIndex];
     if (!song || !sourceLine) return false;
@@ -1440,7 +1549,7 @@ class UIController {
     const edited = SongModel.create(song);
     const line = edited.sections[sectionIndex].lines[lineIndex];
     const view = { ...(edited.sessionView || {}), spellingPolicy: edited.spellingPolicy };
-    const placeholder = new MusicTheory().canonicalChordFromDisplay('C', edited, view);
+    const placeholder = new MusicTheory().canonicalChordFromDisplay(enteredSymbol, edited, view);
     if (!placeholder.ok) {
       this.updateStatus(placeholder.error, 'error');
       return false;
@@ -1448,7 +1557,7 @@ class UIController {
     const chord = {
       id: this.createStableChordId(), symbol: placeholder.canonical, originalSymbol: placeholder.canonical,
       manualEntry: placeholder.manualEntry, confidence: null,
-      characterOffset: this.authoringController.availableChordOffset(line.chords, desiredOffset, 'C'),
+      characterOffset: this.authoringController.availableChordOffset(line.chords, desiredOffset, placeholder.canonical),
       timestamp: null
     };
     chord.anchor = LyricAnchor.create(line.lyrics || '', chord.characterOffset, 'manual');
