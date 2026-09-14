@@ -763,6 +763,12 @@ body {
   z-index: 1;
 }
 .lead-sheet .inline-chord-edit:focus { cursor: text; }
+.lead-sheet .inline-chord-anchor.is-selected .inline-chord-edit {
+  color: #07151b;
+  background: var(--primary-color);
+  border-radius: .2rem;
+  box-shadow: 0 0 0 2px var(--primary-color), 0 0 0 4px rgba(79, 195, 247, .28);
+}
 .lead-sheet .inline-chord-edit.inline-edit-invalid {
   color: #b42318;
   text-decoration: underline wavy #d92d20;

@@ -5,6 +5,7 @@ class WorkspaceController {
     this.root = root;
     this.attached = false;
     this.listeners = {};
+    this.selectedChordIds = new Set();
   }
 
   attach() {
@@ -36,6 +37,11 @@ class WorkspaceController {
   }
 
   handleClick(event) {
+    const chord = event.target.closest?.('.inline-chord-anchor[data-chord-id]');
+    if (chord && this.root.contains(chord)) {
+      this.selectInlineChord(chord, event.shiftKey);
+      return;
+    }
     const target = event.target.closest?.('[data-action], [data-song-id]');
     if (!target || !this.root.contains(target)) return;
     const action = target.dataset.action || (target.matches('.song-selector-item') ? 'select-song' : '');
@@ -181,6 +187,23 @@ class WorkspaceController {
   }
 
   handleKeyDown(event) {
+    if (event.altKey && event.key.toLowerCase() === 'z' && !event.isComposing) {
+      event.preventDefault();
+      this.selectedChordIds.clear();
+      this.ui.undoInlineChordDelete();
+      return;
+    }
+    if (event.key === 'Delete' && this.selectedChordIds.size && !event.isComposing) {
+      const sheet = event.target.closest?.('.lead-sheet[data-song-id]')
+        || this.root.querySelector('.inline-chord-anchor.is-selected')?.closest('.lead-sheet[data-song-id]');
+      if (sheet && this.root.contains(sheet)) {
+        event.preventDefault();
+        const ids = [...this.selectedChordIds];
+        this.selectedChordIds.clear();
+        this.ui.deleteInlineChords(sheet.dataset.songId, ids);
+        return;
+      }
+    }
     const target = this.inlineTarget(event);
     if (!target || event.isComposing) return;
     if (event.key === 'Enter') {
@@ -218,6 +241,19 @@ class WorkspaceController {
     if (event.key === 'Escape') {
       event.preventDefault(); target.textContent = target.dataset.originalText || ''; target.blur();
     }
+  }
+
+  selectInlineChord(chord, additive = false) {
+    const id = String(chord.dataset.chordId || '');
+    if (!id) return;
+    if (!additive) this.selectedChordIds.clear();
+    if (additive && this.selectedChordIds.has(id)) this.selectedChordIds.delete(id);
+    else this.selectedChordIds.add(id);
+    this.root.querySelectorAll('.inline-chord-anchor[data-chord-id]').forEach(item => {
+      const selected = this.selectedChordIds.has(String(item.dataset.chordId));
+      item.classList.toggle('is-selected', selected);
+      item.setAttribute('aria-selected', String(selected));
+    });
   }
 
   caretOffset(target) {

@@ -1333,6 +1333,44 @@ class UIController {
     } catch (_) { return false; }
   }
 
+  async deleteInlineChords(songId, chordIds) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const ids = new Set((chordIds || []).map(String));
+    if (!song || !ids.size) return false;
+    const previous = SongModel.create(song);
+    const edited = SongModel.create(song);
+    let removed = 0;
+    (edited.sections || []).forEach(section => (section.lines || []).forEach(line => {
+      const before = line.chords?.length || 0;
+      line.chords = (line.chords || []).filter(chord => !ids.has(String(chord.id)));
+      removed += before - line.chords.length;
+    }));
+    if (!removed) return false;
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      this.inlineChordUndo = { songId: String(songId), song: previous };
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      this.updateStatus(`${removed} chord${removed === 1 ? '' : 's'} deleted · Alt+Z to undo`, 'success');
+      this.track('chart.chord.deleted', { count: removed }, saved);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  async undoInlineChordDelete() {
+    const undo = this.inlineChordUndo;
+    if (!undo) return false;
+    try {
+      const saved = await this.persistSong(SongModel.create(undo.song), { addToSession: false });
+      this.inlineChordUndo = null;
+      this.updateLeadSheetDisplay(saved);
+      this.updateStatus('Chord deletion undone', 'success');
+      this.track('chart.chord.delete_undone', {}, saved);
+      return true;
+    } catch (_) { return false; }
+  }
+
   async insertInlineChord(songId, sectionIndex, lineIndex, desiredOffset) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     const sourceLine = song?.sections?.[sectionIndex]?.lines?.[lineIndex];
