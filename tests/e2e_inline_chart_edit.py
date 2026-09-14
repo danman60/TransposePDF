@@ -115,6 +115,8 @@ def main():
             and moved.get_attribute("data-character-offset") != same_line_offset
             and untouched_after == untouched_before
         )
+        if not results["freeform_drag"]:
+            print("FREEFORM_DRAG_DIAGNOSTIC", {"count": moved.count(), "offset": moved.get_attribute("data-character-offset") if moved.count() else None, "same": same_line_offset, "untouched_equal": untouched_after == untouched_before})
 
         # Real Chromium touch input follows the same visible-symbol path.
         touch_anchor = page.locator(f'.lead-sheet .inline-chord-anchor[data-chord-id="{moved_id}"]')

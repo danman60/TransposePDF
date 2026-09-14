@@ -40,15 +40,15 @@ class PDFGenerator {
         format: 'a4'
       });
 
-      // Add title page
-      this.addTitlePage(pdf, filename, songs);
+      const hasTitlePage = songs.length > 1;
+      if (hasTitlePage) this.addTitlePage(pdf, filename, songs);
 
       // Add each song
       for (let i = 0; i < songs.length; i++) {
         const song = songs[i];
         logger.status(`Processing song ${i + 1}/${songs.length}: ${song.title}`, 'info');
         
-        pdf.addPage();
+        if (hasTitlePage || i > 0) pdf.addPage();
         await this.addSongToPDF(pdf, song);
       }
 
@@ -209,11 +209,12 @@ class PDFGenerator {
   async addStructuredSongToPDF(pdf, song) {
     if (typeof ChartPageLayout === 'undefined') throw new Error('Shared chart page layout is unavailable');
     const plan = ChartPageLayout.plan(song);
+    this.margin = plan.spec.margin;
     this.fontSize = plan.spec.fontSize;
     this.lineHeight = plan.spec.lineHeight;
     for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex += 1) {
       if (pageIndex > 0) pdf.addPage();
-      const top = this.renderSongHeader(pdf, song, pageIndex > 0);
+      const top = this.renderPlannedSongHeader(pdf, song, plan.spec, pageIndex > 0);
       for (let columnIndex = 0; columnIndex < plan.spec.columns; columnIndex += 1) {
         const x = plan.spec.margin + columnIndex * (plan.spec.columnWidth + plan.spec.gutter);
         let y = top;
@@ -224,8 +225,28 @@ class PDFGenerator {
           y += plan.spec.lineHeight;
         }
       }
+      if (pageIndex === plan.pages.length - 1 && plan.metadata.length) {
+        let footerY = plan.spec.pageHeight - plan.spec.margin - (plan.metadataRows - 1) * plan.spec.lineHeight;
+        for (const item of plan.metadata) {
+          const labels = { writer: 'Written by: ', arranger: 'Arrangement by: ', arrangement: 'Arrangement: ' };
+          pdf.setFontSize(item.field === 'arrangement' ? 18 : plan.spec.fontSize);
+          pdf.setFont('courier', item.field === 'arrangement' ? 'bold' : 'normal');
+          pdf.setTextColor(0, 0, 0);
+          pdf.text(`${labels[item.field] || ''}${item.value}`, plan.spec.margin, footerY);
+          footerY += (item.field === 'arrangement' ? 4 : 1) * plan.spec.lineHeight;
+        }
+        this.fontSize = plan.spec.fontSize;
+      }
     }
     return { pagesUsed: plan.pages.length, columns: plan.spec.columns, plan };
+  }
+
+  renderPlannedSongHeader(pdf, song, spec, continuation = false) {
+    const header = this.getSongHeader(song, continuation);
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont(undefined, 'bold'); pdf.setFontSize(20); pdf.text(header.title, spec.margin, spec.margin);
+    pdf.setFont(undefined, 'normal'); pdf.setFontSize(12); pdf.text(header.keyText, spec.margin, spec.margin + 22);
+    return spec.margin + spec.headerHeight;
   }
 
   /**

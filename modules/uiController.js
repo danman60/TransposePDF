@@ -1157,7 +1157,12 @@ class UIController {
     const line = section?.lines?.[Number(target.dataset.lineIndex)];
     if (!['section-label', 'writer', 'arranger', 'arrangement'].includes(field) && !line) return false;
     if (target.dataset.inlineField === 'lyrics') {
-      const nextLyrics = String(value).replace(/[\r\n]+/g, '');
+      const segmentText = String(value).replace(/[\r\n]+/g, '');
+      const sourceStart = Number(target.dataset.sourceStart);
+      const sourceEnd = Number(target.dataset.sourceEnd);
+      const nextLyrics = Number.isFinite(sourceStart) && Number.isFinite(sourceEnd)
+        ? `${String(line.lyrics || '').slice(0, sourceStart)}${segmentText}${String(line.lyrics || '').slice(sourceEnd)}`
+        : segmentText;
       Object.assign(line, LyricAnchor.reconcileLine(line, line.lyrics || '', nextLyrics));
     }
     if (target.dataset.inlineField === 'chord') {

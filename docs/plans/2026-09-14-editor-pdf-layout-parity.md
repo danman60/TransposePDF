@@ -21,6 +21,14 @@ This exists so that the exported PDF has the exact same lyric wrapping and secti
 5. Verify editor/PDF page count, section-column assignment, wrap boundaries, font size, credits placement, manual-entry transpose behavior, searchable text, and drag/edit persistence.
 6. Deploy runtime assets to FIRMAMENT; inspect the exact desktop export and editor side by side.
 
+## Implementation status
+
+- Shared planner: complete; fixed A4 geometry, 16pt lyrics, 18pt arrangement, atomic chord/lyric units, continuation headings, balanced final page, full-width footer reservation.
+- Editor renderer: complete; paginated A4 pages and canonical source-coordinate editing/drag mapping.
+- PDF renderer: complete; consumes same page plan directly. Single-song export omits songbook title page.
+- Local parity gate: 6/6. Existing layout/edit/drag gates: 35/35. Armor manual-entry/transpose/export lifecycle: clean.
+- Remaining: FIRMAMENT deploy, exact live desktop artifact comparison, final completion audit.
+
 ## Evidence requiring replacement
 
 - `C:\Users\danie\Downloads\Transposed Songbook.pdf`, exported 2026-09-14 12:46:54 Eastern: 4 A4 pages, 17,018 bytes.

@@ -168,7 +168,7 @@ class WorkspaceController {
     if (chordLine && this.inlineDrag) {
       event.preventDefault();
       const width = this.ui.authoringController.measureAuthorCharacterWidth(chordLine);
-      const offset = Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
+      const offset = (Number(chordLine.dataset.sourceStart) || 0) + Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
       const source = this.inlineDrag;
       this.inlineDrag = null;
       this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
@@ -187,7 +187,7 @@ class WorkspaceController {
   }
 
   updateSectionDropIndicator(chart, clientX, clientY) {
-    const sections = [...chart.querySelectorAll(':scope > .section-block[data-section-reorder-index]')];
+    const sections = [...chart.querySelectorAll('.section-block[data-section-reorder-index]')];
     if (!sections.length) return;
     const candidates = [];
     sections.forEach((section, index) => {
@@ -286,10 +286,16 @@ class WorkspaceController {
       event.preventDefault();
       if (target.dataset.inlineField === 'lyrics') {
         target.dataset.inlineSaving = 'true';
-        const caret = this.caretOffset(target);
+        const segmentStart = Number(target.dataset.sourceStart) || 0;
+        const segmentEnd = Number(target.dataset.sourceEnd);
+        const caret = segmentStart + this.caretOffset(target);
+        const song = this.ui.currentSongs.find(item => String(item.id) === String(target.closest('.lead-sheet[data-song-id]')?.dataset.songId));
+        const sourceLine = song?.sections?.[Number(target.dataset.sectionIndex)]?.lines?.[Number(target.dataset.lineIndex)]?.lyrics || '';
+        const currentLyrics = Number.isFinite(segmentEnd)
+          ? `${sourceLine.slice(0, segmentStart)}${target.textContent || ''}${sourceLine.slice(segmentEnd)}` : target.textContent || '';
         this.ui.insertInlineChartLine(
           target.closest('.lead-sheet[data-song-id]')?.dataset.songId,
-          Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), caret, target.textContent || ''
+          Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), caret, currentLyrics
         );
       } else target.blur();
     }
@@ -388,7 +394,7 @@ class WorkspaceController {
     event.preventDefault();
     const width = this.ui.authoringController.measureAuthorCharacterWidth(line);
     this.ui.moveInlineChord(drag.source, { sectionIndex: Number(line.dataset.sectionIndex), lineIndex: Number(line.dataset.lineIndex) },
-      Math.max(0, Math.round((event.clientX - line.getBoundingClientRect().left) / width)), { copy: drag.copy });
+      (Number(line.dataset.sourceStart) || 0) + Math.max(0, Math.round((event.clientX - line.getBoundingClientRect().left) / width)), { copy: drag.copy });
   }
 
   handlePointerCancel(event) {
@@ -408,7 +414,7 @@ class WorkspaceController {
     if (!sheet) return;
     event.preventDefault();
     const width = this.ui.authoringController.measureAuthorCharacterWidth(chordLine);
-    const offset = Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
+    const offset = (Number(chordLine.dataset.sourceStart) || 0) + Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
     this.ui.insertInlineChord(sheet.dataset.songId, Number(chordLine.dataset.sectionIndex),
       Number(chordLine.dataset.lineIndex), offset);
   }
@@ -433,10 +439,12 @@ class WorkspaceController {
     const insertionLineIndex = Number.isFinite(lineIndex) ? lineIndex + (lineRect && event.clientY > lineRect.top + lineRect.height / 2 ? 1 : 0) : null;
     const width = lane ? this.ui.authoringController.measureAuthorCharacterWidth(lane) : 1;
     const offset = lane ? Math.max(0, Math.round((event.clientX - lane.getBoundingClientRect().left) / width)) : 0;
+    const song = this.ui.currentSongs.find(item => String(item.id) === String(songId));
     this.contextState = { songId, sectionIndex, lineIndex, chordId: chord?.dataset.chordId || null,
       characterOffset: chord ? Number(chord.dataset.characterOffset) || 0 : offset,
-      insertionLineIndex, caretOffset: lyric ? this.caretOffset(lyric) : 0, lyricText: lyric?.textContent || '' };
-    const song = this.ui.currentSongs.find(item => String(item.id) === String(songId));
+      insertionLineIndex,
+      caretOffset: lyric ? (Number(lyric.dataset.sourceStart) || 0) + this.caretOffset(lyric) : 0,
+      lyricText: lyric ? (() => { const start = Number(lyric.dataset.sourceStart) || 0; const end = Number(lyric.dataset.sourceEnd); const source = song?.sections?.[sectionIndex]?.lines?.[lineIndex]?.lyrics || ''; return Number.isFinite(end) ? `${source.slice(0, start)}${lyric.textContent || ''}${source.slice(end)}` : lyric.textContent || ''; })() : '' };
     let actions;
     if (chord) {
       actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Edit chord', 'edit-chord'], ['Delete chord', 'delete-chord', 'danger'], ['Duplicate chord', 'duplicate-chord'], ['Copy chord', 'copy-chord'],

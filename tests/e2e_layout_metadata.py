@@ -37,10 +37,11 @@ def main():
         page.locator('[data-action="set-layout-columns"][data-columns="2"]').click()
         page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.columns === 2")
         column_style = page.locator(".lead-sheet .structured-chart").evaluate("""chart => {
-          const style = getComputedStyle(chart);
-          return { display: style.display, columnCount: style.columnCount };
+          const columns = chart.querySelector('.chart-page-columns');
+          const style = getComputedStyle(columns);
+          return { display: style.display, gridColumns: style.gridTemplateColumns.split(' ').length };
         }""")
-        checks["two_column_independent_flow"] = column_style["display"] != "grid" and column_style["columnCount"] == "2"
+        checks["two_column_independent_flow"] = column_style["display"] == "grid" and column_style["gridColumns"] == 2
         bounds = page.locator(".lead-sheet .section-block").evaluate_all("""sections => sections.map(section => {
           const box = section.getBoundingClientRect();
           const descendants = [...section.querySelectorAll('.lyric-line, .chord-line, .inline-chord-anchor')];

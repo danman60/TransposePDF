@@ -1,11 +1,13 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-14 Editor/PDF Layout Parity
+## Active Task — 2026-09-14 Shared Editor/PDF Page Layout
 
-FIRMAMENT v41 deployed. PDF export captures the visible editor's section columns and relative line font geometry; editor lyric rows remain intact instead of being independently rewrapped by PDF heuristics.
+Preparing FIRMAMENT v42. Editor and structured PDF consume the same deterministic A4 page plan: 16pt chart type, identical wraps, atomic chord/lyric pairs, balanced final-page columns, continuation labels, and full-width credits/arrangement footer.
 
 ## Recent Changes
 
+- v42 candidate: editor is paginated A4 preview from `ChartPageLayout`; PDF renders the same plan. Wrapped visual segments map edits and chord drops back to canonical source coordinates. Browser geometry parity passes 6/6; editing/drag/layout regressions pass 35/35.
+- v42 final candidate: 16pt lyrics and 18pt arrangement; half-inch margins; atomic chord/lyric wrap units; repeated continuation headings; balanced final-page columns; full-width last-page credits; single-song PDFs omit title page. Local exact editor/PDF gate passes 6/6 and full Armor lifecycle exports 36,697-byte searchable PDF with zero errors.
 - Shared A4 parity engine started: fixed 11pt typography, deterministic wrapping with canonical source ranges, section-aware page/column planning, and credits packing that prevents metadata-only pages. Planner gate passes 7/7; renderer integration remains active work and is not deployed yet.
 - Structured PDF renderer now consumes `ChartPageLayout` pages directly; v41 geometry snapshots and 6.6pt scaling removed. Local searchable PDF gate passes 9/9 at fixed 11pt. Editor integration remains before deployment.
 - v41 candidate: active structured chart geometry is captured at export; PDF consumes editor section-column assignments and row font ratios, removing its separate character-count wrapping decisions.

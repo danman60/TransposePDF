@@ -59,6 +59,7 @@ class ChartRenderer {
   }
 
   renderStructuredContent(song, options = {}) {
+    if (typeof ChartPageLayout !== 'undefined') return this.renderPlannedStructuredContent(song, options);
     const musicTheory = this.musicTheory();
     const sections = song.sections || [];
     const columns = Math.max(1, Math.min(3, Number(options.columns ?? song.layout?.columns) || 1));
@@ -98,6 +99,99 @@ class ChartRenderer {
     }).join('')}${editable ? `<button type="button" class="add-section-primary" data-action="add-section-end" data-song-id="${this.escape(song.id)}">+ Add section</button>` : ''}${metadata}</div>`;
   }
 
+  renderPlannedStructuredContent(song, options = {}) {
+    const editable = Boolean(options.editable);
+    const plannedSong = { ...song, layout: { ...(song.layout || {}), columns: Number(options.columns ?? song.layout?.columns) || 1 } };
+    const plan = ChartPageLayout.plan(plannedSong, { includeEmptyMetadata: editable });
+    const pageHtml = plan.pages.map((page, pageIndex) => {
+      const columns = page.columns.map(rows => this.renderPlannedColumn(rows, song, { ...options, editable })).join('');
+      return `<section class="chart-page" data-chart-page="${pageIndex + 1}" style="--page-columns:${plan.spec.columns}">
+        <header class="chart-page-header"><strong>${this.escape(song.title)}</strong><span>${this.escape(this.plannedKeyText(song))}</span></header>
+        <div class="chart-page-columns">${columns}</div>
+        ${pageIndex === plan.pages.length - 1 ? this.renderPlannedFooter(plan.metadata, song, editable) : ''}
+      </section>`;
+    }).join('');
+    return `<div class="structured-chart paginated-chart" data-layout-columns="${plan.spec.columns}" style="--chart-columns:${plan.spec.columns}">${pageHtml}${editable ? `<button type="button" class="add-section-primary" data-action="add-section-end" data-song-id="${this.escape(song.id)}">+ Add section</button>` : ''}</div>`;
+  }
+
+  renderPlannedFooter(metadata, song, editable) {
+    if (!metadata?.length) return '';
+    return `<footer class="chart-page-footer" aria-label="Song credits and arrangement">${metadata.map(row => {
+      const labels = { writer: 'Written by', arranger: 'Arrangement by', arrangement: 'Arrangement' };
+      return `<div class="planned-footer-row planned-footer-${row.field}"><span>${labels[row.field]}</span><div${editable ? ` contenteditable="plaintext-only" role="textbox" data-inline-field="${row.field}" data-song-id="${this.escape(song.id)}"` : ''}>${this.escape(row.value || '')}</div>${editable && row.field === 'arrangement' && song.arrangement?.mode === 'manual' ? `<button type="button" class="use-song-order" data-action="use-song-order" data-song-id="${this.escape(song.id)}">Use song order</button>` : ''}</div>`;
+    }).join('')}</footer>`;
+  }
+
+  plannedKeyText(song) {
+    let text = `Original Key: ${song.originalKey}`;
+    if (Number(song.transposition)) text += ` | Transposed Key: ${song.currentKey} (${song.transposition > 0 ? '+' : ''}${song.transposition})`;
+    return text;
+  }
+
+  renderPlannedColumn(rows, song, options) {
+    const groups = [];
+    rows.forEach(row => {
+      if (row.metadata) { groups.push({ metadata: true, rows: [row] }); return; }
+      const last = groups[groups.length - 1];
+      if (last && !last.metadata && last.sectionIndex === row.sectionIndex) last.rows.push(row);
+      else groups.push({ sectionIndex: row.sectionIndex, rows: [row] });
+    });
+    return `<div class="chart-page-column">${groups.map(group => group.metadata
+      ? this.renderPlannedMetadata(group.rows[0], song, options.editable)
+      : this.renderPlannedSection(group, song, options)).join('')}</div>`;
+  }
+
+  renderPlannedMetadata(row, song, editable) {
+    if (row.type === 'empty') return '<div class="planned-row planned-empty-row"></div>';
+    const prefixes = { writer: 'Written by: ', arranger: 'Arrangement by: ', arrangement: 'Arrangement: ' };
+    const prefix = prefixes[row.field] || '';
+    const value = row.field === 'writer' ? song.credits?.writer?.value
+      : row.field === 'arranger' ? song.credits?.arranger?.value
+      : row.field === 'arrangement' ? (song.arrangement?.mode === 'manual' ? song.arrangement?.value : song.arrangement?.inferredValue) : row.content;
+    return `<div class="planned-row planned-metadata-row${row.field === 'arrangement' ? ' planned-arrangement-row' : ''}"><span>${this.escape(prefix)}</span><span${editable ? ` contenteditable="plaintext-only" role="textbox" data-inline-field="${row.field}" data-song-id="${this.escape(song.id)}"` : ''}>${this.escape(value || '')}</span></div>`;
+  }
+
+  renderPlannedSection(group, song, options) {
+    const sectionIndex = Number(group.sectionIndex);
+    const section = song.sections?.[sectionIndex];
+    if (!section) return '';
+    const hasHeading = group.rows.some(row => row.type === 'section');
+    const headingRow = group.rows.find(row => row.type === 'section');
+    const heading = hasHeading ? (headingRow.continuation
+      ? `<div class="section-label section-continuation">${this.escape(headingRow.content)}</div>`
+      : this.renderPlannedSectionHeading(section, sectionIndex, song, options.editable)) : '';
+    const lineRows = group.rows.filter(row => !['section'].includes(row.type));
+    const lines = [];
+    for (let index = 0; index < lineRows.length; index += 1) {
+      const row = lineRows[index];
+      if (row.type === 'empty' && row.lineIndex == null) continue;
+      if (row.type === 'chords') {
+        const lyric = lineRows[index + 1]?.lineIndex === row.lineIndex ? lineRows[++index] : { ...row, type: 'empty', content: '' };
+        lines.push(this.renderPlannedLine(row, lyric, song, options));
+      } else if (row.lineIndex != null) lines.push(this.renderPlannedLine(null, row, song, options));
+    }
+    return `<section class="section-block planned-section-block" data-section-reorder-index="${sectionIndex}">${heading}${lines.join('')}</section>`;
+  }
+
+  renderPlannedSectionHeading(section, sectionIndex, song, editable) {
+    if (!editable) return section.label ? `<div class="section-label">${this.escape(section.label)}</div>` : '';
+    return `<div class="section-heading"><span class="section-drag-handle" draggable="true" tabindex="0" aria-label="Drag to reorder section">⠿</span><div class="section-label${section.label ? '' : ' inline-edit-empty'}" contenteditable="plaintext-only" role="textbox" data-inline-field="section-label" data-section-index="${sectionIndex}" data-placeholder="Section">${this.escape(section.label || '')}</div></div>`;
+  }
+
+  renderPlannedLine(chordRow, lyricRow, song, options) {
+    const row = lyricRow || chordRow;
+    const sectionIndex = Number(row.sectionIndex); const lineIndex = Number(row.lineIndex);
+    const sourceStart = Number(row.sourceStart) || 0; const sourceEnd = Number(row.sourceEnd) || sourceStart;
+    const original = song.sections?.[sectionIndex]?.lines?.[lineIndex];
+    const chords = (chordRow?.chords || []).map(chord => ({ ...chord,
+      chordIndex: (original?.chords || []).findIndex(item => String(item.id) === String(chord.id)),
+      displaySymbol: this.displayStoredChord(chord, song, this.musicTheory()) }));
+    return `<div class="chart-line planned-chart-line" data-source-start="${sourceStart}" data-source-end="${sourceEnd}">
+      <div class="chord-line" aria-label="Chords" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}">${this.renderChordAnchors(chords, { ...options, sectionIndex, lineIndex, sourceStart })}</div>
+      <div class="lyric-line${row.content ? '' : ' inline-edit-empty'}"${options.editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit lyrics" data-inline-field="lyrics" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" data-source-start="${sourceStart}" data-source-end="${sourceEnd}" data-placeholder="Type lyrics"` : ''}>${this.escape(row.content || '')}</div>
+    </div>`;
+  }
+
   matchingChordSectionIndex(sections, targetIndex) {
     const target = sections[targetIndex];
     const normalize = value => typeof Arrangement !== 'undefined'
@@ -127,7 +221,7 @@ class ChartRenderer {
       const symbol = this.escape(chord.displaySymbol || chord.symbol);
       if (options.editable) {
         const timestamp = chord.timestamp ?? '';
-        output.push(`<span class="inline-chord-anchor" style="--chord-column:${Number(chord.characterOffset) || 0}" data-chord-id="${this.escape(chord.id)}" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" data-character-offset="${Number(chord.characterOffset) || 0}" data-timestamp="${timestamp}"><span class="chord-token inline-chord-edit" contenteditable="plaintext-only" role="textbox" aria-label="Edit chord ${symbol}" spellcheck="false" data-inline-field="chord" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" title="Type to edit chord">${symbol}</span><span class="inline-chord-drag-handle" contenteditable="false" role="button" tabindex="0" aria-label="Drag ${symbol}" title="Drag chord">⋮</span></span>`);
+        output.push(`<span class="inline-chord-anchor" style="--chord-column:${Number(chord.characterOffset) || 0}" data-chord-id="${this.escape(chord.id)}" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" data-character-offset="${Number(chord.characterOffset) || 0}" data-source-start="${Number(options.sourceStart) || 0}" data-timestamp="${timestamp}"><span class="chord-token inline-chord-edit" contenteditable="plaintext-only" role="textbox" aria-label="Edit chord ${symbol}" spellcheck="false" data-inline-field="chord" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" title="Type to edit chord">${symbol}</span><span class="inline-chord-drag-handle" contenteditable="false" role="button" tabindex="0" aria-label="Drag ${symbol}" title="Drag chord">⋮</span></span>`);
       } else if (options.interactive) {
         const timestamp = chord.timestamp ?? '';
         output.push(`<button type="button" class="chord-token" draggable="true" aria-pressed="false" data-chord-id="${this.escape(chord.id)}" data-section-index="${options.sectionIndex}" data-line-index="${options.lineIndex}" data-chord-index="${chord.chordIndex}" data-character-offset="${Number(chord.characterOffset) || 0}" data-timestamp="${timestamp}" title="Drag to place; arrow keys move">${symbol}</button>`);
