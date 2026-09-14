@@ -328,7 +328,7 @@ body {
 .history-drawer h2,
 .history-drawer .history-preview strong,
 .history-drawer .history-preview p { color: #17252a; }
-.history-item { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; margin: 8px 0; }
+.history-item { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); gap: 6px; margin: 8px 0; }
 .history-item button,
 .history-drawer .drawer-header button { border: 1px solid #94a5ab; color: #17252a; background: #fff; border-radius: 7px; padding: 8px; }
 .history-item [data-preview-version] { display: flex; flex-direction: column; text-align: left; }
@@ -1474,6 +1474,7 @@ body {
 .paginated-chart .chord-line { min-height: 1.2em; color: #0000c8; font-size: 1em !important; line-height: 1.2; }
 .paginated-chart .lyric-line { min-height: 1.2em; margin-bottom: 0; color: #111; font-size: 1em !important; line-height: 1.2; white-space: pre; }
 .planned-row { min-height: 1.2em; color: #111; white-space: pre; }
+.planned-section-gap { min-height: 1.2em; }
 .planned-metadata-row { display: flex; gap: .35em; }
 .planned-arrangement-row { min-height: 4.8em; align-items: flex-start; font-size: 1.12em; font-weight: 700; white-space: normal; }
 .planned-metadata-row [contenteditable] { flex: 1; min-width: 0; outline: none; }

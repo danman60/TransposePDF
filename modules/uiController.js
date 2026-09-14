@@ -1715,10 +1715,31 @@ class UIController {
     if (!song) return;
     const versions = await this.sessionStore.listSongVersions(song.id);
     this.elements.historyDrawer.hidden = false;
-    this.elements.historyList.innerHTML = versions.map(version => `<article class="history-item" data-version-id="${this.escapeHtml(version.id)}"><button type="button" data-preview-version><strong>${this.escapeHtml(version.label || `Revision ${version.revision}`)}</strong><span>${new Date(version.createdAt).toLocaleString()}</span></button><button type="button" data-label-version>Label</button><button type="button" data-restore-version>Restore</button></article>`).join('') || '<p>No saved versions yet.</p>';
+    const currentSectionIds = new Set((song.sections || []).map(section => String(section.id)));
+    this.elements.historyList.innerHTML = versions.map(version => {
+      const missing = (version.song?.sections || []).filter(section => !currentSectionIds.has(String(section.id)));
+      return `<article class="history-item" data-version-id="${this.escapeHtml(version.id)}"><button type="button" data-preview-version><strong>${this.escapeHtml(version.label || `Revision ${version.revision}`)}</strong><span>${new Date(version.createdAt).toLocaleString()}</span></button>${missing.length ? `<button type="button" data-recover-sections>Recover ${missing.length} deleted</button>` : ''}<button type="button" data-label-version>Label</button><button type="button" data-restore-version>Restore</button></article>`;
+    }).join('') || '<p>No saved versions yet.</p>';
     this.elements.historyList.querySelectorAll('.history-item').forEach(item => {
       const version = versions.find(entry => entry.id === item.dataset.versionId);
       item.querySelector('[data-preview-version]').addEventListener('click', () => this.previewHistory(song, version));
+      item.querySelector('[data-recover-sections]')?.addEventListener('click', async () => {
+        const missing = (version.song?.sections || []).filter(section => !(song.sections || []).some(current => String(current.id) === String(section.id)));
+        if (!missing.length || !window.confirm(`Recover ${missing.length} deleted section${missing.length === 1 ? '' : 's'} from ${version.label || `revision ${version.revision}`}? Current sections and newer edits stay unchanged.`)) return;
+        try {
+          const previous = SongModel.create(song); const edited = SongModel.create(song);
+          missing.forEach(section => {
+            const sourceIndex = version.song.sections.findIndex(candidate => String(candidate.id) === String(section.id));
+            const following = version.song.sections.slice(sourceIndex + 1).find(candidate => edited.sections.some(current => String(current.id) === String(candidate.id)));
+            const insertionIndex = following ? edited.sections.findIndex(current => String(current.id) === String(following.id)) : edited.sections.length;
+            edited.sections.splice(insertionIndex, 0, JSON.parse(JSON.stringify(section)));
+          });
+          edited.songText = SongModel.toSongText(edited);
+          await this.persistSong(edited, { addToSession: false }); this.recordInlineUndo(previous); this.displaySongs();
+          this.updateStatus(`${missing.length} deleted section${missing.length === 1 ? '' : 's'} recovered without replacing newer edits`, 'success');
+          await this.openHistory(song.id);
+        } catch (error) { this.handleSessionStoreError(error, 'history.recover-sections'); }
+      });
       item.querySelector('[data-label-version]').addEventListener('click', async () => {
         const label = window.prompt('Version label', version.label || ''); if (label === null) return;
         await this.sessionStore.labelSongVersion(version.id, label); await this.openHistory(song.id);

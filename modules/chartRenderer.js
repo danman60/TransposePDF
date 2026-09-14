@@ -164,7 +164,7 @@ class ChartRenderer {
     const lines = [];
     for (let index = 0; index < lineRows.length; index += 1) {
       const row = lineRows[index];
-      if (row.type === 'empty' && row.lineIndex == null) continue;
+      if (row.type === 'empty' && row.lineIndex == null) { lines.push('<div class="planned-section-gap" aria-hidden="true"></div>'); continue; }
       if (row.type === 'chords') {
         const lyric = lineRows[index + 1]?.lineIndex === row.lineIndex ? lineRows[++index] : { ...row, type: 'empty', content: '' };
         lines.push(this.renderPlannedLine(row, lyric, song, options));

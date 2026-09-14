@@ -1,11 +1,13 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-14 Font Size and Verse Safety
+## Active Task — 2026-09-14 AOG Recovery and Section Spacing
 
-FIRMAMENT v45 deployed. Per-song chart text is user-selectable from 10–18pt, defaults to 13pt, and drives the same editor/PDF wrapping plan. Canonical lyric lines retain one `+ line` control even when visually wrapped.
+FIRMAMENT v46 deployed. Editor now renders shared one-row gaps between sections. Version history can recover deleted sections without rolling back newer edits. Exact AOG recovery target is revision 175: repeated Verse 1 before Bridge, 6 lines and 14 chords.
 
 ## Recent Changes
 
+- v46 live: restored visible section whitespace already reserved by PDF planner; added section-only recovery from any checkpoint. Recovery preserves all current sections and later edits.
+- AOG primary IndexedDB audit: revision 175 had 10 sections/52 lines/139 chords; revision 176 dropped section `20564478-f7c9-4c12-9625-99c16d2847ae` (Verse 1, 6 lines, 14 chords); current revision 192 has 9 sections/46 lines/125 chords. All other section IDs survived.
 - v45 live: persisted font-size selector in sidebar; 13pt default; exact editor/PDF/ChordPro font round-trip; restored `+ line` after v42 planned renderer dropped it. Live Armor snapshot retains six exact Verse 1 lines and renders without overflow.
 - v44 live: fixed editor-only doubled height for wrapped lyric continuations, removed inherited lyric bottom margin, and added overflow/row-height assertions. Editor page contents now fit the same planned rows as PDF.
 - v43/v44: retained 16pt chart type while tightening shared line height from 21.5pt to 19.2pt, reducing false blank space without shrinking lyrics.
@@ -44,6 +46,7 @@ FIRMAMENT v45 deployed. Per-song chart text is user-selectable from 10–18pt, d
 
 ## Verification
 
+- v46 deployed through FIRMAMENT tunnel: section recovery 4/4; editor/PDF parity and spacing 6/6; cache `transpose-app-v46`. Exact live Armor render has 3 pages and zero overflow; spacing screenshot sent to Telegram (`17008`).
 - v45 deployed through FIRMAMENT tunnel: font/layout 21/21; canonical line insertion 9/9; editor/PDF parity 6/6; structured PDF 9/9; inline edit/drag 10/10; section move/copy/undo 6/6. Full Armor lifecycle passed with two analyses, immutable raw evidence, exact edits, transpose/reset, 34,916-byte PDF, and zero console errors. Exact saved Armor screenshot inspected and sent to Telegram (`16981`).
 - v44 deployed through FIRMAMENT tunnel: live cache `transpose-app-v44`; editor/PDF parity 6/6 with zero page overflow; inline editing/freeform drag 10/10; searchable structured PDF 9/9. Live composite visually reviewed and sent to Telegram (`16965`).
 - v41 deployed through FIRMAMENT tunnel: editor/export geometry capture 20/20, searchable structured PDF 9/9, persistent session and actual download 17/17, full Armor manual-entry/transpose lifecycle clean with a 36,324-byte PDF. Live cache is `transpose-app-v41`; rendered A4 output inspected and sent to Telegram.
