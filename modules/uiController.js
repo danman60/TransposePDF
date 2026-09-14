@@ -1132,6 +1132,7 @@ class UIController {
     if (target.dataset.inlineField === 'section-label') {
       section.label = String(value).replace(/[\r\n]+/g, '').trim();
       section.labelProvenance = 'manual';
+      delete section.pendingSection;
       this.updateInferredArrangement(edited);
     }
     const line = section?.lines?.[Number(target.dataset.lineIndex)];
@@ -1293,7 +1294,7 @@ class UIController {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     const insertionIndex = Number.isFinite(index) ? Math.max(0, Math.min(song?.sections?.length || 0, index)) : (song?.sections?.length || 0);
     const saved = await this.mutateInlineSections(songId, 'chart.section.added', sections => sections.splice(insertionIndex, 0, {
-      id: SongModel.createId('section'), type: 'section', label: 'New section', labelProvenance: 'manual',
+      id: SongModel.createId('section'), type: 'section', label: '', labelProvenance: 'pending', pendingSection: true,
       lines: [{ id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null, endTime: null, lyricConfidence: null, timedWords: [] }]
     }));
     if (saved) requestAnimationFrame(() => {
@@ -1307,6 +1308,16 @@ class UIController {
     return saved;
   }
 
+  resolvePendingSection(songId, sectionIndex) {
+    return this.mutateInlineSections(songId, 'chart.section.pending_resolved', sections => {
+      const section = sections[sectionIndex]; if (!section?.pendingSection) return;
+      const meaningful = (section.lines || []).filter(line => line.lyrics || line.chords?.length);
+      if (sectionIndex > 0) sections[sectionIndex - 1].lines.push(...meaningful);
+      else if (meaningful.length) { section.pendingSection = false; section.labelProvenance = 'manual'; return; }
+      sections.splice(sectionIndex, 1);
+    });
+  }
+
   async splitInlineSectionAt(songId, sectionIndex, lineIndex) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     const lines = song?.sections?.[sectionIndex]?.lines || [];
@@ -1317,7 +1328,7 @@ class UIController {
     const saved = await this.mutateInlineSections(songId, 'chart.section.split', sections => {
       const source = sections[sectionIndex];
       const movedLines = source.lines.splice(splitIndex);
-      sections.splice(newSectionIndex, 0, { id: SongModel.createId('section'), type: 'section', label: 'New section', labelProvenance: 'manual', lines: movedLines });
+      sections.splice(newSectionIndex, 0, { id: SongModel.createId('section'), type: 'section', label: '', labelProvenance: 'pending', pendingSection: true, lines: movedLines });
     });
     if (saved) requestAnimationFrame(() => this.focusInlineSectionLabel(songId, newSectionIndex));
     return saved;

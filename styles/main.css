@@ -1427,6 +1427,10 @@ body {
 }
 
 .section-block { break-inside: avoid; min-width: 0; }
+.structured-chart[data-layout-columns="2"] .section-block,
+.structured-chart[data-layout-columns="3"] .section-block { overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: #52646b transparent; }
+.structured-chart[data-layout-columns="2"] .chart-line,
+.structured-chart[data-layout-columns="3"] .chart-line { width: max-content; min-width: 100%; padding-right: .5rem; }
 .chart-metadata { grid-column: 1 / -1; display: grid; gap: .45rem; margin-top: 1.8rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-family: inherit; }
 .add-section-primary { grid-column: 1 / -1; justify-self: start; min-height: 40px; margin-top: .65rem; padding: .5rem .9rem; border: 1px solid var(--primary-color); border-radius: .4rem; background: rgba(79,195,247,.1); color: var(--primary-color); font-family: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; }
 .add-section-primary:hover, .add-section-primary:focus-visible { background: var(--primary-color); color: #07151b; }

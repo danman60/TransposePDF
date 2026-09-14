@@ -14,7 +14,7 @@ class SongModel {
       ? LyricAnchor
       : (typeof require === 'function' ? require('./lyricAnchor') : null);
     const imported = input.sourceType && input.sourceType !== 'manual';
-    const sections = (input.sections || []).map((section, sectionIndex) => ({
+    const normalizedSections = (input.sections || []).map((section, sectionIndex) => ({
       ...section,
       id: section.id || this.createId('section'),
       type: section.type || 'section',
@@ -42,6 +42,7 @@ class SongModel {
         timedWords: line.timedWords || []
       }))
     }));
+    const sections = this.collapseUnsectionedSections(normalizedSections);
 
     const song = {
       ...input,
@@ -83,6 +84,24 @@ class SongModel {
 
     song.songText = this.toSongText(song);
     return song;
+  }
+
+  static collapseUnsectionedSections(sections = []) {
+    const placeholders = new Set(['', 'ns', 'no section', 'new section', 'unsectioned']);
+    const result = [];
+    let hasRealSection = false;
+    sections.forEach(section => {
+      const label = String(section.label || '').trim().toLowerCase();
+      const unsectioned = !section.pendingSection && placeholders.has(label);
+      if (unsectioned && hasRealSection && result.length) {
+        const meaningful = (section.lines || []).filter(line => line.lyrics || line.chords?.length);
+        result[result.length - 1].lines.push(...meaningful);
+        return;
+      }
+      result.push(section);
+      if (!placeholders.has(label)) hasRealSection = true;
+    });
+    return result.length ? result : sections;
   }
 
   static normalizeCredit(value) {

@@ -115,4 +115,15 @@ const chord = (lyrics, offset, provenance = 'manual') => ({
   assert.equal(applied.applied, 0, 'correction inference skips canonical manual chord');
 }
 
-console.log('lyric anchor/schema: 11 deterministic groups passed');
+{
+  const normalized = SongModel.create({ title: 'Sections', sections: [
+    { id: 'verse', label: 'Verse 1', lines: [{ id: 'v1', lyrics: 'first', chords: [] }] },
+    { id: 'none', label: 'NS', lines: [{ id: 'continued', lyrics: 'belongs above', chords: [] }] },
+    { id: 'chorus', label: 'Chorus', lines: [{ id: 'c1', lyrics: 'chorus', chords: [] }] },
+    { id: 'pending', label: '', pendingSection: true, lines: [{ id: 'pending-line', lyrics: '', chords: [] }] }
+  ] });
+  assert.deepEqual(normalized.sections.map(section => section.id), ['verse', 'chorus', 'pending']);
+  assert.deepEqual(normalized.sections[0].lines.map(line => line.id), ['v1', 'continued']);
+}
+
+console.log('lyric anchor/schema: 12 deterministic groups passed');

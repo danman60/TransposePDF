@@ -202,6 +202,11 @@ class WorkspaceController {
     if (!target || target.dataset.inlineSaving === 'true') return;
     const next = (target.textContent || '').replace(/[\r\n]+/g, '');
     if (next === (target.dataset.originalText || '')) {
+      if (!next && target.dataset.inlineField === 'section-label') {
+        const sheet = target.closest('.lead-sheet[data-song-id]');
+        this.ui.resolvePendingSection(sheet?.dataset.songId, Number(target.dataset.sectionIndex));
+        return;
+      }
       if (!next) target.classList.add('inline-edit-empty');
       return;
     }
