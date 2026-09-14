@@ -59,6 +59,7 @@ class WorkspaceController {
       'add-section-before': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex)),
       'add-section-after': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex) + 1),
       'add-section-end': () => this.ui.addInlineSection(songId),
+      'copy-section-chords': () => this.ui.copyInlineSectionChords(songId, Number(target.dataset.sourceSectionIndex), Number(target.dataset.sectionIndex)),
       'duplicate-section': () => this.ui.duplicateInlineSection(songId, Number(target.dataset.sectionIndex)),
       'delete-section': () => this.ui.deleteInlineSection(songId, Number(target.dataset.sectionIndex)),
       'move-section': () => this.ui.moveInlineSection(songId, Number(target.dataset.sectionIndex), target.dataset.direction === 'up' ? -1 : 1),

@@ -1281,6 +1281,56 @@ class UIController {
     return saved;
   }
 
+  async copyInlineSectionChords(songId, sourceIndex, targetIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const source = song?.sections?.[sourceIndex];
+    const target = song?.sections?.[targetIndex];
+    if (!song || !source || !target || (target.lines || []).some(line => line.chords?.length)) return false;
+    const previous = SongModel.create(song);
+    const edited = SongModel.create(song);
+    const sourceLines = edited.sections[sourceIndex].lines || [];
+    const targetSection = edited.sections[targetIndex];
+    if (targetSection.lines.length === 1 && !targetSection.lines[0].lyrics && sourceLines.length > 1) {
+      while (targetSection.lines.length < sourceLines.length) targetSection.lines.push({
+        id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null, endTime: null,
+        lyricConfidence: null, timedWords: []
+      });
+    }
+    let copied = 0;
+    targetSection.lines.forEach((targetLine, lineIndex) => {
+      const sourceLine = sourceLines[lineIndex];
+      if (!sourceLine) return;
+      const sourceLength = Math.max(1, LyricAnchor.graphemes(sourceLine.lyrics || '').length);
+      const targetLength = LyricAnchor.graphemes(targetLine.lyrics || '').length;
+      targetLine.chords = (sourceLine.chords || []).map(chord => {
+        const relativeOffset = targetLength
+          ? Math.round((Number(chord.characterOffset) || 0) / sourceLength * targetLength)
+          : Number(chord.characterOffset) || 0;
+        const copy = {
+          ...chord,
+          id: this.createStableChordId(),
+          characterOffset: relativeOffset,
+          confidence: null,
+          manualEntry: { provenance: 'manual', enteredSymbol: chord.symbol }
+        };
+        copy.anchor = LyricAnchor.create(targetLine.lyrics || '', relativeOffset, 'manual');
+        copy.timestamp = SongModel.timestampForCharacterOffset(targetLine, relativeOffset, null);
+        copied += 1;
+        return copy;
+      });
+    });
+    if (!copied) return false;
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      this.updateStatus(`${copied} chord${copied === 1 ? '' : 's'} copied from ${source.label || `section ${sourceIndex + 1}`}`, 'success');
+      this.track('chart.section.chords_copied', { sourceIndex, targetIndex, count: copied }, saved);
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
   duplicateInlineSection(songId, index) {
     return this.mutateInlineSections(songId, 'chart.section.duplicated', sections => {
       const source = sections[index]; if (!source) return;

@@ -101,7 +101,7 @@ const chord = (lyrics, offset, provenance = 'manual') => ({
   assert.deepEqual(again, normalized, 'schema normalization is idempotent');
   assert.equal(normalized.layout.columns, 1);
   assert.equal(normalized.credits.writer.value, '');
-  assert.equal(normalized.arrangement.inferredValue, 'Verse 1');
+  assert.equal(normalized.arrangement.inferredValue, 'V1');
 }
 
 {

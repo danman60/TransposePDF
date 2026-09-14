@@ -72,6 +72,10 @@ class ChartRenderer {
       <div class="chart-metadata-row chart-arrangement-row"><span class="chart-metadata-label">Arrangement</span><div class="chart-metadata-value${arrangement ? '' : ' inline-edit-empty'}"${editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit arrangement order" spellcheck="false" data-inline-field="arrangement" data-placeholder="${this.escape(song.arrangement?.inferredValue || 'V1 C V2 C B C')}"` : ''}>${this.escape(arrangement)}</div>${editable && song.arrangement?.mode === 'manual' ? `<button type="button" class="use-song-order" data-action="use-song-order" data-song-id="${this.escape(song.id)}">Use song order</button>` : ''}</div>
     </footer>`;
     return `<div class="structured-chart" data-layout-columns="${columns}" style="--chart-columns:${columns}">${sections.map((section, sectionIndex) => {
+      const sourceIndex = this.matchingChordSectionIndex(sections, sectionIndex);
+      const chordOffer = editable && sourceIndex >= 0
+        ? `<button type="button" class="copy-section-chords" data-action="copy-section-chords" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" data-source-section-index="${sourceIndex}">Use chords from ${this.escape(sections[sourceIndex].label || `section ${sourceIndex + 1}`)}</button>`
+        : '';
       const label = options.editable
         ? `<div class="section-heading"><span class="section-drag-handle" draggable="true" tabindex="0" aria-label="Drag to reorder section" title="Drag section">⠿</span><div class="section-label${section.label ? '' : ' inline-edit-empty'}" contenteditable="plaintext-only" role="textbox" aria-label="Edit section label" spellcheck="true" data-inline-field="section-label" data-section-index="${sectionIndex}" data-placeholder="Section">${this.escape(section.label || '')}</div><div class="section-actions" aria-label="Section actions"><button type="button" data-action="add-section-before" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Add section before">+ before</button><button type="button" data-action="add-section-after" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Add section after">+ after</button><button type="button" data-action="duplicate-section" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Duplicate section">Duplicate</button><button type="button" data-action="move-section" data-direction="up" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" aria-label="Move section up">↑</button><button type="button" data-action="move-section" data-direction="down" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" aria-label="Move section down">↓</button><button type="button" data-action="delete-section" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" title="Delete section">Delete</button></div></div>`
         : (section.label ? `<div class="section-label">${this.escape(section.label)}</div>` : '');
@@ -87,8 +91,21 @@ class ChartRenderer {
           ${options.editable ? `<button type="button" class="inline-add-line" data-action="add-chart-line" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" data-line-index="${lineIndex}" aria-label="Add lyric line after this line" title="Add line">+ line</button>` : ''}
         </div>`;
       }).join('');
-      return `<section class="section-block" data-section-reorder-index="${sectionIndex}">${label}${lines}</section>`;
+      return `<section class="section-block" data-section-reorder-index="${sectionIndex}">${label}${chordOffer}${lines}</section>`;
     }).join('')}${editable ? `<button type="button" class="add-section-primary" data-action="add-section-end" data-song-id="${this.escape(song.id)}">+ Add section</button>` : ''}${metadata}</div>`;
+  }
+
+  matchingChordSectionIndex(sections, targetIndex) {
+    const target = sections[targetIndex];
+    const normalize = value => typeof Arrangement !== 'undefined'
+      ? Arrangement.normalizeType(value) : String(value || '').toLowerCase().replace(/[\s_-]*\d+$/, '');
+    const targetType = normalize(target?.label || target?.type);
+    if (!target || targetType === 'section' || (target.lines || []).some(line => line.chords?.length)) return -1;
+    for (let index = targetIndex - 1; index >= 0; index -= 1) {
+      const source = sections[index];
+      if (normalize(source?.label || source?.type) === targetType && (source.lines || []).some(line => line.chords?.length)) return index;
+    }
+    return -1;
   }
 
   renderMetadataField(label, field, value, editable, songId) {

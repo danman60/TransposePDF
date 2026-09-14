@@ -9,7 +9,7 @@ class Arrangement {
   static infer(sections = []) {
     const counts = new Map();
     return sections.map(section => {
-      const type = this.normalizeType(section?.type || section?.label);
+      const type = this.normalizeType(section?.label || section?.type);
       counts.set(type, (counts.get(type) || 0) + 1);
       return this.shorthand(section, counts.get(type));
     }).filter(Boolean).join(' ');
@@ -17,7 +17,7 @@ class Arrangement {
 
   static shorthand(section = {}, occurrence = 1) {
     const label = String(section.label || '').trim();
-    const type = this.normalizeType(section.type || label);
+    const type = this.normalizeType(label || section.type);
     const base = this.TYPES[type] || this.customLabel(label || section.type);
     const explicitNumber = label.match(/(?:^|\s)(\d+)(?:\s|$)/)?.[1];
     if (explicitNumber) return `${base}${explicitNumber}`;
