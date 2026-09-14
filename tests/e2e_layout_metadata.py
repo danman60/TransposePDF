@@ -25,6 +25,8 @@ def main():
         )
         page.locator("#saveChartButton").click()
         page.locator(".lead-sheet").wait_for()
+        export_box = page.locator("#songLibrarySidebar #exportButton").bounding_box()
+        checks["export_visible_in_sidebar"] = bool(export_box) and export_box["y"] >= 0 and export_box["y"] + export_box["height"] <= 1000
 
         for columns in (1, 2, 3):
             page.locator(f'[data-action="set-layout-columns"][data-columns="{columns}"]').click()
@@ -69,6 +71,14 @@ def main():
         arranger.fill("Ray Arranger"); arranger.blur()
         arrangement = page.locator('[data-inline-field="arrangement"]')
         arrangement.fill("I V1 C V2 C"); arrangement.blur()
+        arrangement_style = arrangement.evaluate("""element => {
+          const box = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return { height: box.height, fontSize: parseFloat(style.fontSize), whiteSpace: style.whiteSpace };
+        }""")
+        checks["arrangement_follow_along_size"] = arrangement_style["height"] >= 80 and arrangement_style["fontSize"] >= 18 and arrangement_style["whiteSpace"] != "pre"
+        if not checks["arrangement_follow_along_size"]:
+            print("ARRANGEMENT_STYLE_DIAGNOSTIC", arrangement_style)
         page.wait_for_function("() => window.transposeApp.currentSongs[0].arrangement?.mode === 'manual'")
         checks["manual_metadata_canonical"] = page.evaluate("""() => {
           const s=window.transposeApp.currentSongs[0];

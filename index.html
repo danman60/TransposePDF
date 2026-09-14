@@ -219,7 +219,7 @@
         <section class="songs-section" id="songsSection" style="display: none;">
             <div class="section-header">
                 <h2>Songs <span class="song-count" id="songCount">0</span></h2>
-                <div class="section-actions"><button class="secondary-button" id="reviewButton" type="button">Review <span id="reviewBadge">0</span></button><button class="secondary-button" id="controlsButton" type="button">Controls</button><button class="primary-button" id="performanceButton" type="button">Performance</button><button class="export-button" id="exportButton" disabled>Export PDF</button></div>
+                <div class="section-actions"><button class="secondary-button" id="reviewButton" type="button">Review <span id="reviewBadge">0</span></button><button class="secondary-button" id="controlsButton" type="button">Controls</button><button class="primary-button" id="performanceButton" type="button">Performance</button></div>
             </div>
             <label class="mobile-song-selector" for="activeSongSelect">
                 <span>Current song</span>
@@ -237,6 +237,7 @@
                         <button id="sidebarImportChordProButton" type="button"><span aria-hidden="true">{c}</span>Import ChordPro</button>
                         <button id="sidebarImportAudioButton" type="button"><span aria-hidden="true">♪</span>Import recording</button>
                     </nav>
+                    <button class="export-button sidebar-export-button" id="exportButton" type="button" disabled><span aria-hidden="true">PDF</span> Export PDF</button>
                     <div class="sidebar-song-controls" id="sidebarSongControls"></div>
                     <div class="library-sidebar-heading">
                         <strong>Session songs</strong>
