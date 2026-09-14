@@ -1405,12 +1405,7 @@ class UIController {
   }
 
   duplicateInlineSection(songId, index) {
-    return this.mutateInlineSections(songId, 'chart.section.duplicated', sections => {
-      const source = sections[index]; if (!source) return;
-      const copy = JSON.parse(JSON.stringify(source)); copy.id = SongModel.createId('section');
-      copy.labelProvenance = 'manual'; copy.lines.forEach(line => { line.id = SongModel.createId('line'); line.chords.forEach(chord => { chord.id = this.createStableChordId(); }); });
-      sections.splice(index + 1, 0, copy);
-    });
+    return this.placeInlineSection(songId, index, index + 1, { copy: true });
   }
 
   deleteInlineSection(songId, index) {
@@ -1420,10 +1415,25 @@ class UIController {
   moveInlineSection(songId, index, delta) { return this.reorderInlineSection(songId, index, index + delta); }
 
   reorderInlineSection(songId, from, to) {
-    return this.mutateInlineSections(songId, 'chart.section.reordered', sections => {
-      const destination = Math.max(0, Math.min(sections.length - 1, to));
-      if (from < 0 || from >= sections.length || from === destination) return;
-      const [section] = sections.splice(from, 1); sections.splice(destination, 0, section);
+    const insertionIndex = Number(to) > Number(from) ? Number(to) + 1 : Number(to);
+    return this.placeInlineSection(songId, from, insertionIndex);
+  }
+
+  placeInlineSection(songId, from, insertionIndex, { copy = false } = {}) {
+    return this.mutateInlineSections(songId, copy ? 'chart.section.duplicated' : 'chart.section.reordered', sections => {
+      if (from < 0 || from >= sections.length) return;
+      const boundary = Math.max(0, Math.min(sections.length, Number(insertionIndex)));
+      if (!copy && (boundary === from || boundary === from + 1)) return;
+      let section;
+      if (copy) {
+        section = JSON.parse(JSON.stringify(sections[from]));
+        section.id = SongModel.createId('section'); section.labelProvenance = 'manual';
+        section.lines.forEach(line => { line.id = SongModel.createId('line'); line.chords.forEach(chord => { chord.id = this.createStableChordId(); }); });
+      } else {
+        [section] = sections.splice(from, 1);
+      }
+      const destination = copy ? boundary : boundary - (boundary > from ? 1 : 0);
+      sections.splice(destination, 0, section);
     });
   }
 

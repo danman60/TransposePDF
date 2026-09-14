@@ -15,6 +15,7 @@ class WorkspaceController {
     this.listeners.dragstart = event => this.handleDragStart(event);
     this.listeners.dragover = event => this.handleDragOver(event);
     this.listeners.drop = event => this.handleDrop(event);
+    this.listeners.dragend = event => this.handleDragEnd(event);
     this.listeners.focusin = event => this.handleFocusIn(event);
     this.listeners.focusout = event => this.handleFocusOut(event);
     this.listeners.keydown = event => this.handleKeyDown(event);
@@ -27,11 +28,13 @@ class WorkspaceController {
     this.listeners.contextmenu = event => this.handleContextMenu(event);
     Object.entries(this.listeners).forEach(([name, listener]) => this.root.addEventListener(name, listener));
     this.documentPointerDown = event => { if (!event.target.closest?.('.chart-context-menu')) this.closeContextMenu(); };
+    this.documentKeyDown = event => { if (!this.root.contains(event.target)) this.handleKeyDown(event); };
     this.windowDismissMenu = event => {
       if (event?.type === 'scroll' && this.contextMenu && (event.target === this.contextMenu || this.contextMenu.contains?.(event.target))) return;
       this.closeContextMenu();
     };
     document.addEventListener('pointerdown', this.documentPointerDown);
+    document.addEventListener('keydown', this.documentKeyDown);
     window.addEventListener('resize', this.windowDismissMenu);
     window.addEventListener('scroll', this.windowDismissMenu, true);
     this.attached = true;
@@ -42,6 +45,7 @@ class WorkspaceController {
     if (!this.attached || !this.root) return;
     Object.entries(this.listeners).forEach(([name, listener]) => this.root.removeEventListener(name, listener));
     document.removeEventListener('pointerdown', this.documentPointerDown);
+    document.removeEventListener('keydown', this.documentKeyDown);
     window.removeEventListener('resize', this.windowDismissMenu);
     window.removeEventListener('scroll', this.windowDismissMenu, true);
     this.closeContextMenu();
@@ -120,9 +124,10 @@ class WorkspaceController {
     const section = sectionHandle?.closest('.section-block[data-section-reorder-index]');
     if (section && this.root.contains(section)) {
       this.sectionDrag = { songId: section.closest('.lead-sheet')?.dataset.songId,
-        sectionIndex: Number(section.dataset.sectionReorderIndex) };
+        sectionIndex: Number(section.dataset.sectionReorderIndex), copy: Boolean(event.altKey), insertionIndex: null };
+      section.classList.add('section-dragging');
       event.dataTransfer?.setData('text/section-index', String(section.dataset.sectionReorderIndex));
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = this.sectionDrag.copy ? 'copy' : 'move';
       return;
     }
     const row = event.target.closest?.('[data-reorder-id]');
@@ -130,8 +135,13 @@ class WorkspaceController {
   }
 
   handleDragOver(event) {
-    const section = event.target.closest?.('.section-block[data-section-reorder-index]');
-    if (section && this.sectionDrag) { event.preventDefault(); section.classList.add('section-drop-target'); return; }
+    const chart = event.target.closest?.('.structured-chart');
+    if (chart && this.sectionDrag) {
+      event.preventDefault();
+      this.updateSectionDropIndicator(chart, event.clientX, event.clientY);
+      if (event.dataTransfer) event.dataTransfer.dropEffect = this.sectionDrag.copy ? 'copy' : 'move';
+      return;
+    }
     const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
     if (chordLine && this.inlineDrag) {
       event.preventDefault();
@@ -146,12 +156,12 @@ class WorkspaceController {
   }
 
   handleDrop(event) {
-    const section = event.target.closest?.('.section-block[data-section-reorder-index]');
-    if (section && this.sectionDrag) {
+    const chart = event.target.closest?.('.structured-chart');
+    if (chart && this.sectionDrag) {
       event.preventDefault();
       const source = this.sectionDrag; this.sectionDrag = null;
-      this.root.querySelectorAll('.section-drop-target').forEach(item => item.classList.remove('section-drop-target'));
-      this.ui.reorderInlineSection(source.songId, source.sectionIndex, Number(section.dataset.sectionReorderIndex));
+      this.clearSectionDropIndicator();
+      this.ui.placeInlineSection(source.songId, source.sectionIndex, source.insertionIndex, { copy: source.copy });
       return;
     }
     const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
@@ -174,6 +184,37 @@ class WorkspaceController {
     event.preventDefault();
     const songId = event.dataTransfer?.getData('text/song-id');
     if (songId) this.ui.reorderSessionSong(songId, [...row.parentElement.children].indexOf(row));
+  }
+
+  updateSectionDropIndicator(chart, clientX, clientY) {
+    const sections = [...chart.querySelectorAll(':scope > .section-block[data-section-reorder-index]')];
+    if (!sections.length) return;
+    const candidates = [];
+    sections.forEach((section, index) => {
+      const box = section.getBoundingClientRect();
+      const dx = clientX < box.left ? box.left - clientX : clientX > box.right ? clientX - box.right : 0;
+      candidates.push({ section, index, edge: 'before', distance: Math.hypot(dx, clientY - box.top) });
+      candidates.push({ section, index: index + 1, edge: 'after', distance: Math.hypot(dx, clientY - box.bottom) });
+    });
+    const nearest = candidates.sort((a, b) => a.distance - b.distance)[0];
+    this.clearSectionDropIndicator(false);
+    nearest.section.classList.add(nearest.edge === 'before' ? 'section-drop-before' : 'section-drop-after');
+    this.sectionDrag.insertionIndex = nearest.index;
+  }
+
+  clearSectionDropIndicator(clearDrag = true) {
+    this.root.querySelectorAll('.section-drop-before, .section-drop-after, .section-dragging').forEach(item => {
+      item.classList.remove('section-drop-before', 'section-drop-after', 'section-dragging');
+    });
+    if (clearDrag) this.sectionDrag = null;
+  }
+
+  handleDragEnd() {
+    this.clearSectionDropIndicator();
+    this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
+      item.classList.remove('dragging', 'author-drop-target'); item.style.removeProperty('--drop-caret-left');
+    });
+    this.inlineDrag = null;
   }
 
   moveSong(target, songId) {

@@ -1462,8 +1462,15 @@ body {
   margin-top: 0;
 }
 
-.section-block { border-radius: .45rem; padding: .25rem; }
+.section-block { position: relative; border-radius: .45rem; padding: .25rem; }
 .section-block.section-drop-target { outline: 2px dashed var(--primary-color); background: color-mix(in srgb, var(--primary-color) 8%, transparent); }
+.section-block.section-dragging { opacity: .48; }
+.section-block.section-drop-before { background: linear-gradient(to bottom, var(--primary-color) 0 3px, transparent 3px); }
+.section-block.section-drop-after { background: linear-gradient(to top, var(--primary-color) 0 3px, transparent 3px); }
+.section-block.section-drop-before::before,
+.section-block.section-drop-after::after { content: ''; position: absolute; z-index: 6; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--primary-color); box-shadow: 0 0 0 1px #07151b, 0 0 10px rgba(79,195,247,.75); pointer-events: none; }
+.section-block.section-drop-before::before { top: -.7rem; }
+.section-block.section-drop-after::after { bottom: -.7rem; }
 .section-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; min-width: 0; min-height: 1.8rem; }
 .section-drag-handle { color: var(--text-secondary); cursor: grab; opacity: .55; user-select: none; }
 .section-drag-handle:active { cursor: grabbing; }
