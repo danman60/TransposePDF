@@ -47,6 +47,9 @@ TELEMETRY_EVENT_TYPES = {
     "editor.changed", "chord.dragged", "chord.timing_changed", "chart.saved",
     "transpose.changed", "spelling.changed", "export.opened", "export.completed",
     "export.failed", "ui.error", "song.selected", "draft.recovered", "draft.discarded",
+    "chart.chord.inserted", "chart.chord.copied", "chart.chord.dragged",
+    "chart.inline_edit.saved", "chart.line.inserted",
+    "chart.line.removed", "view.changed",
 }
 TELEMETRY_SCREENS = {
     "start", "audio-import", "pdf-import", "author-source", "author-preview",

@@ -74,7 +74,11 @@
   .recovery-actions { display: grid; grid-template-columns: 1fr 1fr; }
 
   .session-workspace { display: block; }
+  .mobile-tools-toggle { display: block; width: 100%; min-height: 44px; margin-bottom: .65rem; border: 1px solid #4b626c; border-radius: 7px; background: #1d2a2f; color: var(--text-primary); font-weight: 750; }
   .song-library-sidebar { display: none; }
+  .song-library-sidebar[data-mobile-open="true"] { display: block; position: fixed; z-index: 75; inset: auto .5rem .5rem .5rem; top: 4.5rem; max-height: calc(100dvh - 5rem); border-color: #51666f; box-shadow: 0 18px 60px rgba(0,0,0,.68); }
+  .mobile-tools-close { display: block; width: 100%; min-height: 42px; margin-bottom: .8rem; border: 1px solid #52646b; border-radius: 6px; background: #26353a; color: var(--text-primary); font-weight: 750; }
+  .sidebar-control-group { grid-template-columns: 1fr 1fr; }
   .transpose-controls { align-items: end; }
   .transpose-controls label { min-width: 88px; }
   .section-actions { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }

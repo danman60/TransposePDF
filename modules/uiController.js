@@ -12,6 +12,7 @@ class UIController {
     this.editingSongId = null;
     this.audioAbortController = null;
     this.audioJobId = null;
+    this.lyricsFileRead = Promise.resolve();
     this.correctionMemory = new ChordCorrectionMemory();
     this.authorDrag = null;
     this.selectedAuthorChord = null;
@@ -78,6 +79,10 @@ class UIController {
       songsContainer: document.getElementById('songsContainer'),
       sessionWorkspace: document.getElementById('sessionWorkspace'),
       songSelectorList: document.getElementById('songSelectorList'),
+      sidebarSongControls: document.getElementById('sidebarSongControls'),
+      songLibrarySidebar: document.getElementById('songLibrarySidebar'),
+      songToolsToggle: document.getElementById('songToolsToggle'),
+      songToolsClose: document.getElementById('songToolsClose'),
       activeSongSelect: document.getElementById('activeSongSelect'),
       librarySongCount: document.getElementById('librarySongCount'),
       sessionName: document.getElementById('sessionName'),
@@ -227,6 +232,18 @@ class UIController {
   }
 
   attachEventListeners() {
+    this.elements.songToolsToggle?.addEventListener('click', () => {
+      const open = this.elements.songLibrarySidebar?.dataset.mobileOpen !== 'true';
+      if (this.elements.songLibrarySidebar) this.elements.songLibrarySidebar.dataset.mobileOpen = String(open);
+      this.elements.songToolsToggle.setAttribute('aria-expanded', String(open));
+      this.elements.songToolsToggle.textContent = open ? 'Close song tools' : 'Song tools';
+    });
+    this.elements.songToolsClose?.addEventListener('click', () => {
+      if (this.elements.songLibrarySidebar) this.elements.songLibrarySidebar.dataset.mobileOpen = 'false';
+      this.elements.songToolsToggle?.setAttribute('aria-expanded', 'false');
+      if (this.elements.songToolsToggle) this.elements.songToolsToggle.textContent = 'Song tools';
+      this.elements.songToolsToggle?.focus();
+    });
     // File input
     this.elements.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
 
@@ -239,7 +256,9 @@ class UIController {
     this.elements.audioFileButton.addEventListener('click', () => this.elements.audioFileInput.click());
     this.elements.lyricsFileButton.addEventListener('click', () => this.elements.lyricsFileInput.click());
     this.elements.audioFileInput.addEventListener('change', event => this.handleAudioUpload(event));
-    this.elements.lyricsFileInput.addEventListener('change', event => this.handleLyricsFile(event));
+    this.elements.lyricsFileInput.addEventListener('change', event => {
+      this.lyricsFileRead = this.handleLyricsFile(event);
+    });
     this.elements.audioLyricsInput.addEventListener('input', () => this.updateLyricsSourceStatus());
     this.elements.saveChartButton.addEventListener('click', () => this.saveAuthoredSong());
     this.elements.authorContent.addEventListener('input', () => this.updateAuthorPreview(true));
@@ -606,6 +625,9 @@ class UIController {
     // Reload can finish networking before IndexedDB/session hydration finishes.
     // Never let a new import race the restored session and overwrite its state.
     await this.ready;
+    // File selection events can arrive back-to-back. Finish reading an authoritative
+    // lyric sheet before snapshotting the text into the audio-analysis request.
+    await this.lyricsFileRead;
     this.audioAbortController = new AbortController();
     this.elements.audioJob.style.display = 'block';
     this.updateAudioProgress('Uploading recording', 5, 'Sending audio to the analysis server.');
@@ -934,6 +956,7 @@ class UIController {
     
     // Create full lead sheet view for each song
     const activeSong = this.currentSongs.find(song => String(song.id) === String(this.activeSongId));
+    this.renderSidebarSongControls(activeSong);
     this.elements.songsContainer.appendChild(this.createLeadSheetView(activeSong, this.currentSongs.indexOf(activeSong)));
     
     // Show sections
@@ -961,6 +984,23 @@ class UIController {
         return `<div class="song-selector-row" draggable="true" data-reorder-id="${id}" data-song-id="${id}"><button type="button" class="song-selector-item${active ? ' active' : ''}" data-action="select-song" data-song-id="${id}" aria-current="${active ? 'true' : 'false'}"><strong>${this.escapeHtml(song.title)}</strong><span>${this.escapeHtml(song.currentKey)}</span></button><button type="button" class="song-row-action" data-action="move-song" data-direction="up" data-song-id="${id}" aria-label="Move ${this.escapeHtml(song.title)} up">↑</button><button type="button" class="song-row-action" data-action="move-song" data-direction="down" data-song-id="${id}" aria-label="Move ${this.escapeHtml(song.title)} down">↓</button><button type="button" class="song-row-action danger" data-action="remove-song" data-song-id="${id}" aria-label="Remove ${this.escapeHtml(song.title)} from session">×</button></div>`;
       }).join('');
     }
+  }
+
+  renderSidebarSongControls(song) {
+    if (!this.elements.sidebarSongControls || !song) return;
+    const songId = this.escapeHtml(String(song.id));
+    const transposition = Number(song.transposition) || 0;
+    this.elements.sidebarSongControls.innerHTML = `
+      <div class="sidebar-song-heading"><span class="sidebar-eyebrow">Now editing</span><h2>${this.escapeHtml(song.title)}</h2><p><strong id="keyIndicator-${song.id}">Key of ${this.escapeHtml(song.currentKey)}</strong><span>Original ${this.escapeHtml(song.originalKey)}</span></p></div>
+      <button class="sidebar-edit-state edit-song-button" data-action="focus-chart" data-song-id="${songId}" type="button">Editing on chart</button>
+      <div class="sidebar-control-group">
+        <label>Chord spelling<select class="spelling-policy" data-action="set-spelling" data-song-id="${songId}" aria-label="Chord spelling for ${this.escapeHtml(song.title)}"><option value="contextual"${(song.spellingPolicy || 'contextual') === 'contextual' ? ' selected' : ''}>Contextual</option><option value="flats"${song.spellingPolicy === 'flats' ? ' selected' : ''}>Prefer flats</option><option value="sharps"${song.spellingPolicy === 'sharps' ? ' selected' : ''}>Prefer sharps</option><option value="preserve"${song.spellingPolicy === 'preserve' ? ' selected' : ''}>Preserve</option></select></label>
+        <label>Notation<select class="view-notation" data-action="set-chart-view" data-field="notation" data-song-id="${songId}"><option value="chords"${(song.sessionView?.notation || 'chords') === 'chords' ? ' selected' : ''}>Chord symbols</option><option value="nashville"${song.sessionView?.notation === 'nashville' ? ' selected' : ''}>Nashville</option></select></label>
+        <label>Capo<select class="view-capo" data-action="set-chart-view" data-field="capo" data-song-id="${songId}">${Array.from({length: 12}, (_, value) => `<option value="${value}"${Number(song.sessionView?.capo || 0) === value ? ' selected' : ''}>${value ? `Capo ${value}` : 'No capo'}</option>`).join('')}</select></label>
+        <label>Instrument<select class="view-instrument" data-action="set-chart-view" data-field="instrument" data-song-id="${songId}">${[['concert','Concert'],['bb','B♭'],['eb','E♭'],['f','F']].map(([value,label]) => `<option value="${value}"${(song.sessionView?.instrument || 'concert') === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
+      </div>
+      <div class="sidebar-transpose" aria-label="Transpose ${this.escapeHtml(song.title)}"><span>Transpose</span><div><button data-action="transpose-song" data-song-id="${songId}" data-semitones="-1" type="button" aria-label="Transpose down">−</button><output id="transposeValue-${song.id}">${transposition > 0 ? `+${transposition}` : transposition}<small>semitones</small></output><button data-action="transpose-song" data-song-id="${songId}" data-semitones="1" type="button" aria-label="Transpose up">+</button></div></div>
+      <div class="sidebar-tool-links"><button data-action="reset-song" data-song-id="${songId}" type="button">↺ Reset original key</button><button data-action="open-history" data-song-id="${songId}" type="button">◷ Version history</button></div>`;
   }
 
   async reorderSessionSong(songId, index) {
@@ -999,48 +1039,10 @@ class UIController {
     sheet.setAttribute('role', 'article');
     sheet.setAttribute('aria-label', `${song.title} chord sheet`);
     
-    // Create transpose controls bar
-    const songId = this.escapeHtml(String(song.id));
-    const controlsBar = `
-      <div class="song-controls">
-        <div class="song-header">
-          <h2 class="song-title">${this.escapeHtml(song.title)}</h2>
-          <div class="song-info">
-            <span class="key-indicator" id="keyIndicator-${song.id}">${song.currentKey}</span>
-            <span class="original-key">Original: ${song.originalKey}</span>
-          </div>
-        </div>
-        
-        <div class="transpose-controls">
-          <button class="secondary-button edit-song-button" data-action="focus-chart" data-song-id="${songId}" type="button" title="Edit lyrics and chords directly on this chart">Edit on chart</button>
-          <label class="spelling-policy-label">Spelling
-            <select class="spelling-policy" data-action="set-spelling" data-song-id="${songId}" aria-label="Chord spelling for ${this.escapeHtml(song.title)}">
-              <option value="contextual"${(song.spellingPolicy || 'contextual') === 'contextual' ? ' selected' : ''}>Contextual</option>
-              <option value="flats"${song.spellingPolicy === 'flats' ? ' selected' : ''}>Prefer flats</option>
-              <option value="sharps"${song.spellingPolicy === 'sharps' ? ' selected' : ''}>Prefer sharps</option>
-              <option value="preserve"${song.spellingPolicy === 'preserve' ? ' selected' : ''}>Preserve</option>
-            </select>
-          </label>
-          <label>Notation<select class="view-notation" data-action="set-chart-view" data-field="notation" data-song-id="${songId}"><option value="chords"${(song.sessionView?.notation || 'chords') === 'chords' ? ' selected' : ''}>Chords</option><option value="nashville"${song.sessionView?.notation === 'nashville' ? ' selected' : ''}>Nashville</option></select></label>
-          <label>Capo<select class="view-capo" data-action="set-chart-view" data-field="capo" data-song-id="${songId}">${Array.from({length: 12}, (_, value) => `<option value="${value}"${Number(song.sessionView?.capo || 0) === value ? ' selected' : ''}>${value}</option>`).join('')}</select></label>
-          <label>Instrument<select class="view-instrument" data-action="set-chart-view" data-field="instrument" data-song-id="${songId}">${[['concert','Concert'],['bb','B♭'],['eb','E♭'],['f','F']].map(([value,label]) => `<option value="${value}"${(song.sessionView?.instrument || 'concert') === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
-          <button class="secondary-button history-button" data-action="open-history" data-song-id="${songId}" type="button">History</button>
-          <button class="transpose-button" data-action="transpose-song" data-song-id="${songId}" data-semitones="-1" type="button" title="Transpose down" aria-label="Transpose ${this.escapeHtml(song.title)} down one semitone">−</button>
-          <div class="transpose-display">
-            <div class="transpose-value" id="transposeValue-${song.id}">${song.transposition > 0 ? `+${song.transposition}` : song.transposition}</div>
-            <div class="transpose-label">semitones</div>
-          </div>
-          <button class="transpose-button" data-action="transpose-song" data-song-id="${songId}" data-semitones="1" type="button" title="Transpose up" aria-label="Transpose ${this.escapeHtml(song.title)} up one semitone">+</button>
-          <button class="reset-button" data-action="reset-song" data-song-id="${songId}" type="button" title="Reset to original key" aria-label="Reset ${this.escapeHtml(song.title)} to original key">↺</button>
-        </div>
-      </div>
-    `;
-    
     // Create the lead sheet content area
     const leadSheetContent = this.renderLeadSheetContent(song);
     
     sheet.innerHTML = `
-      ${controlsBar}
       <div class="lead-sheet-content" id="leadSheet-${song.id}">
         ${leadSheetContent}
       </div>
@@ -1156,7 +1158,12 @@ class UIController {
     this.updateStatus('Edit lyrics in place. Type chord symbols or drag them anywhere above a lyric line.', 'success');
   }
 
-  async moveInlineChord(source, destination, desiredOffset) {
+  createStableChordId() {
+    if (globalThis.crypto?.randomUUID) return `chord-${globalThis.crypto.randomUUID()}`;
+    return `chord-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  async moveInlineChord(source, destination, desiredOffset, { copy = false } = {}) {
     const song = this.currentSongs.find(item => String(item.id) === String(source.songId));
     if (!song) return false;
     const previous = SongModel.create(song);
@@ -1165,21 +1172,56 @@ class UIController {
     const destinationLine = edited.sections?.[destination.sectionIndex]?.lines?.[destination.lineIndex];
     const chord = sourceLine?.chords?.find(item => String(item.id) === String(source.chordId));
     if (!chord || !destinationLine) return false;
-    sourceLine.chords.splice(sourceLine.chords.indexOf(chord), 1);
-    chord.characterOffset = this.authoringController.availableChordOffset(destinationLine.chords, desiredOffset, chord.symbol);
-    chord.timestamp = SongModel.timestampForCharacterOffset(destinationLine, chord.characterOffset, chord.timestamp);
-    chord.confidence = null;
-    destinationLine.chords.push(chord);
+    if (!copy) sourceLine.chords.splice(sourceLine.chords.indexOf(chord), 1);
+    const placedChord = copy ? { ...chord, id: this.createStableChordId() } : chord;
+    placedChord.characterOffset = this.authoringController.availableChordOffset(destinationLine.chords, desiredOffset, placedChord.symbol);
+    placedChord.timestamp = SongModel.timestampForCharacterOffset(destinationLine, placedChord.characterOffset, placedChord.timestamp);
+    placedChord.confidence = null;
+    destinationLine.chords.push(placedChord);
     destinationLine.chords.sort((left, right) => left.characterOffset - right.characterOffset);
     edited.songText = SongModel.toSongText(edited);
     try {
       const saved = await this.persistSong(edited, { addToSession: false });
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
-      this.updateStatus(`${chord.symbol} moved to column ${chord.characterOffset + 1}`, 'success');
-      this.track('chart.chord.dragged', { sectionIndex: destination.sectionIndex, lineIndex: destination.lineIndex, characterOffset: chord.characterOffset }, saved);
+      this.updateStatus(`${placedChord.symbol} ${copy ? 'copied' : 'moved'} to column ${placedChord.characterOffset + 1}`, 'success');
+      this.track(copy ? 'chart.chord.copied' : 'chart.chord.dragged', { sectionIndex: destination.sectionIndex, lineIndex: destination.lineIndex, characterOffset: placedChord.characterOffset }, saved);
       return true;
     } catch (_) { return false; }
+  }
+
+  async insertInlineChord(songId, sectionIndex, lineIndex, desiredOffset) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const sourceLine = song?.sections?.[sectionIndex]?.lines?.[lineIndex];
+    if (!song || !sourceLine) return false;
+    const previous = SongModel.create(song);
+    const edited = SongModel.create(song);
+    const line = edited.sections[sectionIndex].lines[lineIndex];
+    const chord = {
+      id: this.createStableChordId(), symbol: 'C', originalSymbol: 'C', confidence: null,
+      characterOffset: this.authoringController.availableChordOffset(line.chords, desiredOffset, 'C'),
+      timestamp: null
+    };
+    chord.timestamp = SongModel.timestampForCharacterOffset(line, chord.characterOffset, null);
+    line.chords.push(chord);
+    line.chords.sort((left, right) => left.characterOffset - right.characterOffset);
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      requestAnimationFrame(() => {
+        const selector = `.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] .inline-chord-anchor[data-chord-id="${CSS.escape(String(chord.id))}"] [data-inline-field="chord"]`;
+        const target = this.elements.songsContainer.querySelector(selector);
+        if (!target) return;
+        target.focus();
+        const selection = window.getSelection?.();
+        if (selection) { const range = document.createRange(); range.selectNodeContents(target); selection.removeAllRanges(); selection.addRange(range); }
+      });
+      this.updateStatus(`New chord at column ${chord.characterOffset + 1}`, 'success');
+      this.track('chart.chord.inserted', { sectionIndex, lineIndex, characterOffset: chord.characterOffset }, saved);
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
   }
 
   renderStructuredContent(song, options = {}) {

@@ -21,6 +21,8 @@ class WorkspaceController {
     this.listeners.pointerdown = event => this.handlePointerDown(event);
     this.listeners.pointermove = event => this.handlePointerMove(event);
     this.listeners.pointerup = event => this.handlePointerUp(event);
+    this.listeners.pointercancel = event => this.handlePointerCancel(event);
+    this.listeners.dblclick = event => this.handleDoubleClick(event);
     Object.entries(this.listeners).forEach(([name, listener]) => this.root.addEventListener(name, listener));
     this.attached = true;
     return this;
@@ -70,11 +72,12 @@ class WorkspaceController {
       this.inlineDrag = {
         songId: chord.closest('.lead-sheet[data-song-id]')?.dataset.songId,
         sectionIndex: Number(chord.dataset.sectionIndex), lineIndex: Number(chord.dataset.lineIndex),
-        chordId: chord.dataset.chordId
+        chordId: chord.dataset.chordId,
+        copy: Boolean(event.altKey)
       };
       chord.classList.add('dragging');
       event.dataTransfer?.setData('text/chord-id', chord.dataset.chordId);
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = this.inlineDrag.copy ? 'copy' : 'move';
       return;
     }
     const row = event.target.closest?.('[data-reorder-id]');
@@ -108,7 +111,7 @@ class WorkspaceController {
       });
       this.ui.moveInlineChord(source, {
         sectionIndex: Number(chordLine.dataset.sectionIndex), lineIndex: Number(chordLine.dataset.lineIndex)
-      }, offset);
+      }, offset, { copy: source.copy });
       return;
     }
     const row = event.target.closest?.('[data-reorder-id]');
@@ -196,7 +199,8 @@ class WorkspaceController {
     this.pointerDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false,
       element: chord,
       source: { songId: chord.closest('.lead-sheet[data-song-id]')?.dataset.songId,
-        sectionIndex: Number(chord.dataset.sectionIndex), lineIndex: Number(chord.dataset.lineIndex), chordId: chord.dataset.chordId } };
+        sectionIndex: Number(chord.dataset.sectionIndex), lineIndex: Number(chord.dataset.lineIndex), chordId: chord.dataset.chordId },
+      copy: Boolean(event.altKey) };
   }
 
   handlePointerMove(event) {
@@ -229,7 +233,29 @@ class WorkspaceController {
     event.preventDefault();
     const width = this.ui.authoringController.measureAuthorCharacterWidth(line);
     this.ui.moveInlineChord(drag.source, { sectionIndex: Number(line.dataset.sectionIndex), lineIndex: Number(line.dataset.lineIndex) },
-      Math.max(0, Math.round((event.clientX - line.getBoundingClientRect().left) / width)));
+      Math.max(0, Math.round((event.clientX - line.getBoundingClientRect().left) / width)), { copy: drag.copy });
+  }
+
+  handlePointerCancel(event) {
+    if (!this.pointerDrag || this.pointerDrag.pointerId !== event.pointerId) return;
+    this.pointerDrag = null;
+    this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
+      item.classList.remove('dragging', 'author-drop-target');
+      item.style.removeProperty('--drop-caret-left');
+    });
+  }
+
+  handleDoubleClick(event) {
+    if (event.target.closest?.('.inline-chord-anchor')) return;
+    const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
+    if (!chordLine || !this.root.contains(chordLine)) return;
+    const sheet = chordLine.closest('.lead-sheet[data-song-id]');
+    if (!sheet) return;
+    event.preventDefault();
+    const width = this.ui.authoringController.measureAuthorCharacterWidth(chordLine);
+    const offset = Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
+    this.ui.insertInlineChord(sheet.dataset.songId, Number(chordLine.dataset.sectionIndex),
+      Number(chordLine.dataset.lineIndex), offset);
   }
 }
 

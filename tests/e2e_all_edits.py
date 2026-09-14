@@ -80,12 +80,46 @@ def main():
             raise AssertionError("v2 recording snapshot was not stored")
         raw_after_save = page.evaluate("JSON.stringify(window.transposeApp.currentSongs[0].source.rawAnalysis)")
         results["raw_immutable_after_save"] = raw_before == raw_after_save
+        results["first_saved_state"] = page.evaluate("""() => {
+          const app = window.transposeApp;
+          const song = app.currentSongs.find(item => String(item.id) === String(app.activeSongId)) || app.currentSongs[0];
+          const memory = JSON.parse(localStorage.getItem('transposepdf.chord-corrections.v1'));
+          return {
+            activeSongId: app.activeSongId,
+            songId: song?.id,
+            title: song?.title,
+            key: song?.originalKey,
+            fingerprint: app.correctionMemory.recordingFingerprint(song),
+            filename: song?.source?.filename,
+            duration: song?.source?.duration ?? song?.duration,
+            lyricsLength: (song?.source?.authoritativeLyrics || song?.source?.transcriptText || '').length,
+            editKeys: Object.keys(memory?.songEdits || {}),
+            editingSongId: app.editingSongId
+          };
+        }""")
 
         page.reload(wait_until="networkidle")
         started = time.time()
         import_recording(page)
         results["second_analysis_seconds"] = round(time.time() - started, 2)
         returned_text = page.locator("#authorContent").input_value()
+        results["second_import_state"] = page.evaluate("""() => {
+          const app = window.transposeApp;
+          const song = app.currentSongs.find(item => String(item.id) === String(app.editingSongId)) || app.currentSongs[0];
+          return {
+            activeSongId: app.activeSongId,
+            editingSongId: app.editingSongId,
+            songId: song?.id,
+            title: song?.title,
+            key: song?.originalKey,
+            fingerprint: app.correctionMemory.recordingFingerprint(song),
+            filename: song?.source?.filename,
+            duration: song?.source?.duration ?? song?.duration,
+            lyricsLength: (song?.source?.authoritativeLyrics || song?.source?.transcriptText || '').length,
+            savedEditsApplied: song?.source?.savedEditsApplied,
+            songCount: app.currentSongs.length
+          };
+        }""")
         results["exact_editor_text"] = returned_text == accepted_text
         results["title"] = page.locator("#authorTitle").input_value() == title
         results["key"] = page.locator("#authorKey").input_value() == "C"
@@ -99,10 +133,10 @@ def main():
         raw_after_second_save = page.evaluate("JSON.stringify(window.transposeApp.currentSongs[0].source.rawAnalysis)")
         results["raw_immutable_after_reimport"] = raw_before_second_save == raw_after_second_save
         song_id = page.evaluate("window.transposeApp.activeSongId")
-        page.get_by_role("button", name=re.compile(r"^Transpose .* up one semitone$")).click()
-        results["transpose"] = page.locator(f"#transposeValue-{song_id}").inner_text() == "+1"
-        page.get_by_role("button", name=re.compile(r"^Reset .* to original key$")).click()
-        results["reset"] = page.locator(f"#transposeValue-{song_id}").inner_text() == "0"
+        page.locator("[data-action='transpose-song'][data-semitones='1']").click()
+        results["transpose"] = page.locator(f"#transposeValue-{song_id}").inner_text().strip().startswith("+1")
+        page.locator("[data-action='reset-song']").click()
+        results["reset"] = page.locator(f"#transposeValue-{song_id}").inner_text().strip().startswith("0")
         page.locator("#exportButton").click()
         with page.expect_download(timeout=60_000) as download_info:
             page.locator("#exportFinalButton").click()

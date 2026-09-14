@@ -225,8 +225,11 @@
                 <span>Current song</span>
                 <select id="activeSongSelect" aria-label="Choose current song"></select>
             </label>
+            <button class="mobile-tools-toggle" id="songToolsToggle" type="button" aria-controls="songLibrarySidebar" aria-expanded="false">Song tools</button>
             <div class="session-workspace" id="sessionWorkspace">
-                <aside class="song-library-sidebar" aria-label="Songs in this session">
+                <aside class="song-library-sidebar" id="songLibrarySidebar" aria-label="Song tools and songs in this session">
+                    <button class="mobile-tools-close" id="songToolsClose" type="button">Close song tools</button>
+                    <div class="sidebar-song-controls" id="sidebarSongControls"></div>
                     <div class="library-sidebar-heading">
                         <strong>Session songs</strong>
                         <span id="librarySongCount">0</span>

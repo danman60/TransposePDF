@@ -48,14 +48,14 @@ def main():
         page.keyboard.type("Wonderful")
         select_text(page, lyric, 10, 16)
         page.keyboard.press("Backspace")
-        page.locator(".song-title").click()
+        page.locator(".sidebar-song-heading h2").click()
         page.wait_for_function("() => document.querySelector('#sessionSaveState')?.textContent.includes('Saved')")
         expected_lyric = page.locator(lyric).text_content()
         results["lyric_type_delete"] = expected_lyric == "Wonderful how sweet the sound"
 
         select_text(page, chord, 0, 1)
         page.keyboard.type("Dm7")
-        page.locator(".song-title").click()
+        page.locator(".sidebar-song-heading h2").click()
         page.wait_for_function("() => document.querySelector('#sessionSaveState')?.textContent.includes('Saved')")
         results["chord_replace"] = page.locator(chord).text_content() == "Dm7"
 
@@ -64,7 +64,7 @@ def main():
         page.mouse.click(chord_box["x"] + chord_box["width"] / 2, chord_box["y"] + chord_box["height"] / 2)
         page.keyboard.press("End")
         page.keyboard.type("sus2")
-        page.locator(".song-title").click()
+        page.locator(".sidebar-song-heading h2").click()
         page.wait_for_function("() => document.querySelector('#sessionSaveState')?.textContent.includes('Saved')")
         results["click_then_type"] = page.locator(chord).text_content() == "Dm7sus2"
 

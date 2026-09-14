@@ -116,19 +116,19 @@ def main():
         wait_for_library(page)
         results["immediate_spelling_reload"] = page.locator(".spelling-policy").input_value() == "flats"
 
-        page.locator(".transpose-button[title='Transpose up']").click()
-        page.locator(".transpose-button[title='Transpose up']").click()
+        page.locator("[data-action='transpose-song'][data-semitones='1']").click()
+        page.locator("[data-action='transpose-song'][data-semitones='1']").click()
         page.reload(wait_until="domcontentloaded")
         wait_for_library(page)
         results["rapid_transpose_reload"] = page.evaluate(
             "() => { const s = window.transposeApp.currentSongs.find(x => String(x.id) === String(window.transposeApp.activeSongId)); return s.transposition === 2 && s.currentKey === 'D'; }"
-        ) and page.locator(".transpose-value").text_content() == "+2"
+        ) and page.locator(".sidebar-transpose output").text_content().strip().startswith("+2")
 
         # Leave durable semantic evidence after proving immediate-navigation persistence.
         page.locator(".spelling-policy").select_option("sharps")
         page.locator(".spelling-policy").select_option("flats")
-        page.locator(".transpose-button[title='Transpose down']").click()
-        page.locator(".transpose-button[title='Transpose up']").click()
+        page.locator("[data-action='transpose-song'][data-semitones='-1']").click()
+        page.locator("[data-action='transpose-song'][data-semitones='1']").click()
         page.wait_for_timeout(700)
 
         page.evaluate("window.transposeApp.openAuthoring(window.transposeApp.activeSongId)")
@@ -156,11 +156,15 @@ def main():
         results["mobile"] = (
             page.locator("#activeSongSelect").is_visible()
             and page.locator("#songsContainer .lead-sheet").count() == 1
-            and page.locator(".song-title").text_content() == "Gamma"
-            and page.locator(".edit-song-button").is_visible()
+            and page.locator("#activeSongSelect option:checked").text_content().startswith("Gamma")
+            and page.locator("#songToolsToggle").is_visible()
         )
         page.screenshot(path=str(ARTIFACTS / "persistent-workspace-mobile.png"))
-        page.locator(".edit-song-button").click()
+        page.locator("#songToolsToggle").click()
+        assert page.locator("#songLibrarySidebar").is_visible()
+        page.screenshot(path=str(ARTIFACTS / "persistent-workspace-mobile-tools.png"))
+        page.locator("#songToolsClose").click()
+        page.locator('.lead-sheet [data-inline-field="lyrics"]').first.click()
         results["mobile_edit"] = page.locator(
             '.lead-sheet [data-inline-field="lyrics"]'
         ).first.evaluate("el => el.isContentEditable && document.activeElement === el")
