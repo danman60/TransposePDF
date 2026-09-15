@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-14 Live Column Rewrap
+## Active Task — 2026-09-15 Exact Column-Edge Wrapping
 
-v50 candidate makes vertical center-divider dragging replan and rewrap each column live at its own width, while preserving v49 per-song page geometry. Exact AOG recovery remains available from revision 175: repeated Verse 1 before Bridge, 6 lines and 14 chords.
+v51 is live on FIRMAMENT. Editor typography and gutter now scale against the CSS page content box, matching the planner/PDF point geometry. Text reaches the draggable divider instead of wrapping against an invisible narrower budget. Exact AOG recovery remains available from revision 175: repeated Verse 1 before Bridge, 6 lines and 14 chords.
 
 ## Recent Changes
 
+- v51 live: fixed page-width/content-box mismatch in chart font and gutter scaling. Saved font size, margins, gutter, column ratios, editor wrapping, and PDF wrapping now use one physical geometry.
 - v50 candidate: center-divider pointer movement renders an unsaved preview from canonical song data; each column wraps at its own computed width. Release persists one ratio revision. Shared PDF consumes identical per-column row plan. Unequal-width final pages no longer run equal-column balancing.
 - v49 candidate: vertical full-height divider handles resize adjacent columns live and persist semantic ratios per song. Letter/A4/Legal/Tabloid/custom page sizes, portrait/landscape, independent margins, and gutter settings now drive the shared editor/PDF plan. Variable-page typography scales from actual page width rather than the prior A4 constant.
 - v48 candidate: Layout mode now renders the current automatic column/page termination as a labeled draggable dotted handle immediately. No right-click or pre-existing manual break required; dragging promotes it to a persisted semantic override.
@@ -50,6 +51,7 @@ v50 candidate makes vertical center-divider dragging replan and rewrap each colu
 
 ## Verification
 
+- v51 live through FIRMAMENT tunnel: 26/26 geometry assertions; 10/10 divider drag/reflow lifecycle; 6/6 editor/PDF parity. Runtime SHA-256 matches local. Screenshot inspected and Telegram DM `17040` sent. Cloud QA Agent rejected configured Anthropic model with HTTP 400 before any browser action; no local model used.
 - v50 candidate: 24/24 planner checks include narrow-vs-wide independent wrapping; 10/10 browser lifecycle proves text rewraps during drag before persistence; geometry/PDF 9/9; legacy parity 6/6 and layout 21/21.
 - v49 candidate: 23/23 deterministic page geometry checks; 9/9 real-browser geometry/PDF checks; 9/9 layout director lifecycle; existing editor/PDF parity 6/6 and layout regression 21/21. Letter-landscape unequal columns render without overflow; PDF reports exact 792×612pt page.
 - v48 candidate: 7/7 real-browser lifecycle checks prove automatic handle visibility before any manual break, pointer drag, persistence, presets, content invariance, and shared export plan. Visual screenshot inspected at 2-column whole-page scale.

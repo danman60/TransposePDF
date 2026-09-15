@@ -1,5 +1,7 @@
 const assert = require('node:assert/strict');
 const ChartPageLayout = require('../modules/chartPageLayout');
+global.ChartPageLayout = ChartPageLayout;
+const ChartRenderer = require('../modules/chartRenderer');
 
 const song = {
   layout: { columns: 2 },
@@ -64,4 +66,12 @@ const wrapPlan = ChartPageLayout.plan(wrapSong);
 const narrowSegments = wrapPlan.pages[0].columns[0].filter(row => row.lineId === 'wrap-0' && row.type === 'text').length;
 const wideSegments = wrapPlan.pages[0].columns[1].filter(row => row.lineId === 'wrap-1' && row.type === 'text').length;
 assert.ok(narrowSegments > wideSegments, `independent wrapping expected narrow ${narrowSegments} > wide ${wideSegments}`);
-console.log('24/24 shared page geometry and independent wrapping checks passed');
+const renderedGeometrySong = { id: 'geometry-song', title: 'Geometry', currentKey: 'A', layout: {
+  columns: 2, pageSize: 'a4', margins: { top: 36, right: 54, bottom: 36, left: 18 }, gutter: 24, fontSize: 10
+}, sections: [{ id: 's', label: 'Verse', lines: [{ id: 'l', lyrics: 'Lost and lonely souls draw in their final breath', chords: [] }] }] };
+const renderedGeometrySpec = ChartPageLayout.spec(renderedGeometrySong.layout);
+const renderedGeometry = new ChartRenderer().renderPlannedStructuredContent(renderedGeometrySong, { editable: true });
+const innerPageWidth = renderedGeometrySpec.pageWidth - renderedGeometrySpec.margins.left - renderedGeometrySpec.margins.right;
+assert.ok(renderedGeometry.includes(`--chart-render-font:${(renderedGeometrySpec.fontSize / innerPageWidth * 100).toFixed(4)}cqi`), 'screen font must scale against CSS content-box width');
+assert.ok(renderedGeometry.includes(`--page-gutter:${(renderedGeometrySpec.gutter / innerPageWidth * 100).toFixed(4)}cqi`), 'screen gutter must scale against CSS content-box width');
+console.log('26/26 shared page geometry, CSS scale, and independent wrapping checks passed');
