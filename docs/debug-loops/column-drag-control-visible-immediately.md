@@ -1,7 +1,7 @@
 # Loop Debug: column drag control visible immediately
 URL: http://127.0.0.1:18000/
 Started: 2026-09-14T22:18:36-0400
-Status: IN_PROGRESS
+Status: RESOLVED
 
 ## Attempt 1 — 2026-09-14T22:18:36-0400
 ### Evidence Gathered
@@ -19,4 +19,4 @@ Implementation modeled only existing manual breaks, not current automatic column
 
 ### Result After Deploy
 - LOCAL PASS: 7/7 browser lifecycle checks. Automatic handle visible before any right-click; pointer drag reanchors and persists.
-- PENDING LIVE
+- SUCCESS: FIRMAMENT serves byte-identical v48 assets. Live-tunnel browser lifecycle passes 7/7; automatic handle visible before any manual break and drag persists.
