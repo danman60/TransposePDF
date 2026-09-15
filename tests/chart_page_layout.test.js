@@ -57,4 +57,11 @@ assert.ok(Math.abs(geometry.spec.columnOffsets[1] - (18 + geometry.spec.columnWi
 const custom = ChartPageLayout.spec({ columns: 3, pageSize: 'custom', customPage: { width: 720, height: 360 }, orientation: 'landscape', columnRatios: [.2,.3,.5] });
 assert.deepEqual([custom.pageWidth, custom.pageHeight], [720, 360]);
 assert.deepEqual(custom.columnRatios, [.2,.3,.5]);
-console.log('23/23 shared page geometry and layout planning checks passed');
+const wrapText = 'This deliberately long canonical lyric line demonstrates independent wrapping inside differently sized columns';
+const wrapSong = { layout: { columns: 2, columnRatios: [.3,.7], balance: 'off', breaks: [{id:'wrap-break',type:'column',sectionId:'wrap-section',lineId:'wrap-0',edge:'after'}] },
+  sections: [{ id:'wrap-section', label:'Verse', lines:[{id:'wrap-0',lyrics:wrapText,chords:[]},{id:'wrap-1',lyrics:wrapText,chords:[]}]}] };
+const wrapPlan = ChartPageLayout.plan(wrapSong);
+const narrowSegments = wrapPlan.pages[0].columns[0].filter(row => row.lineId === 'wrap-0' && row.type === 'text').length;
+const wideSegments = wrapPlan.pages[0].columns[1].filter(row => row.lineId === 'wrap-1' && row.type === 'text').length;
+assert.ok(narrowSegments > wideSegments, `independent wrapping expected narrow ${narrowSegments} > wide ${wideSegments}`);
+console.log('24/24 shared page geometry and independent wrapping checks passed');

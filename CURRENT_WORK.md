@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-14 Per-song Page Geometry
+## Active Task — 2026-09-14 Live Column Rewrap
 
-v49 candidate adds full per-song page geometry: page size/orientation, custom dimensions, four margins, gutter width, and directly draggable unequal-width column dividers. Exact AOG recovery remains available from revision 175: repeated Verse 1 before Bridge, 6 lines and 14 chords.
+v50 candidate makes vertical center-divider dragging replan and rewrap each column live at its own width, while preserving v49 per-song page geometry. Exact AOG recovery remains available from revision 175: repeated Verse 1 before Bridge, 6 lines and 14 chords.
 
 ## Recent Changes
 
+- v50 candidate: center-divider pointer movement renders an unsaved preview from canonical song data; each column wraps at its own computed width. Release persists one ratio revision. Shared PDF consumes identical per-column row plan. Unequal-width final pages no longer run equal-column balancing.
 - v49 candidate: vertical full-height divider handles resize adjacent columns live and persist semantic ratios per song. Letter/A4/Legal/Tabloid/custom page sizes, portrait/landscape, independent margins, and gutter settings now drive the shared editor/PDF plan. Variable-page typography scales from actual page width rather than the prior A4 constant.
 - v48 candidate: Layout mode now renders the current automatic column/page termination as a labeled draggable dotted handle immediately. No right-click or pre-existing manual break required; dragging promotes it to a persisted semantic override.
 - v47 candidate: Layout mode exposes pointer-draggable dotted termination lines anchored to stable lyric-line IDs. Right-click adds column/page breaks, keep-together, next-column/page, full-width section, and per-section spacing. Sidebar adds margins, spacing, balance, presets, saved custom presets, and reset. Shared planner/PDF consume the same constraints without rewriting chart content.
@@ -49,6 +50,7 @@ v49 candidate adds full per-song page geometry: page size/orientation, custom di
 
 ## Verification
 
+- v50 candidate: 24/24 planner checks include narrow-vs-wide independent wrapping; 10/10 browser lifecycle proves text rewraps during drag before persistence; geometry/PDF 9/9; legacy parity 6/6 and layout 21/21.
 - v49 candidate: 23/23 deterministic page geometry checks; 9/9 real-browser geometry/PDF checks; 9/9 layout director lifecycle; existing editor/PDF parity 6/6 and layout regression 21/21. Letter-landscape unequal columns render without overflow; PDF reports exact 792×612pt page.
 - v48 candidate: 7/7 real-browser lifecycle checks prove automatic handle visibility before any manual break, pointer drag, persistence, presets, content invariance, and shared export plan. Visual screenshot inspected at 2-column whole-page scale.
 - v47 candidate: layout director browser lifecycle 6/6; existing editor/PDF parity 6/6; layout/metadata regression 21/21; planner 15/15; full JavaScript syntax and diff checks pass. Content-count invariant verified across layout edits. Visual iteration DM `17015`.

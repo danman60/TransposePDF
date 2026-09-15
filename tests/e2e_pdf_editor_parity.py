@@ -19,7 +19,7 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
     page.wait_for_function("() => window.transposeApp && typeof ChartPageLayout === 'function'")
     proof = page.evaluate("""async () => {
       const song = SongModel.create({ id:'parity-song', title:'Parity Proof', originalKey:'F', currentKey:'F',
-        sourceType:'manual', layout:{columns:2,fontSize:13}, credits:{writer:{value:'Writer Proof'},arranger:{value:'Arranger Proof'}},
+        sourceType:'manual', layout:{columns:2,columnRatios:[.38,.62],fontSize:13}, credits:{writer:{value:'Writer Proof'},arranger:{value:'Arranger Proof'}},
         arrangement:{mode:'manual',value:'V1 C V2 C',inferredValue:'V1 C V2 C'}, sections:[
           {label:'Alpha',lines:Array.from({length:7},(_,i)=>({lyrics:`Alpha lyric ${i+1} carries enough words to wrap identically`,chords:[{id:`a${i}`,symbol:'F',characterOffset:6}]}))},
           {label:'Beta',lines:Array.from({length:3},(_,i)=>({lyrics:`Beta lyric ${i+1} follows the same shared geometry`,chords:[{id:`b${i}`,symbol:'Bb',characterOffset:5}]}))},
@@ -58,7 +58,7 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
           if any(row.get("type") == "section" and row.get("content") == label for row in column))
         found = next((page_index, float(word.attrib["xMin"])) for page_index, words in enumerate(words_by_page)
           for word in words if (word.text or "") == label)
-        expected_x = proof["plan"]["spec"]["margin"] + planned[1] * (proof["plan"]["spec"]["columnWidth"] + proof["plan"]["spec"]["gutter"])
+        expected_x = proof["plan"]["spec"]["columnOffsets"][planned[1]]
         assert found[0] == planned[0] and abs(found[1] - expected_x) < 3, (label, planned, found, expected_x)
     extracted_lines = subprocess.run(["pdftotext", "-layout", str(pdf_path), "-"], check=True, text=True, capture_output=True).stdout.splitlines()
     normalized = {" ".join(line.split()) for line in extracted_lines}

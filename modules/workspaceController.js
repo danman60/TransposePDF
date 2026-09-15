@@ -393,7 +393,7 @@ class WorkspaceController {
       const pageWidthPx = page.getBoundingClientRect().width; const gutterPx = spec.gutter / spec.pageWidth * pageWidthPx;
       this.columnDividerDrag = { pointerId: event.pointerId, songId, index: Number(divider.dataset.columnDivider),
         rect, gutterPx, printablePx: rect.width - gutterPx * (spec.columns - 1), ratios: [...spec.columnRatios] };
-      divider.setPointerCapture?.(event.pointerId); divider.classList.add('is-dragging'); return;
+      divider.classList.add('is-dragging'); return;
     }
     const boundary = event.target.closest?.('.layout-break-target.has-layout-break');
     if (boundary && this.root.contains(boundary)) {
@@ -504,6 +504,8 @@ class WorkspaceController {
         const left = (printable * ratios.slice(0, index + 1).reduce((sum, value) => sum + value, 0) + drag.gutterPx * (index + .5)) / width * 100;
         handle.style.setProperty('--divider-left', `${left}%`); });
     });
+    this.ui.previewSongLayout(drag.songId, { columnRatios: ratios });
+    this.root.querySelectorAll(`.lead-sheet[data-song-id="${CSS.escape(String(drag.songId))}"] .column-divider-handle[data-column-divider="${drag.index}"]`).forEach(item => item.classList.add('is-dragging'));
     return ratios;
   }
 

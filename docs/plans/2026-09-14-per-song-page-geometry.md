@@ -9,6 +9,7 @@ Purpose: This exists so that each song can have exact page geometry: page size, 
 - Four independent margins, gutter width, and N−1 column-divider positions persist per song.
 - Divider positions are bounded so every column remains usable. Two columns expose one divider; three expose two.
 - Editor wrapping and PDF X coordinates use the same computed column widths.
+- Deviation resolved in v50: v49 initially wrapped both columns at the narrowest width and previewed only CSS widths. Planner now wraps each column independently; pointer movement rerenders an unsaved canonical preview before release.
 - Undo/version history covers every geometry edit.
 
 ## Files

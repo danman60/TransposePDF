@@ -23,7 +23,11 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-layout-director-") as prof
     checks['vertical_column_divider_visible'] = page.locator('.column-divider-handle').count() >= 1
     page.locator('.session-workspace').screenshot(path=str(SHOT.with_name('layout-director-auto.png')))
     divider=page.locator('.column-divider-handle').first; divider.scroll_into_view_if_needed(); box=divider.bounding_box()
-    page.mouse.move(box['x']+box['width']/2,box['y']+80); page.mouse.down(); page.mouse.move(box['x']+box['width']/2+70,box['y']+80,steps=8); page.mouse.up()
+    segments_before=page.locator('.planned-chart-line').count()
+    page.mouse.move(box['x']+box['width']/2,box['y']+80); page.mouse.down(); page.mouse.move(box['x']+box['width']/2+70,box['y']+80,steps=8)
+    checks['text_rewraps_during_drag'] = page.locator('.planned-chart-line').count() > segments_before and page.evaluate("() => window.transposeApp.currentSongs[0].layout.columnRatios[0] === .5")
+    page.locator('.session-workspace').screenshot(path=str(SHOT.with_name('layout-director-live-wrap.png')))
+    page.mouse.up()
     page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.columnRatios[0] > .55")
     checks['column_width_drag_persists'] = page.evaluate("() => {const r=window.transposeApp.currentSongs[0].layout.columnRatios;return r.length===2&&Math.abs(r[0]+r[1]-1)<.0001}")
     source = page.locator('.layout-break-target.auto-layout-break').first; target = page.locator('.layout-break-target[data-section-index="0"][data-line-index="4"]')

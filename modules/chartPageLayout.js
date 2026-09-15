@@ -52,17 +52,22 @@ class ChartPageLayout {
   static sectionRows(section, sectionIndex, spec, spacing = 'normal') {
     const rows = [{ type: 'section', content: String(section?.label || ''), sectionIndex, sectionId: section.id }];
     (section?.lines || []).forEach((line, lineIndex) => {
-      const segments = this.wrapLine(line, spec.maxCharacters);
-      segments.forEach((segment, segmentIndex) => {
-        const segmentState = { firstSegment: segmentIndex === 0, finalSegment: segmentIndex === segments.length - 1 };
-        if (segment.chords.length) rows.push({ type: 'chords', ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
-        rows.push({ type: segment.lyrics ? 'text' : 'empty', content: segment.lyrics, ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
-      });
+      rows.push(...this.lineRows(section, sectionIndex, line, lineIndex, spec.maxCharacters));
     });
     const gapCount = spacing === 'compact' ? 0 : spacing === 'spacious' ? 2 : 1;
     for (let count = 0; count < gapCount; count += 1) rows.push({ type: 'empty', content: '', sectionIndex, sectionId: section.id, sectionGap: true });
     rows.forEach(row => { row.sectionLabel = String(section?.label || 'Section'); });
     return rows;
+  }
+
+  static lineRows(section, sectionIndex, line, lineIndex, maxCharacters) {
+    const rows = []; const segments = this.wrapLine(line, maxCharacters);
+    segments.forEach((segment, segmentIndex) => {
+      const segmentState = { firstSegment: segmentIndex === 0, finalSegment: segmentIndex === segments.length - 1 };
+      if (segment.chords.length) rows.push({ type: 'chords', ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
+      rows.push({ type: segment.lyrics ? 'text' : 'empty', content: segment.lyrics, ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
+    });
+    rows.forEach(row => { row.sectionLabel = String(section?.label || 'Section'); }); return rows;
   }
 
   static rowUnits(rows) {
@@ -86,39 +91,47 @@ class ChartPageLayout {
     let page = 0; let column = 0; let used = 0;
     const advance = () => { column += 1; used = 0; if (column >= spec.columns) { column = 0; page += 1; pages.push({ columns: Array.from({ length: spec.columns }, () => []) }); } };
     const manualBreaks = new Map((layout.breaks || []).map(item => [`${item.sectionId}:${item.lineId || ''}:${item.edge || 'before'}`, item]));
-    const breakBefore = unit => unit[0]?.firstSegment === false ? null : manualBreaks.get(`${unit[0]?.sectionId}:${unit[0]?.lineId || ''}:before`);
-    const breakAfter = unit => unit[unit.length - 1]?.finalSegment === false ? null : manualBreaks.get(`${unit[unit.length - 1]?.sectionId}:${unit[unit.length - 1]?.lineId || ''}:after`);
     const advanceType = type => { if (type === 'page' && (column || used)) { while (column || used) advance(); } else advance(); };
-    const place = (rows, rule = {}) => {
+    const continuation = (section, sectionIndex) => {
+      pages[page].columns[column].push({ type: 'section', content: `${section.label || 'Section'} (continued)`, sectionIndex,
+        sectionId: section.id, sectionLabel: section.label || 'Section', continuation: true }); used += 1;
+    };
+    const placeSection = (section, sectionIndex, rule = {}) => {
       if (rule.start === 'page' && (page || column || used)) advanceType('page');
       else if (rule.start === 'column' && used) advance();
-      if (rule.keepTogether && used && rows.length <= spec.rowsPerColumn && used + rows.length > spec.rowsPerColumn) advance();
-      for (const unit of this.rowUnits(rows)) {
-        if (!used && unit.every(row => row.sectionGap)) continue;
-        const before = breakBefore(unit); if (before && used) advanceType(before.type);
-        if (used && used + unit.length > spec.rowsPerColumn) {
-          const previous = pages[page].columns[column][used - 1];
-          advance();
-          if (unit[0]?.type !== 'section' && previous?.sectionIndex === unit[0]?.sectionIndex) {
-            pages[page].columns[column].push({ type: 'section', content: `${unit[0].sectionLabel} (continued)`, sectionIndex: unit[0].sectionIndex, sectionLabel: unit[0].sectionLabel, continuation: true });
-            used += 1;
-          }
+      const characters = () => spec.maxCharactersByColumn[column];
+      const estimate = this.sectionRows(section, sectionIndex, { ...spec, maxCharacters: characters() }, rule.spacing || layout.sectionSpacing || 'normal');
+      if (rule.keepTogether && used && estimate.length <= spec.rowsPerColumn && used + estimate.length > spec.rowsPerColumn) advance();
+      const firstRows = section.lines?.length ? this.lineRows(section, sectionIndex, section.lines[0], 0, characters()) : [];
+      if (used && used + 1 + firstRows.length > spec.rowsPerColumn) advance();
+      pages[page].columns[column].push({ type: 'section', content: String(section.label || ''), sectionIndex, sectionId: section.id, sectionLabel: String(section.label || 'Section') }); used += 1;
+      (section.lines || []).forEach((line, lineIndex) => {
+        const before = manualBreaks.get(`${section.id}:${line.id}:before`); if (before && used) advanceType(before.type);
+        let rows = this.lineRows(section, sectionIndex, line, lineIndex, characters());
+        if (used && used + rows.length > spec.rowsPerColumn) { advance(); continuation(section, sectionIndex); rows = this.lineRows(section, sectionIndex, line, lineIndex, characters()); }
+        for (const unit of this.rowUnits(rows)) {
+          if (used && used + unit.length > spec.rowsPerColumn) { advance(); continuation(section, sectionIndex); }
+          pages[page].columns[column].push(...unit); used += unit.length;
         }
-        pages[page].columns[column].push(...unit); used += unit.length;
-        const after = breakAfter(unit); if (after) {
+        const after = manualBreaks.get(`${section.id}:${line.id}:after`); if (after) {
           pages[page].terminations ||= []; pages[page].terminations.push({ column, breakId: after.id, type: after.type }); advanceType(after.type);
         }
+      });
+      const spacing = rule.spacing === 'inherit' || !rule.spacing ? (layout.sectionSpacing || 'normal') : rule.spacing;
+      const gapCount = spacing === 'compact' ? 0 : spacing === 'spacious' ? 2 : 1;
+      if (used) for (let count = 0; count < gapCount && used < spec.rowsPerColumn; count += 1) {
+        pages[page].columns[column].push({ type: 'empty', content: '', sectionIndex, sectionId: section.id, sectionGap: true, sectionLabel: String(section.label || 'Section') }); used += 1;
       }
     };
     (song?.sections || []).forEach((section, index) => {
       const rule = layout.sectionRules?.[section.id] || {};
       const spacing = rule.spacing === 'inherit' || !rule.spacing ? (layout.sectionSpacing || 'normal') : rule.spacing;
-      const rows = this.sectionRows(section, index, spec, spacing);
       if (rule.spanColumns && spec.columns > 1) {
         if (pages[page].columns.some(items => items.length)) { while (column || used) advance(); }
-        pages[page].spanRows = rows; pages[page].spanSectionId = section.id;
+        const spanSpec = { ...spec, maxCharacters: Math.max(18, Math.floor((spec.pageWidth - spec.margins.left - spec.margins.right) / (spec.fontSize * .6))) };
+        pages[page].spanRows = this.sectionRows(section, index, spanSpec, spacing); pages[page].spanSectionId = section.id;
         page += 1; column = 0; used = 0; pages.push({ columns: Array.from({ length: spec.columns }, () => []) });
-      } else place(rows, rule);
+      } else placeSection(section, index, rule);
     });
     while (pages.length > 1 && !pages[pages.length - 1].spanRows && pages[pages.length - 1].columns.every(rows => !rows.length)) pages.pop();
     const metadata = [];
@@ -144,7 +157,8 @@ class ChartPageLayout {
       });
       finalPage.columns = balanced;
     };
-    const canBalanceFinalPage = () => layout.balance !== 'off' && !pages[pages.length - 1].terminations?.length && !pages[pages.length - 1].spanRows;
+    const equalColumns = spec.columnRatios.every(value => Math.abs(value - spec.columnRatios[0]) < .0001);
+    const canBalanceFinalPage = () => layout.balance !== 'off' && equalColumns && !pages[pages.length - 1].terminations?.length && !pages[pages.length - 1].spanRows;
     if (canBalanceFinalPage()) balanceFinalPage(metadataRows);
     const lastPage = pages[pages.length - 1];
     const maxUsed = Math.max(...lastPage.columns.map(rows => rows.length), 0);

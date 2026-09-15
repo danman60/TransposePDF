@@ -1099,6 +1099,12 @@ class UIController {
     ratios[index] = target - previous; ratios[index + 1] = next - target;
     return this.updateSongLayout(songId, { columnRatios: ratios }, 'Column widths saved');
   }
+  previewSongLayout(songId, layoutPatch) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId)); if (!song) return false;
+    const preview = SongModel.create({ ...song, layout: { ...song.layout, ...layoutPatch } });
+    const content = document.getElementById(`leadSheet-${song.id}`); if (!content) return false;
+    content.innerHTML = this.renderLeadSheetContent(preview); return true;
+  }
   toggleSongLayoutMode(songId) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     return this.updateSongLayout(songId, { layoutMode: !song?.layout?.layoutMode }, song?.layout?.layoutMode ? 'Layout locked' : 'Drag dotted boundaries or use right-click');
