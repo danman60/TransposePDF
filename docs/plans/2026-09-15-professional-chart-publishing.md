@@ -102,6 +102,8 @@ Acceptance:
 
 ## Phase 6 — full lifecycle verification and release
 
+Status: complete in v55. Full deterministic and real-browser matrix passed locally. FIRMAMENT serves matching runtime hashes and passed live notation, metadata/preset, editor/PDF parity, and isolated Armor audio/correction/export lifecycles without restarting its user-facing process.
+
 - Migration tests across existing ArmorOfGod checkpoints and imported PDF songs.
 - Real browser lifecycle: create, paste, audio import with authoritative lyrics, PDF import, edit, drag, transpose, undo, reload, export.
 - Compare editor screenshots and PDF bounding boxes for every layout/preset.

@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-15 Exact Column-Edge Wrapping
 
-Professional chart publishing Phase 6 verification/release is active under `docs/plans/2026-09-15-professional-chart-publishing.md`. v55 candidate adds structured notation, professional metadata, header/footer visibility, and six presets while preserving canonical manual edits and exact editor/PDF parity. v54 remains live on FIRMAMENT.
+Professional chart publishing plan is complete. v55 is committed, pushed, deployed, and verified live on FIRMAMENT. Structured notation, professional metadata, header/footer visibility, and six presets preserve canonical manual edits and exact editor/PDF parity.
 
 ## Recent Changes
 
@@ -56,6 +56,8 @@ Professional chart publishing Phase 6 verification/release is active under `docs
 - 462 tracked dependency files and 204 obsolete generated/debug files removed from release tree; canonical PDF fixture retained.
 
 ## Verification
+
+- v55 live: served SHA-256 matches local for service worker and all changed runtime families; cache `transpose-app-v55`. Live 27/27 notation, metadata/preset, and editor/PDF parity gates pass. Live isolated Armor lifecycle: two analyses, correction replay, exact editor text, immutable raw evidence, transpose/reset, 34,906-byte PDF, zero console errors. Full local real-browser matrix passed after restoring legacy preset aliases and sticky editor access; notation surfaced and fixed contextual manual-chord spelling (A→B♭, not A♯).
 
 - v54 candidate: real-browser publication lifecycle 11/11 proves manual page break, reload, transpose, undo, numbering, continuation setting, orphan protection, and searchable PDF output. Existing planner 31/31, metrics 8/8, mixed regions 8/8, geometry 9/9, parity 6/6, layout director 10/10, section drag 6/6, and structured PDF 16/16 pass. Screenshot inspected and Telegram DM `17045` sent.
 - v53 candidate: mixed-region planner 31/31 and real-browser/editor/PDF lifecycle 8/8; both middle columns populated; full-width intro and chorus remain on one page around the column region. Existing structured PDF 16/16, audio PDF 9/9, page geometry 9/9, parity 6/6, and layout director 10/10 pass. Screenshot inspected.
