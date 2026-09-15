@@ -104,35 +104,44 @@ class ChartRenderer {
     const plannedSong = { ...song, layout: { ...(song.layout || {}), columns: Number(options.columns ?? song.layout?.columns) || 1 } };
     const plan = ChartPageLayout.plan(plannedSong, { includeEmptyMetadata: editable });
     const pageHtml = plan.pages.map((page, pageIndex) => {
-      const columns = page.spanRows
-        ? `<div class="chart-page-column chart-page-span">${this.renderPlannedColumn(page.spanRows, song, { ...options, editable, bare: true })}</div>`
-        : page.columns.map((rows, columnIndex) => {
-          const lastLine = [...rows].reverse().find(row => row.lineId && row.finalSegment !== false);
-          const hasFollowingContent = page.columns.slice(columnIndex + 1).some(items => items.some(row => row.lineId))
-            || plan.pages.slice(pageIndex + 1).some(item => item.spanRows?.length || item.columns.some(items => items.some(row => row.lineId)));
-          const alreadyManual = lastLine && (song.layout?.breaks || []).some(item => item.sectionId === lastLine.sectionId && item.lineId === lastLine.lineId && item.edge === 'after');
-          const autoBoundary = song.layout?.layoutMode && hasFollowingContent && lastLine && !alreadyManual ? {
-            type: columnIndex === plan.spec.columns - 1 ? 'page' : 'column', sectionIndex: lastLine.sectionIndex,
-            lineIndex: lastLine.lineIndex, columnNumber: columnIndex + 1
-          } : null;
-          return this.renderPlannedColumn(rows, song, { ...options, editable, autoBoundary });
-        }).join('');
-      const dividers = song.layout?.layoutMode && !page.spanRows && plan.spec.columns > 1
-        ? plan.spec.columnRatios.slice(0, -1).map((_, dividerIndex) => {
-          const contentWidth = plan.spec.pageWidth - plan.spec.margins.left - plan.spec.margins.right;
-          const left = (plan.spec.columnWidths.slice(0, dividerIndex + 1).reduce((sum, value) => sum + value, 0) + plan.spec.gutter * (dividerIndex + .5)) / contentWidth * 100;
-          return `<div class="column-divider-handle" style="--divider-left:${left.toFixed(4)}%" data-column-divider="${dividerIndex}" data-song-id="${this.escape(song.id)}" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize columns ${dividerIndex + 1} and ${dividerIndex + 2}"><span>Drag column width</span></div>`;
-        }).join('') : '';
+      const regions = page.regions || (page.spanRows ? [{ kind: 'span', rows: page.spanRows }] : [{ kind: 'columns', columns: page.columns }]);
+      const pageHasLaterContent = plan.pages.slice(pageIndex + 1).some(item => item.regions?.length || item.spanRows?.length || item.columns?.some(items => items.some(row => row.lineId)));
+      const content = regions.map((region, regionIndex) => {
+        if (region.kind === 'span') return `<div class="chart-page-region chart-page-span">${this.renderPlannedColumn(region.rows, song, { ...options, editable, bare: true })}</div>`;
+        const later = regions.slice(regionIndex + 1).length > 0 || pageHasLaterContent;
+        return this.renderPlannedColumnsRegion(region.columns, song, plan.spec, { ...options, editable, hasFollowingRegion: later });
+      }).join('');
+      const mixed = Boolean(page.regions);
       return `<section class="chart-page${song.layout?.layoutMode ? ' layout-mode' : ''}" data-chart-page="${pageIndex + 1}" data-typography="${plan.spec.typography}" style="--page-columns:${page.spanRows ? 1 : plan.spec.columns};--column-template:${page.spanRows ? '1fr' : plan.spec.columnRatios.map(value => `${value}fr`).join(' ')};--chart-font-size:${plan.spec.fontSize};--chart-render-font:${(plan.spec.fontSize / plan.spec.pageWidth * 100).toFixed(4)}cqi;--arrangement-render-font:${(18 / plan.spec.pageWidth * 100).toFixed(4)}cqi;--page-header-height:${(plan.spec.headerHeight / plan.spec.pageWidth * 100).toFixed(4)}cqi;--page-aspect:${plan.spec.pageWidth}/${plan.spec.pageHeight};--page-margin-top:${(plan.spec.margins.top / plan.spec.pageHeight * 100).toFixed(4)}%;--page-margin-right:${(plan.spec.margins.right / plan.spec.pageWidth * 100).toFixed(4)}%;--page-margin-bottom:${(plan.spec.margins.bottom / plan.spec.pageHeight * 100).toFixed(4)}%;--page-margin-left:${(plan.spec.margins.left / plan.spec.pageWidth * 100).toFixed(4)}%;--page-gutter:${(plan.spec.gutter / plan.spec.pageWidth * 100).toFixed(4)}cqi">
         <div class="chart-page-body">
           <header class="chart-page-header"><strong>${this.escape(song.title)}</strong><span>${this.escape(this.plannedKeyText(song))}</span></header>
-          <div class="chart-page-columns">${columns}${dividers}</div>
+          <div class="${mixed ? 'chart-page-flow' : 'chart-page-flow chart-page-flow-single'}">${content}</div>
           ${pageIndex === plan.pages.length - 1 ? this.renderPlannedFooter(plan.metadata, song, editable) : ''}
         </div>
       </section>`;
     }).join('');
     const warnings = plan.warnings?.length ? `<aside class="layout-warnings" aria-label="Layout warnings">${plan.warnings.map(item => `<div>${this.escape(item.message)}</div>`).join('')}</aside>` : '';
     return `<div class="structured-chart paginated-chart${song.layout?.layoutMode ? ' is-layout-mode' : ''}" data-layout-columns="${plan.spec.columns}" style="--chart-columns:${plan.spec.columns}">${warnings}${pageHtml}${editable ? `<button type="button" class="add-section-primary" data-action="add-section-end" data-song-id="${this.escape(song.id)}">+ Add section</button>` : ''}</div>`;
+  }
+
+  renderPlannedColumnsRegion(columns, song, spec, options = {}) {
+    const content = columns.map((rows, columnIndex) => {
+      const lastLine = [...rows].reverse().find(row => row.lineId && row.finalSegment !== false);
+      const hasFollowingContent = columns.slice(columnIndex + 1).some(items => items.some(row => row.lineId)) || options.hasFollowingRegion;
+      const alreadyManual = lastLine && (song.layout?.breaks || []).some(item => item.sectionId === lastLine.sectionId && item.lineId === lastLine.lineId && item.edge === 'after');
+      const autoBoundary = song.layout?.layoutMode && hasFollowingContent && lastLine && !alreadyManual ? {
+        type: columnIndex === spec.columns - 1 && !options.hasFollowingRegion ? 'page' : 'column', sectionIndex: lastLine.sectionIndex,
+        lineIndex: lastLine.lineIndex, columnNumber: columnIndex + 1
+      } : null;
+      return this.renderPlannedColumn(rows, song, { ...options, autoBoundary });
+    }).join('');
+    const dividers = song.layout?.layoutMode && spec.columns > 1
+      ? spec.columnRatios.slice(0, -1).map((_, dividerIndex) => {
+        const contentWidth = spec.pageWidth - spec.margins.left - spec.margins.right;
+        const left = (spec.columnWidths.slice(0, dividerIndex + 1).reduce((sum, value) => sum + value, 0) + spec.gutter * (dividerIndex + .5)) / contentWidth * 100;
+        return `<div class="column-divider-handle" style="--divider-left:${left.toFixed(4)}%" data-column-divider="${dividerIndex}" data-song-id="${this.escape(song.id)}" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize columns ${dividerIndex + 1} and ${dividerIndex + 2}"><span>Drag column width</span></div>`;
+      }).join('') : '';
+    return `<div class="chart-page-region chart-page-columns">${content}${dividers}</div>`;
   }
 
   renderPlannedFooter(metadata, song, editable) {

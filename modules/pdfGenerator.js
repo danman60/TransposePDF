@@ -218,31 +218,29 @@ class PDFGenerator {
     this.fontSize = plan.spec.fontSize;
     this.typography = plan.spec.typography;
     this.lineHeight = plan.spec.lineHeight;
+    const renderRows = async (rows, x, y) => {
+      for (const plannedRow of rows) {
+        const row = { ...plannedRow, structured: true };
+        if (row.type === 'chords') {
+          row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
+          row.chords = (row.chords || []).map(chord => ({ ...chord, displaySymbol: this.displayChord(chord.symbol, song, new MusicTheory(), chord) }));
+        }
+        await this.renderLine(pdf, row, x, y); y += plan.spec.lineHeight;
+      }
+    };
     for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex += 1) {
       if (pageIndex > 0) pdf.addPage([plan.spec.pageWidth, plan.spec.pageHeight], plan.spec.pageWidth > plan.spec.pageHeight ? 'landscape' : 'portrait');
       const top = this.renderPlannedSongHeader(pdf, song, plan.spec, pageIndex > 0);
-      if (plan.pages[pageIndex].spanRows) {
-        let y = top;
-        for (const plannedRow of plan.pages[pageIndex].spanRows) {
-          const row = { ...plannedRow, structured: true };
-          if (row.type === 'chords') {
-            row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
-            row.chords = (row.chords || []).map(chord => ({ ...chord, displaySymbol: this.displayChord(chord.symbol, song, new MusicTheory(), chord) }));
-          }
-          await this.renderLine(pdf, row, plan.spec.margins.left, y); y += plan.spec.lineHeight;
+      const page = plan.pages[pageIndex];
+      const regions = page.regions || (page.spanRows ? [{ kind: 'span', rows: page.spanRows }] : [{ kind: 'columns', columns: page.columns }]);
+      let rowOffset = 0;
+      for (const region of regions) {
+        const y = top + rowOffset * plan.spec.lineHeight;
+        if (region.kind === 'span') await renderRows(region.rows, plan.spec.margins.left, y);
+        else for (let columnIndex = 0; columnIndex < plan.spec.columns; columnIndex += 1) {
+          await renderRows(region.columns[columnIndex], plan.spec.columnOffsets[columnIndex], y);
         }
-      } else for (let columnIndex = 0; columnIndex < plan.spec.columns; columnIndex += 1) {
-        const x = plan.spec.columnOffsets[columnIndex];
-        let y = top;
-        for (const plannedRow of plan.pages[pageIndex].columns[columnIndex]) {
-          const row = { ...plannedRow, structured: true };
-          if (row.type === 'chords') {
-            row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
-            row.chords = (row.chords || []).map(chord => ({ ...chord, displaySymbol: this.displayChord(chord.symbol, song, new MusicTheory(), chord) }));
-          }
-          await this.renderLine(pdf, row, x, y);
-          y += plan.spec.lineHeight;
-        }
+        rowOffset += region.heightRows ?? (region.kind === 'span' ? region.rows.length : Math.max(...region.columns.map(rows => rows.length), 0));
       }
       if (pageIndex === plan.pages.length - 1 && plan.metadata.length) {
         let footerY = plan.spec.pageHeight - plan.spec.margins.bottom - (plan.metadataRows - 1) * plan.spec.lineHeight;

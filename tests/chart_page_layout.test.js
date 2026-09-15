@@ -43,10 +43,11 @@ anchored.layout = { columns: 2, fontSize: 13, margin: 'wide', sectionSpacing: 's
   sectionRules: { s1: { keepTogether: true, start: 'column' }, s2: { spanColumns: true } } };
 const directed = ChartPageLayout.plan(anchored);
 assert.equal(directed.spec.margin, 54);
-assert.ok(directed.pages.some(page => page.spanSectionId === 's2'), 'spanning section gets full-width page');
-assert.ok(directed.pages[0].columns[0].some(row => row.lineId === 's0l1'));
-assert.ok(!directed.pages[0].columns[0].some(row => row.lineId === 's0l2'), 'manual column termination honored');
-assert.ok(directed.pages.some(page => page.columns.some(rows => rows.filter(row => row.sectionId === 's0' && row.sectionGap).length === 2)), 'spacious gap honored');
+assert.ok(directed.pages.some(page => page.spanSectionId === 's2' || page.regions?.some(region => region.kind === 'span' && region.sectionId === 's2')), 'spanning section gets full-width region');
+const directedColumns = page => page.regions ? page.regions.filter(region => region.kind === 'columns').flatMap(region => region.columns) : page.columns;
+assert.ok(directedColumns(directed.pages[0])[0].some(row => row.lineId === 's0l1'));
+assert.ok(!directedColumns(directed.pages[0])[0].some(row => row.lineId === 's0l2'), 'manual column termination honored');
+assert.ok(directed.pages.some(page => directedColumns(page).some(rows => rows.filter(row => row.sectionId === 's0' && row.sectionGap).length === 2)), 'spacious gap honored');
 assert.ok(Array.isArray(directed.warnings));
 const geometry = ChartPageLayout.plan({ ...anchored, layout: { ...anchored.layout, pageSize: 'letter', orientation: 'landscape',
   margins: { top: 36, right: 54, bottom: 72, left: 18 }, gutter: 24, columnRatios: [.35, .65] } });
@@ -81,4 +82,15 @@ const monoWrap = ChartPageLayout.wrapLine(professionalLine, monoCapacity.capacit
 const sansWrap = ChartPageLayout.wrapLine(professionalLine, sansCapacity.capacitiesByColumn[0]);
 assert.ok(sansWrap[0].sourceEnd > monoWrap[0].sourceEnd, `${sansWrap[0].sourceEnd} <= ${monoWrap[0].sourceEnd}`);
 assert.equal(sansWrap.map(segment => segment.lyrics).join(' '), professionalLine.lyrics);
-console.log('28/28 shared page geometry, proportional metrics, CSS scale, and wrapping checks passed');
+const mixedSong = { layout: { columns: 2, typography: 'sans', balance: 'off', sectionRules: {
+  intro: { spanColumns: true }, chorus: { spanColumns: true }
+} }, sections: [
+  { id: 'intro', label: 'Intro', lines: [{ id: 'intro-line', lyrics: 'Full width opening', chords: [{ id: 'intro-chord', symbol: 'A', characterOffset: 0 }] }] },
+  { id: 'verse', label: 'Verse', lines: Array.from({ length: 4 }, (_, index) => ({ id: `verse-${index}`, lyrics: `Column lyric ${index + 1}`, chords: [] })) },
+  { id: 'chorus', label: 'Chorus', lines: [{ id: 'chorus-line', lyrics: 'Full width ending', chords: [{ id: 'chorus-chord', symbol: 'D', characterOffset: 5 }] }] }
+] };
+const mixedPlan = ChartPageLayout.plan(mixedSong);
+assert.equal(mixedPlan.pages.length, 1, 'compact mixed regions belong on one page');
+assert.deepEqual(mixedPlan.pages[0].regions.map(region => region.kind), ['span', 'columns', 'span']);
+assert.equal(mixedPlan.pages[0].regions.flatMap(region => region.rows || region.columns.flat()).filter(row => row.lineId).length, 8);
+console.log('31/31 shared geometry, proportional metrics, mixed regions, CSS scale, and wrapping checks passed');

@@ -189,12 +189,44 @@ class ChartPageLayout {
       pages.push(next);
     }
     if (canBalanceFinalPage()) balanceFinalPage(metadataRows);
+    if (pages.some(item => item.spanRows)) {
+      const sourcePages = [...pages]; const mixedPages = []; let target = null; let usedRows = 0;
+      const openPage = () => { target = { columns: Array.from({ length: spec.columns }, () => []), regions: [] }; mixedPages.push(target); usedRows = 0; };
+      const balanceRegion = region => {
+        if (layout.balance === 'off' || !equalColumns || region.terminations?.length) return region;
+        const flat = region.columns.flat(); if (!flat.length) return region;
+        const units = this.rowUnits(flat); const targetRows = Math.ceil(flat.length / spec.columns);
+        const balanced = Array.from({ length: spec.columns }, () => []); let columnIndex = 0;
+        units.forEach(unit => {
+          if (columnIndex < spec.columns - 1 && balanced[columnIndex].length && balanced[columnIndex].length + unit.length > targetRows) {
+            const previous = balanced[columnIndex][balanced[columnIndex].length - 1]; columnIndex += 1;
+            if (unit[0]?.type !== 'section' && previous?.sectionIndex === unit[0]?.sectionIndex) balanced[columnIndex].push({ type: 'section', content: `${unit[0].sectionLabel} (continued)`, sectionIndex: unit[0].sectionIndex, sectionLabel: unit[0].sectionLabel, continuation: true });
+          }
+          balanced[columnIndex].push(...unit);
+        });
+        return { ...region, columns: balanced };
+      };
+      openPage();
+      sourcePages.forEach((sourcePage, sourceIndex) => {
+        let region = sourcePage.spanRows
+          ? { kind: 'span', rows: sourcePage.spanRows, sectionId: sourcePage.spanSectionId }
+          : { kind: 'columns', columns: sourcePage.columns, terminations: sourcePage.terminations || [] };
+        if (region.kind === 'columns') region = balanceRegion(region);
+        const heightRows = region.kind === 'span' ? region.rows.length : Math.max(...region.columns.map(rows => rows.length), 0);
+        if (!heightRows) return;
+        const reserved = sourceIndex === sourcePages.length - 1 ? metadataRows : 0;
+        if (target.regions.length && usedRows + heightRows + reserved > spec.rowsPerColumn) openPage();
+        region.startRow = usedRows; region.heightRows = heightRows; target.regions.push(region); usedRows += heightRows;
+      });
+      pages.splice(0, pages.length, ...mixedPages);
+    }
     const warnings = [];
-    pages.forEach((item, pageIndex) => item.columns.forEach((rows, columnIndex) => {
+    pages.forEach((item, pageIndex) => (item.regions || [{ kind: 'columns', columns: item.columns, terminations: item.terminations || [] }])
+      .filter(region => region.kind === 'columns').forEach(region => region.columns.forEach((rows, columnIndex) => {
       if (rows.length > spec.rowsPerColumn) warnings.push({ type: 'overflow', page: pageIndex + 1, column: columnIndex + 1, message: `Page ${pageIndex + 1}, column ${columnIndex + 1} overflows by ${rows.length - spec.rowsPerColumn} rows` });
-      const termination = item.terminations?.find(value => value.column === columnIndex);
+      const termination = region.terminations?.find(value => value.column === columnIndex);
       if (termination && rows.length && rows.length < Math.floor(spec.rowsPerColumn * .35)) warnings.push({ type: 'sparse', page: pageIndex + 1, column: columnIndex + 1, breakId: termination.breakId, message: `Manual ${termination.type} break leaves page ${pageIndex + 1}, column ${columnIndex + 1} sparse` });
-    }));
+    })));
     return { spec, pages, metadata, metadataRows, warnings };
   }
 }

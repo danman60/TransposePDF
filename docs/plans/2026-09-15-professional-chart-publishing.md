@@ -47,6 +47,8 @@ Acceptance:
 
 ## Phase 2 — mixed section layout regions
 
+Status: implemented in v53 candidate. Existing `Span all columns` now produces page-relative full-width regions before, between, or after balanced multi-column regions instead of forcing a dedicated page.
+
 Files:
 - Extend `layout.sectionRules` with `columnSpan: 1..columns` and `regionStart`.
 - Extend `ChartPageLayout.plan()` to emit ordered full-width and multi-column regions on the same page.

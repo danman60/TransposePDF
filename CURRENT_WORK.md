@@ -6,6 +6,7 @@ Professional chart publishing implementation is active under `docs/plans/2026-09
 
 ## Recent Changes
 
+- v53 candidate: full-width sections and balanced 2/3-column sections can coexist sequentially on one editor/PDF page. Existing right-click `Span all columns` is the control. Mixed region planning preserves section/line/chord source data and persists rules across reload.
 - v52 candidate: optional professional proportional typography uses deterministic Helvetica metrics across planning, editor rendering, freeform chord dragging, and PDF export. Editor/PDF chord X differs by under 2pt in browser/PDF bbox gate. Rebuilt page compositor uses a page-relative inset body, fixing custom landscape aspect, margins, header height, and overflow. Existing songs default to precise mono; professional presets opt into sans.
 - Written reuse-first six-phase implementation plan for all eight requested publishing upgrades. Existing semantic anchors, section rules, breaks, shared planner, metadata, and presets are extension points; parallel surfaces are prohibited.
 - v51 live: fixed page-width/content-box mismatch in chart font and gutter scaling. Saved font size, margins, gutter, column ratios, editor wrapping, and PDF wrapping now use one physical geometry.
@@ -53,6 +54,7 @@ Professional chart publishing implementation is active under `docs/plans/2026-09
 
 ## Verification
 
+- v53 candidate: mixed-region planner 31/31 and real-browser/editor/PDF lifecycle 8/8; both middle columns populated; full-width intro and chorus remain on one page around the column region. Existing structured PDF 16/16, audio PDF 9/9, page geometry 9/9, parity 6/6, and layout director 10/10 pass. Screenshot inspected.
 - v52 candidate: text metrics 8/8; page planner 28/28; proportional editor/PDF parity including chord coordinate under 2pt 6/6; proportional inline mouse/touch edit and drag 10/10; layout director 10/10; Letter-landscape geometry 9/9. Screenshot inspected and Telegram DM `17041` sent.
 - v51 live through FIRMAMENT tunnel: 26/26 geometry assertions; 10/10 divider drag/reflow lifecycle; 6/6 editor/PDF parity. Runtime SHA-256 matches local. Screenshot inspected and Telegram DM `17040` sent. Cloud QA Agent rejected configured Anthropic model with HTTP 400 before any browser action; no local model used.
 - v50 candidate: 24/24 planner checks include narrow-vs-wide independent wrapping; 10/10 browser lifecycle proves text rewraps during drag before persistence; geometry/PDF 9/9; legacy parity 6/6 and layout 21/21.
