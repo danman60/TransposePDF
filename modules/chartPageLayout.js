@@ -119,7 +119,7 @@ class ChartPageLayout {
       const estimate = this.sectionRows(section, sectionIndex, { ...spec, capacity: characters() }, rule.spacing || layout.sectionSpacing || 'normal');
       if (rule.keepTogether && used && estimate.length <= spec.rowsPerColumn && used + estimate.length > spec.rowsPerColumn) advance();
       const firstRows = section.lines?.length ? this.lineRows(section, sectionIndex, section.lines[0], 0, characters()) : [];
-      if (used && used + 1 + firstRows.length > spec.rowsPerColumn) advance();
+      if (layout.avoidOrphans !== false && used && used + 1 + firstRows.length > spec.rowsPerColumn) advance();
       pages[page].columns[column].push({ type: 'section', content: String(section.label || ''), sectionIndex, sectionId: section.id, sectionLabel: String(section.label || 'Section') }); used += 1;
       (section.lines || []).forEach((line, lineIndex) => {
         const before = manualBreaks.get(`${section.id}:${line.id}:before`); if (before && used) advanceType(before.type);

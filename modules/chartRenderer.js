@@ -112,12 +112,14 @@ class ChartRenderer {
         return this.renderPlannedColumnsRegion(region.columns, song, plan.spec, { ...options, editable, hasFollowingRegion: later });
       }).join('');
       const mixed = Boolean(page.regions);
+      const continuationHidden = pageIndex > 0 && song.layout?.continuationHeader === 'none';
       return `<section class="chart-page${song.layout?.layoutMode ? ' layout-mode' : ''}" data-chart-page="${pageIndex + 1}" data-typography="${plan.spec.typography}" style="--page-columns:${page.spanRows ? 1 : plan.spec.columns};--column-template:${page.spanRows ? '1fr' : plan.spec.columnRatios.map(value => `${value}fr`).join(' ')};--chart-font-size:${plan.spec.fontSize};--chart-render-font:${(plan.spec.fontSize / plan.spec.pageWidth * 100).toFixed(4)}cqi;--arrangement-render-font:${(18 / plan.spec.pageWidth * 100).toFixed(4)}cqi;--page-header-height:${(plan.spec.headerHeight / plan.spec.pageWidth * 100).toFixed(4)}cqi;--page-aspect:${plan.spec.pageWidth}/${plan.spec.pageHeight};--page-margin-top:${(plan.spec.margins.top / plan.spec.pageHeight * 100).toFixed(4)}%;--page-margin-right:${(plan.spec.margins.right / plan.spec.pageWidth * 100).toFixed(4)}%;--page-margin-bottom:${(plan.spec.margins.bottom / plan.spec.pageHeight * 100).toFixed(4)}%;--page-margin-left:${(plan.spec.margins.left / plan.spec.pageWidth * 100).toFixed(4)}%;--page-gutter:${(plan.spec.gutter / plan.spec.pageWidth * 100).toFixed(4)}cqi">
         <div class="chart-page-body">
-          <header class="chart-page-header"><strong>${this.escape(song.title)}</strong><span>${this.escape(this.plannedKeyText(song))}</span></header>
+          <header class="chart-page-header${continuationHidden ? ' continuation-header-hidden' : ''}">${continuationHidden ? '' : `<strong>${this.escape(song.title)}${pageIndex ? ' · continued' : ''}</strong><span>${this.escape(this.plannedKeyText(song))}</span>`}</header>
           <div class="${mixed ? 'chart-page-flow' : 'chart-page-flow chart-page-flow-single'}">${content}</div>
           ${pageIndex === plan.pages.length - 1 ? this.renderPlannedFooter(plan.metadata, song, editable) : ''}
         </div>
+        ${song.layout?.pageNumbers ? `<div class="chart-page-number" aria-label="Page ${pageIndex + 1} of ${plan.pages.length}">${pageIndex + 1} / ${plan.pages.length}</div>` : ''}
       </section>`;
     }).join('');
     const warnings = plan.warnings?.length ? `<aside class="layout-warnings" aria-label="Layout warnings">${plan.warnings.map(item => `<div>${this.escape(item.message)}</div>`).join('')}</aside>` : '';

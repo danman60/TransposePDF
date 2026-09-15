@@ -62,6 +62,8 @@ Acceptance:
 
 ## Phase 3 — publication flow controls
 
+Status: implemented in v54 candidate. Per-song controls now cover continuation title/key, page numbering, and heading orphan protection. Existing semantic page boundaries remain draggable, persisted, transposition-safe, and undoable.
+
 - Extend semantic breaks with draggable page boundaries.
 - Add defaults for heading orphan prevention, chord/lyric pairing, short-section keep-together, and optional continuation headers.
 - Expose each default as a per-song control; manual breaks always win.

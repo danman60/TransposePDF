@@ -95,6 +95,9 @@ class SongModel {
       columnRatios: normalizedRatios,
       sectionSpacing: ['compact', 'normal', 'spacious'].includes(input.layout?.sectionSpacing) ? input.layout.sectionSpacing : 'normal',
       balance: input.layout?.balance === 'off' ? 'off' : 'auto',
+      avoidOrphans: input.layout?.avoidOrphans !== false && input.layout?.avoidOrphans !== 'false',
+      continuationHeader: input.layout?.continuationHeader === 'none' ? 'none' : 'title-key',
+      pageNumbers: input.layout?.pageNumbers === true || input.layout?.pageNumbers === 'true',
       preset: String(input.layout?.preset || 'custom'),
       layoutMode: Boolean(input.layout?.layoutMode),
       breaks: (Array.isArray(input.layout?.breaks) ? input.layout.breaks : []).filter(item =>

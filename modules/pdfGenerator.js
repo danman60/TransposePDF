@@ -242,6 +242,10 @@ class PDFGenerator {
         }
         rowOffset += region.heightRows ?? (region.kind === 'span' ? region.rows.length : Math.max(...region.columns.map(rows => rows.length), 0));
       }
+      if (song.layout?.pageNumbers) {
+        pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(70, 70, 70);
+        pdf.text(`${pageIndex + 1} / ${plan.pages.length}`, plan.spec.pageWidth - plan.spec.margins.right, plan.spec.pageHeight - Math.max(10, plan.spec.margins.bottom / 2), { align: 'right' });
+      }
       if (pageIndex === plan.pages.length - 1 && plan.metadata.length) {
         let footerY = plan.spec.pageHeight - plan.spec.margins.bottom - (plan.metadataRows - 1) * plan.spec.lineHeight;
         for (const item of plan.metadata) {
@@ -259,6 +263,7 @@ class PDFGenerator {
   }
 
   renderPlannedSongHeader(pdf, song, spec, continuation = false) {
+    if (continuation && song.layout?.continuationHeader === 'none') return spec.margins.top + spec.headerHeight;
     const header = this.getSongHeader(song, continuation);
     pdf.setTextColor(0, 0, 0);
     pdf.setFont(undefined, 'bold'); pdf.setFontSize(20); pdf.text(header.title, spec.margins.left, spec.margins.top);
