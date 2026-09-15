@@ -216,6 +216,7 @@ class PDFGenerator {
     const plan = ChartPageLayout.plan(song);
     this.pageWidth = plan.spec.pageWidth; this.pageHeight = plan.spec.pageHeight; this.margin = plan.spec.margins.left;
     this.fontSize = plan.spec.fontSize;
+    this.typography = plan.spec.typography;
     this.lineHeight = plan.spec.lineHeight;
     for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex += 1) {
       if (pageIndex > 0) pdf.addPage([plan.spec.pageWidth, plan.spec.pageHeight], plan.spec.pageWidth > plan.spec.pageHeight ? 'landscape' : 'portrait');
@@ -224,7 +225,10 @@ class PDFGenerator {
         let y = top;
         for (const plannedRow of plan.pages[pageIndex].spanRows) {
           const row = { ...plannedRow, structured: true };
-          if (row.type === 'chords') row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
+          if (row.type === 'chords') {
+            row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
+            row.chords = (row.chords || []).map(chord => ({ ...chord, displaySymbol: this.displayChord(chord.symbol, song, new MusicTheory(), chord) }));
+          }
           await this.renderLine(pdf, row, plan.spec.margins.left, y); y += plan.spec.lineHeight;
         }
       } else for (let columnIndex = 0; columnIndex < plan.spec.columns; columnIndex += 1) {
@@ -232,7 +236,10 @@ class PDFGenerator {
         let y = top;
         for (const plannedRow of plan.pages[pageIndex].columns[columnIndex]) {
           const row = { ...plannedRow, structured: true };
-          if (row.type === 'chords') row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
+          if (row.type === 'chords') {
+            row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
+            row.chords = (row.chords || []).map(chord => ({ ...chord, displaySymbol: this.displayChord(chord.symbol, song, new MusicTheory(), chord) }));
+          }
           await this.renderLine(pdf, row, x, y);
           y += plan.spec.lineHeight;
         }
@@ -242,7 +249,7 @@ class PDFGenerator {
         for (const item of plan.metadata) {
           const labels = { writer: 'Written by: ', arranger: 'Arrangement by: ', arrangement: 'Arrangement: ' };
           pdf.setFontSize(item.field === 'arrangement' ? 18 : plan.spec.fontSize);
-          pdf.setFont('courier', item.field === 'arrangement' ? 'bold' : 'normal');
+          pdf.setFont(this.typography === 'sans' ? 'helvetica' : 'courier', item.field === 'arrangement' ? 'bold' : 'normal');
           pdf.setTextColor(0, 0, 0);
           pdf.text(`${labels[item.field] || ''}${item.value}`, plan.spec.margins.left, footerY);
           footerY += (item.field === 'arrangement' ? 4 : 1) * plan.spec.lineHeight;
@@ -457,15 +464,20 @@ class PDFGenerator {
     switch (line.type) {
       case 'chords':
         pdf.setFontSize(line.structured ? this.fontSize : this.chordFontSize);
-        pdf.setFont(line.structured ? 'courier' : undefined, 'bold');
+        pdf.setFont(line.structured ? (this.typography === 'sans' ? 'helvetica' : 'courier') : undefined, 'bold');
         pdf.setTextColor(0, 0, 200); // Blue for chords
-        pdf.text(line.content, x, y);
+        if (line.structured && this.typography === 'sans' && Array.isArray(line.chords)) {
+          const Metrics = typeof ChartTextMetrics !== 'undefined' ? ChartTextMetrics : null;
+          if (!Metrics) throw new Error('Chart text metrics are unavailable');
+          line.chords.forEach(chord => pdf.text(String(chord.displaySymbol || chord.symbol || ''),
+            x + Metrics.positionAtOffset(line.lyrics || '', Number(chord.characterOffset) || 0, this.fontSize, 'sans'), y));
+        } else pdf.text(line.content, x, y);
         pdf.setTextColor(0, 0, 0); // Reset to black
         break;
         
       case 'text':
         pdf.setFontSize(this.fontSize);
-        pdf.setFont(line.structured ? 'courier' : undefined, 'normal');
+        pdf.setFont(line.structured ? (this.typography === 'sans' ? 'helvetica' : 'courier') : undefined, 'normal');
         pdf.text(line.content, x, y);
         break;
 

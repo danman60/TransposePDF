@@ -82,6 +82,7 @@ class SongModel {
     song.layout = {
       columns: layoutColumns,
       fontSize: Math.max(10, Math.min(18, Math.round(Number(input.layout?.fontSize) || 13))),
+      typography: input.layout?.typography === 'sans' ? 'sans' : 'mono',
       columnsProvenance: ['default', 'manual', 'imported'].includes(input.layout?.columnsProvenance)
         ? input.layout.columnsProvenance : 'default',
       margin: ['narrow', 'standard', 'wide'].includes(input.layout?.margin) ? input.layout.margin : 'standard',

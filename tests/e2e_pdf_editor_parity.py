@@ -19,16 +19,19 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
     page.wait_for_function("() => window.transposeApp && typeof ChartPageLayout === 'function'")
     proof = page.evaluate("""async () => {
       const song = SongModel.create({ id:'parity-song', title:'Parity Proof', originalKey:'F', currentKey:'F',
-        sourceType:'manual', layout:{columns:2,columnRatios:[.38,.62],fontSize:13}, credits:{writer:{value:'Writer Proof'},arranger:{value:'Arranger Proof'}},
+        sourceType:'manual', layout:{columns:2,columnRatios:[.38,.62],fontSize:13,typography:'sans'}, credits:{writer:{value:'Writer Proof'},arranger:{value:'Arranger Proof'}},
         arrangement:{mode:'manual',value:'V1 C V2 C',inferredValue:'V1 C V2 C'}, sections:[
-          {label:'Alpha',lines:Array.from({length:7},(_,i)=>({lyrics:`Alpha lyric ${i+1} carries enough words to wrap identically`,chords:[{id:`a${i}`,symbol:'F',characterOffset:6}]}))},
+          {label:'Alpha',lines:Array.from({length:7},(_,i)=>({lyrics:`Alpha lyric ${i+1} carries enough words to wrap identically`,chords:[{id:`a${i}`,symbol:'G#sus4',characterOffset:6}]}))},
           {label:'Beta',lines:Array.from({length:3},(_,i)=>({lyrics:`Beta lyric ${i+1} follows the same shared geometry`,chords:[{id:`b${i}`,symbol:'Bb',characterOffset:5}]}))},
           {label:'Gamma',lines:Array.from({length:8},(_,i)=>({lyrics:`Gamma lyric ${i+1} remains readable in both outputs`,chords:[{id:`g${i}`,symbol:'C',characterOffset:7}]}))}
         ]});
       window.transposeApp.currentSongs=[song]; window.transposeApp.activeSongId=song.id; window.transposeApp.displaySongs();
       const plan=ChartPageLayout.plan(song,{includeEmptyMetadata:true});
+      const pageBox=document.querySelector('.chart-page').getBoundingClientRect();
+      const chordBox=document.querySelector('.inline-chord-anchor[data-chord-id="a0"]').getBoundingClientRect();
       const editor={pages:document.querySelectorAll('.chart-page').length,
         font:parseFloat(getComputedStyle(document.querySelector('.chart-page-columns')).fontSize),
+        family:getComputedStyle(document.querySelector('.chart-page-columns')).fontFamily,
         overflow:[...document.querySelectorAll('.chart-page')].some(e=>e.scrollHeight>e.clientHeight+1),
         pageMetrics:[...document.querySelectorAll('.chart-page')].map(e=>({client:e.clientHeight,scroll:e.scrollHeight,
           columns:e.querySelector('.chart-page-columns')?.getBoundingClientRect().height,
@@ -36,6 +39,7 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
         textOnlyHeight:document.querySelector('.planned-text-only')?.getBoundingClientRect().height || 0,
         chordHeight:document.querySelector('.planned-chart-line:not(.planned-text-only)')?.getBoundingClientRect().height || 0,
         sectionGaps:document.querySelectorAll('.lead-sheet .planned-section-gap').length,
+        firstChordXPoints:(chordBox.left-pageBox.left)/pageBox.width*plan.spec.pageWidth,
         lines:[...document.querySelectorAll('.chart-page .lyric-line')].map(e=>e.textContent.trim()).filter(Boolean)};
       const pdf=await new PDFGenerator().generatePDF([song],'Parity Proof');
       return {editor,plan,pdf:pdf.output('datauristring').split(',')[1]};
@@ -47,11 +51,15 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-parity-") as temporary, sy
     pages = [node for node in ET.parse(bbox_path).getroot().iter() if node.tag.endswith("page")]
     assert len(pages) == proof["editor"]["pages"], (len(pages), proof["editor"]["pages"])
     assert proof["plan"]["spec"]["fontSize"] == 13, proof["plan"]["spec"]
+    assert proof["plan"]["spec"]["typography"] == "sans", proof["plan"]["spec"]
+    assert "Arial" in proof["editor"]["family"], proof["editor"]
     assert not proof["editor"]["overflow"], proof["editor"]
     assert proof["editor"]["textOnlyHeight"] <= proof["editor"]["font"] * 1.3, proof["editor"]
     assert proof["editor"]["chordHeight"] <= proof["editor"]["font"] * 2.7, proof["editor"]
     assert proof["editor"]["sectionGaps"] == 3, proof["editor"]
     words_by_page = [[word for word in node.iter() if word.tag.endswith("word")] for node in pages]
+    first_chord = next(word for word in words_by_page[0] if (word.text or "") == "G#sus4")
+    assert abs(float(first_chord.attrib["xMin"]) - proof["editor"]["firstChordXPoints"]) < 2, (first_chord.attrib, proof["editor"])
     for label in ("Alpha", "Beta", "Gamma"):
         planned = next((page_index, column_index) for page_index, planned_page in enumerate(proof["plan"]["pages"])
           for column_index, column in enumerate(planned_page["columns"])

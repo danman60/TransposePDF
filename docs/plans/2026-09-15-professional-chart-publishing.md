@@ -28,6 +28,8 @@ This exists so that users have "full control of how the page sizes/lays out per 
 
 ## Phase 1 — measured proportional layout
 
+Status: implemented in v52 candidate. Deterministic Helvetica metrics drive wrapping, editor chord projection, pointer-to-anchor conversion, and PDF chord coordinates. Legacy songs remain `mono`; professional presets select `sans`.
+
 Files:
 - `modules/songModel.js`: persist font family and anchor projection version.
 - `modules/chartPageLayout.js`: replace fixed `0.6em` capacity with deterministic measured advances supplied by shared metrics.

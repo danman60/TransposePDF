@@ -210,10 +210,8 @@ class AuthoringController {
     if (!line) return;
     this.elements.authorPreview.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
     line.classList.add('author-drop-target');
-    const rect = line.getBoundingClientRect();
-    const width = this.measureAuthorCharacterWidth(line);
-    const offset = Math.max(0, Math.round((event.clientX - rect.left) / width));
-    line.style.setProperty('--drop-caret-left', `${offset * width}px`);
+    const projection = this.projectAuthorPointer(line, event.clientX);
+    line.style.setProperty('--drop-caret-left', `${projection.x}px`);
   }
 
   handleAuthorPointerUp(event) {
@@ -223,12 +221,11 @@ class AuthoringController {
       event.preventDefault();
       const line = document.elementFromPoint(event.clientX, event.clientY)?.closest('.chord-line[data-section-index]');
       if (line) {
-        const rect = line.getBoundingClientRect();
-        const width = this.measureAuthorCharacterWidth(line);
+        const projection = this.projectAuthorPointer(line, event.clientX);
         this.moveAuthorChord(drag.source, {
           sectionIndex: Number(line.dataset.sectionIndex),
           lineIndex: Number(line.dataset.lineIndex)
-        }, Math.max(0, Math.round((event.clientX - rect.left) / width)));
+        }, projection.offset);
       }
     }
     this.clearAuthorPointerDrag();
@@ -322,10 +319,8 @@ class AuthoringController {
     event.dataTransfer.dropEffect = 'move';
     this.elements.authorPreview.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
     line.classList.add('author-drop-target');
-    const rect = line.getBoundingClientRect();
-    const characterWidth = this.measureAuthorCharacterWidth(line);
-    const offset = Math.max(0, Math.round((event.clientX - rect.left) / characterWidth));
-    line.style.setProperty('--drop-caret-left', `${offset * characterWidth}px`);
+    const projection = this.projectAuthorPointer(line, event.clientX);
+    line.style.setProperty('--drop-caret-left', `${projection.x}px`);
   }
 
   handleAuthorChordDragLeave(event) {
@@ -341,10 +336,8 @@ class AuthoringController {
       sectionIndex: Number(line.dataset.sectionIndex),
       lineIndex: Number(line.dataset.lineIndex)
     };
-    const rect = line.getBoundingClientRect();
-    const characterWidth = this.measureAuthorCharacterWidth(line);
-    const offset = Math.max(0, Math.round((event.clientX - rect.left) / characterWidth));
-    this.moveAuthorChord(this.authorDrag, destination, offset);
+    const projection = this.projectAuthorPointer(line, event.clientX);
+    this.moveAuthorChord(this.authorDrag, destination, projection.offset);
     this.clearAuthorDragState();
   }
 
@@ -424,6 +417,20 @@ class AuthoringController {
     const style = getComputedStyle(line);
     context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
     return context.measureText('0').width || 9.6;
+  }
+
+  projectAuthorPointer(line, clientX) {
+    const localX = Math.max(0, Number(clientX) - line.getBoundingClientRect().left);
+    const page = line.closest?.('.chart-page');
+    if (page?.dataset.typography === 'sans' && typeof ChartTextMetrics !== 'undefined') {
+      const lyric = line.closest('.chart-line')?.querySelector('.lyric-line')?.textContent || '';
+      const fontSize = parseFloat(getComputedStyle(line).fontSize) || 13;
+      const offset = ChartTextMetrics.offsetAtWidth(lyric, localX, fontSize, 'sans');
+      return { offset, x: ChartTextMetrics.positionAtOffset(lyric, offset, fontSize, 'sans') };
+    }
+    const width = this.measureAuthorCharacterWidth(line);
+    const offset = Math.max(0, Math.round(localX / width));
+    return { offset, x: offset * width };
   }
 
   clearAuthorDragState() {

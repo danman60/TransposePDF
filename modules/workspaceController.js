@@ -167,9 +167,8 @@ class WorkspaceController {
       event.preventDefault();
       this.root.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
       chordLine.classList.add('author-drop-target');
-      const width = this.ui.authoringController.measureAuthorCharacterWidth(chordLine);
-      const offset = Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
-      chordLine.style.setProperty('--drop-caret-left', `${offset * width}px`);
+      const projection = this.ui.authoringController.projectAuthorPointer(chordLine, event.clientX);
+      chordLine.style.setProperty('--drop-caret-left', `${projection.x}px`);
       return;
     }
     if (event.target.closest?.('[data-reorder-id]')) event.preventDefault();
@@ -193,8 +192,8 @@ class WorkspaceController {
     const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
     if (chordLine && this.inlineDrag) {
       event.preventDefault();
-      const width = this.ui.authoringController.measureAuthorCharacterWidth(chordLine);
-      const offset = (Number(chordLine.dataset.sourceStart) || 0) + Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
+      const projection = this.ui.authoringController.projectAuthorPointer(chordLine, event.clientX);
+      const offset = (Number(chordLine.dataset.sourceStart) || 0) + projection.offset;
       const source = this.inlineDrag;
       this.inlineDrag = null;
       this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
@@ -437,9 +436,8 @@ class WorkspaceController {
     if (!line) return;
     this.root.querySelectorAll('.author-drop-target').forEach(item => item.classList.remove('author-drop-target'));
     line.classList.add('author-drop-target');
-    const width = this.ui.authoringController.measureAuthorCharacterWidth(line);
-    const offset = Math.max(0, Math.round((event.clientX - line.getBoundingClientRect().left) / width));
-    line.style.setProperty('--drop-caret-left', `${offset * width}px`);
+    const projection = this.ui.authoringController.projectAuthorPointer(line, event.clientX);
+    line.style.setProperty('--drop-caret-left', `${projection.x}px`);
   }
 
   handlePointerUp(event) {
@@ -463,9 +461,9 @@ class WorkspaceController {
     this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => { item.classList.remove('dragging', 'author-drop-target'); item.style.removeProperty('--drop-caret-left'); });
     if (!drag.active || !line) return;
     event.preventDefault();
-    const width = this.ui.authoringController.measureAuthorCharacterWidth(line);
+    const projection = this.ui.authoringController.projectAuthorPointer(line, event.clientX);
     this.ui.moveInlineChord(drag.source, { sectionIndex: Number(line.dataset.sectionIndex), lineIndex: Number(line.dataset.lineIndex) },
-      (Number(line.dataset.sourceStart) || 0) + Math.max(0, Math.round((event.clientX - line.getBoundingClientRect().left) / width)), { copy: drag.copy });
+      (Number(line.dataset.sourceStart) || 0) + projection.offset, { copy: drag.copy });
   }
 
   handlePointerCancel(event) {
@@ -520,8 +518,8 @@ class WorkspaceController {
     const sheet = chordLine.closest('.lead-sheet[data-song-id]');
     if (!sheet) return;
     event.preventDefault();
-    const width = this.ui.authoringController.measureAuthorCharacterWidth(chordLine);
-    const offset = (Number(chordLine.dataset.sourceStart) || 0) + Math.max(0, Math.round((event.clientX - chordLine.getBoundingClientRect().left) / width));
+    const projection = this.ui.authoringController.projectAuthorPointer(chordLine, event.clientX);
+    const offset = (Number(chordLine.dataset.sourceStart) || 0) + projection.offset;
     this.ui.insertInlineChord(sheet.dataset.songId, Number(chordLine.dataset.sectionIndex),
       Number(chordLine.dataset.lineIndex), offset);
   }
@@ -544,8 +542,7 @@ class WorkspaceController {
     const chartLine = (lyric || lane)?.closest?.('.chart-line');
     const lineRect = chartLine?.getBoundingClientRect();
     const insertionLineIndex = Number.isFinite(lineIndex) ? lineIndex + (lineRect && event.clientY > lineRect.top + lineRect.height / 2 ? 1 : 0) : null;
-    const width = lane ? this.ui.authoringController.measureAuthorCharacterWidth(lane) : 1;
-    const offset = lane ? Math.max(0, Math.round((event.clientX - lane.getBoundingClientRect().left) / width)) : 0;
+    const offset = lane ? this.ui.authoringController.projectAuthorPointer(lane, event.clientX).offset : 0;
     const song = this.ui.currentSongs.find(item => String(item.id) === String(songId));
     this.contextState = { songId, sectionIndex, lineIndex, chordId: chord?.dataset.chordId || null,
       characterOffset: chord ? Number(chord.dataset.characterOffset) || 0 : offset,

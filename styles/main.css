@@ -222,7 +222,7 @@ body {
   height: 8px;
   background: var(--border-color);
   border-radius: 4px;
-  overflow: hidden;
+  overflow: clip;
 }
 
 .progress-fill {
@@ -753,7 +753,7 @@ body {
 
 .chart-line { position: relative; }
 .inline-add-line {
-  position: absolute; right: .25rem; bottom: -.72rem; z-index: 2;
+  position: absolute; right: .25rem; bottom: 0; z-index: 2;
   border: 1px solid #4abff0; border-radius: 999px; padding: .18rem .58rem;
   background: #17242b; color: #73d3fa;
   box-shadow: 0 2px 8px rgba(0, 0, 0, .28); font-size: .72rem; font-weight: 700;
@@ -765,7 +765,7 @@ body {
 .lead-sheet .chord-line { position: relative; }
 .lead-sheet .inline-chord-anchor {
   position: absolute;
-  left: calc(var(--chord-column, 0) * 1ch);
+  left: var(--chord-x, calc(var(--chord-column, 0) * 1ch));
   top: 0;
   display: inline-flex;
   align-items: center;
@@ -1448,7 +1448,7 @@ body {
   width: min(100%, 794px);
   aspect-ratio: var(--page-aspect, 595.28 / 841.89);
   margin: 0 auto;
-  padding: var(--page-margin-top, 6.05%) var(--page-margin-right, 6.05%) var(--page-margin-bottom, 6.05%) var(--page-margin-left, 6.05%);
+  padding: 0;
   overflow: hidden;
   border: 1px solid #cbd4d8;
   border-radius: 3px;
@@ -1457,11 +1457,11 @@ body {
   box-shadow: 0 8px 28px rgba(0,0,0,.28);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   line-height: 1.2;
-  display: flex;
-  flex-direction: column;
 }
+.chart-page[data-typography="sans"] { font-family: Arial, Helvetica, sans-serif; }
+.chart-page-body { position: absolute; inset: var(--page-margin-top, 4.28%) var(--page-margin-right, 6.05%) var(--page-margin-bottom, 4.28%) var(--page-margin-left, 6.05%); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .chart-page-header, .chart-page-columns, .chart-page-footer { font-size: var(--chart-render-font, calc(var(--chart-font-size, 13) * .168cqi)); }
-.chart-page-header { display: grid; min-height: 7.39cqi; margin-bottom: 0; color: #111; }
+.chart-page-header { display: grid; min-height: var(--page-header-height, 7.39cqi); margin-bottom: 0; color: #111; }
 .chart-page-header strong { font-family: Arial, sans-serif; font-size: 1.45em; line-height: 1.15; }
 .chart-page-header span { font-size: .82em; }
 .chart-page-columns { position: relative; display: grid; flex: 1; min-height: 0; grid-template-columns: var(--column-template, repeat(var(--page-columns), minmax(0, 1fr))); column-gap: var(--page-gutter, 3.025cqi); align-items: start; }
@@ -1506,9 +1506,10 @@ body {
 .layout-mode { outline: 2px solid rgba(79,195,247,.45); outline-offset: 2px; }
 .layout-mode::after { content: "PDF page edge"; position: absolute; right: .4rem; bottom: .2rem; color: #55727e; font: 600 .55rem Arial,sans-serif; }
 .layout-mode .chart-page-columns { background: transparent; }
-.layout-break-target { position: relative; z-index: 3; height: .45em; margin: -.2em 0; border-top: 1px dotted transparent; cursor: ns-resize; }
+.layout-break-target { position: relative; z-index: 3; height: 0; margin: 0; border-top: 1px dotted transparent; cursor: ns-resize; }
+.layout-break-target::before { content: ""; position: absolute; inset: -.4em 0; min-height: .8em; }
 .is-layout-mode .layout-break-target:hover { border-color: rgba(0,112,184,.45); }
-.layout-break-target.has-layout-break { height: 1.1em; margin: .05em 0; border-top: 2px dotted #0070b8; color: #00598f; }
+.layout-break-target.has-layout-break { border-top: 2px dotted #0070b8; color: #00598f; }
 .layout-break-target.auto-layout-break { border-color: #0070b8; background: linear-gradient(90deg, rgba(0,112,184,.08), transparent); }
 .layout-break-target.auto-layout-break span::before { content: "↕ "; font-size: 1.25em; }
 .layout-break-target.layout-dragging { opacity: .45; }
@@ -1671,7 +1672,7 @@ button.chord-token.dragging { opacity: 0.45; cursor: grabbing; }
 
 @media (max-width: 700px) {
   .structured-chart { column-count: 1 !important; column-gap: 0; }
-  .chart-page { width: 100%; padding: 6%; font-size: max(2.4cqi, 11px); overflow: auto; aspect-ratio: auto; min-height: 1120px; }
+  .chart-page { width: 100%; font-size: max(2.4cqi, 11px); overflow: auto; aspect-ratio: auto; min-height: 1120px; }
   .chart-page-columns { grid-template-columns: 1fr; gap: 1rem; }
   .chart-metadata-row { grid-template-columns: 1fr; gap: .15rem; }
   .use-song-order { justify-self: start; }

@@ -42,6 +42,8 @@ def main():
         lyric = '.lead-sheet [data-inline-field="lyrics"][data-line-index="0"]'
         chord = '.lead-sheet [data-inline-field="chord"][data-line-index="0"][data-chord-index="0"]'
         page.locator(lyric).wait_for()
+        page.evaluate("() => window.transposeApp.updateSongLayout(window.transposeApp.currentSongs[0].id,{typography:'sans'})")
+        page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.typography === 'sans'")
 
         # Exact user path: highlight text in rendered chart, type replacement, then delete selection.
         select_text(page, lyric, 0, 7)

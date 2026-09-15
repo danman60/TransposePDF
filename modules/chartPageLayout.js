@@ -1,5 +1,11 @@
 /** Shared, deterministic A4 layout plan for editor and structured PDF output. */
 class ChartPageLayout {
+  static textMetrics() {
+    if (typeof ChartTextMetrics !== 'undefined') return ChartTextMetrics;
+    if (typeof require === 'function') return require('./chartTextMetrics');
+    throw new Error('Chart text metrics are unavailable');
+  }
+
   static spec(layoutOrColumns = 1, requestedFontSize = 13, marginName = 'standard') {
     const layout = typeof layoutOrColumns === 'object' ? layoutOrColumns || {} : { columns: layoutOrColumns, fontSize: requestedFontSize, margin: marginName };
     const count = Math.max(1, Math.min(3, Math.trunc(Number(layout.columns) || 1)));
@@ -23,10 +29,12 @@ class ChartPageLayout {
     const columnRatios = rawRatios.map(value => value / ratioTotal);
     const columnWidths = columnRatios.map(value => printableWidth * value);
     const columnOffsets = columnWidths.map((_, index) => margins.left + columnWidths.slice(0, index).reduce((sum, value) => sum + value, 0) + gutter * index);
+    const typography = layout.typography === 'sans' ? 'sans' : 'mono';
     const maxCharactersByColumn = columnWidths.map(value => Math.max(18, Math.floor(value / (fontSize * .6))));
+    const capacitiesByColumn = columnWidths.map((maxWidth, index) => ({ maxWidth, maxCharacters: maxCharactersByColumn[index], fontSize, typography }));
     const columnWidth = columnWidths[0];
     return { columns: count, pageWidth, pageHeight, margin, margins, gutter, fontSize, lineHeight, headerHeight,
-      printableWidth, columnWidth, columnWidths, columnOffsets, columnRatios, maxCharactersByColumn,
+      printableWidth, columnWidth, columnWidths, columnOffsets, columnRatios, typography, maxCharactersByColumn, capacitiesByColumn,
       maxCharacters: Math.min(...maxCharactersByColumn),
       rowsPerColumn: Math.floor((pageHeight - margins.top - margins.bottom - headerHeight) / lineHeight) };
   }
@@ -35,10 +43,18 @@ class ChartPageLayout {
     const lyrics = String(line?.lyrics || '');
     const chords = (line?.chords || []).map(chord => ({ ...chord, characterOffset: Math.max(0, Number(chord.characterOffset) || 0) }));
     const extent = Math.max(lyrics.length, ...chords.map(chord => chord.characterOffset + String(chord.symbol || '').length), 0);
-    if (extent <= maxCharacters) return [{ lyrics, chords, sourceStart: 0, sourceEnd: extent }];
+    const capacity = typeof maxCharacters === 'object' ? maxCharacters : { maxCharacters };
+    const proportional = capacity.typography === 'sans' && Number(capacity.maxWidth) > 0;
+    const fits = proportional
+      ? this.textMetrics().width(lyrics, capacity.fontSize, 'sans') <= capacity.maxWidth
+        && this.textMetrics().positionAtOffset(lyrics, extent, capacity.fontSize, 'sans') <= capacity.maxWidth
+      : extent <= capacity.maxCharacters;
+    if (fits) return [{ lyrics, chords, sourceStart: 0, sourceEnd: extent }];
     const segments = []; let start = 0;
     while (start < extent) {
-      let end = Math.min(extent, start + maxCharacters);
+      let end = proportional
+        ? Math.min(extent, this.textMetrics().fitEnd(lyrics, start, capacity.maxWidth, capacity.fontSize, 'sans', extent))
+        : Math.min(extent, start + capacity.maxCharacters);
       if (end < lyrics.length) { const space = lyrics.lastIndexOf(' ', end); if (space > start) end = space; }
       const raw = lyrics.slice(start, end); const leading = raw.match(/^\s*/)?.[0].length || 0;
       segments.push({ lyrics: raw.trim(), sourceStart: start + leading, sourceEnd: end,
@@ -52,7 +68,7 @@ class ChartPageLayout {
   static sectionRows(section, sectionIndex, spec, spacing = 'normal') {
     const rows = [{ type: 'section', content: String(section?.label || ''), sectionIndex, sectionId: section.id }];
     (section?.lines || []).forEach((line, lineIndex) => {
-      rows.push(...this.lineRows(section, sectionIndex, line, lineIndex, spec.maxCharacters));
+      rows.push(...this.lineRows(section, sectionIndex, line, lineIndex, spec.capacity || spec.maxCharacters));
     });
     const gapCount = spacing === 'compact' ? 0 : spacing === 'spacious' ? 2 : 1;
     for (let count = 0; count < gapCount; count += 1) rows.push({ type: 'empty', content: '', sectionIndex, sectionId: section.id, sectionGap: true });
@@ -99,8 +115,8 @@ class ChartPageLayout {
     const placeSection = (section, sectionIndex, rule = {}) => {
       if (rule.start === 'page' && (page || column || used)) advanceType('page');
       else if (rule.start === 'column' && used) advance();
-      const characters = () => spec.maxCharactersByColumn[column];
-      const estimate = this.sectionRows(section, sectionIndex, { ...spec, maxCharacters: characters() }, rule.spacing || layout.sectionSpacing || 'normal');
+      const characters = () => spec.capacitiesByColumn[column];
+      const estimate = this.sectionRows(section, sectionIndex, { ...spec, capacity: characters() }, rule.spacing || layout.sectionSpacing || 'normal');
       if (rule.keepTogether && used && estimate.length <= spec.rowsPerColumn && used + estimate.length > spec.rowsPerColumn) advance();
       const firstRows = section.lines?.length ? this.lineRows(section, sectionIndex, section.lines[0], 0, characters()) : [];
       if (used && used + 1 + firstRows.length > spec.rowsPerColumn) advance();
@@ -128,7 +144,8 @@ class ChartPageLayout {
       const spacing = rule.spacing === 'inherit' || !rule.spacing ? (layout.sectionSpacing || 'normal') : rule.spacing;
       if (rule.spanColumns && spec.columns > 1) {
         if (pages[page].columns.some(items => items.length)) { while (column || used) advance(); }
-        const spanSpec = { ...spec, maxCharacters: Math.max(18, Math.floor((spec.pageWidth - spec.margins.left - spec.margins.right) / (spec.fontSize * .6))) };
+        const spanWidth = spec.pageWidth - spec.margins.left - spec.margins.right;
+        const spanSpec = { ...spec, capacity: { maxWidth: spanWidth, maxCharacters: Math.max(18, Math.floor(spanWidth / (spec.fontSize * .6))), fontSize: spec.fontSize, typography: spec.typography } };
         pages[page].spanRows = this.sectionRows(section, index, spanSpec, spacing); pages[page].spanSectionId = section.id;
         page += 1; column = 0; used = 0; pages.push({ columns: Array.from({ length: spec.columns }, () => []) });
       } else placeSection(section, index, rule);

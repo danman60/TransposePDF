@@ -71,7 +71,14 @@ const renderedGeometrySong = { id: 'geometry-song', title: 'Geometry', currentKe
 }, sections: [{ id: 's', label: 'Verse', lines: [{ id: 'l', lyrics: 'Lost and lonely souls draw in their final breath', chords: [] }] }] };
 const renderedGeometrySpec = ChartPageLayout.spec(renderedGeometrySong.layout);
 const renderedGeometry = new ChartRenderer().renderPlannedStructuredContent(renderedGeometrySong, { editable: true });
-const innerPageWidth = renderedGeometrySpec.pageWidth - renderedGeometrySpec.margins.left - renderedGeometrySpec.margins.right;
-assert.ok(renderedGeometry.includes(`--chart-render-font:${(renderedGeometrySpec.fontSize / innerPageWidth * 100).toFixed(4)}cqi`), 'screen font must scale against CSS content-box width');
-assert.ok(renderedGeometry.includes(`--page-gutter:${(renderedGeometrySpec.gutter / innerPageWidth * 100).toFixed(4)}cqi`), 'screen gutter must scale against CSS content-box width');
-console.log('26/26 shared page geometry, CSS scale, and independent wrapping checks passed');
+assert.ok(renderedGeometry.includes(`--chart-render-font:${(renderedGeometrySpec.fontSize / renderedGeometrySpec.pageWidth * 100).toFixed(4)}cqi`), 'screen font must scale against full page width');
+assert.ok(renderedGeometry.includes(`--page-gutter:${(renderedGeometrySpec.gutter / renderedGeometrySpec.pageWidth * 100).toFixed(4)}cqi`), 'screen gutter must scale against full page width');
+assert.ok(renderedGeometry.includes('class="chart-page-body"'), 'page margins require a page-relative inset body');
+const monoCapacity = ChartPageLayout.spec({ columns: 1, fontSize: 13, typography: 'mono', margins: {left:120,right:120} });
+const sansCapacity = ChartPageLayout.spec({ columns: 1, fontSize: 13, typography: 'sans', margins: {left:120,right:120} });
+const professionalLine = { lyrics: 'Lost and lonely souls draw in their final breath with room for measured type', chords: [] };
+const monoWrap = ChartPageLayout.wrapLine(professionalLine, monoCapacity.capacitiesByColumn[0]);
+const sansWrap = ChartPageLayout.wrapLine(professionalLine, sansCapacity.capacitiesByColumn[0]);
+assert.ok(sansWrap[0].sourceEnd > monoWrap[0].sourceEnd, `${sansWrap[0].sourceEnd} <= ${monoWrap[0].sourceEnd}`);
+assert.equal(sansWrap.map(segment => segment.lyrics).join(' '), professionalLine.lyrics);
+console.log('28/28 shared page geometry, proportional metrics, CSS scale, and wrapping checks passed');
