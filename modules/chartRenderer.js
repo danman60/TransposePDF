@@ -106,7 +106,17 @@ class ChartRenderer {
     const pageHtml = plan.pages.map((page, pageIndex) => {
       const columns = page.spanRows
         ? `<div class="chart-page-column chart-page-span">${this.renderPlannedColumn(page.spanRows, song, { ...options, editable, bare: true })}</div>`
-        : page.columns.map(rows => this.renderPlannedColumn(rows, song, { ...options, editable })).join('');
+        : page.columns.map((rows, columnIndex) => {
+          const lastLine = [...rows].reverse().find(row => row.lineId && row.finalSegment !== false);
+          const hasFollowingContent = page.columns.slice(columnIndex + 1).some(items => items.some(row => row.lineId))
+            || plan.pages.slice(pageIndex + 1).some(item => item.spanRows?.length || item.columns.some(items => items.some(row => row.lineId)));
+          const alreadyManual = lastLine && (song.layout?.breaks || []).some(item => item.sectionId === lastLine.sectionId && item.lineId === lastLine.lineId && item.edge === 'after');
+          const autoBoundary = song.layout?.layoutMode && hasFollowingContent && lastLine && !alreadyManual ? {
+            type: columnIndex === plan.spec.columns - 1 ? 'page' : 'column', sectionIndex: lastLine.sectionIndex,
+            lineIndex: lastLine.lineIndex, columnNumber: columnIndex + 1
+          } : null;
+          return this.renderPlannedColumn(rows, song, { ...options, editable, autoBoundary });
+        }).join('');
       return `<section class="chart-page${song.layout?.layoutMode ? ' layout-mode' : ''}" data-chart-page="${pageIndex + 1}" style="--page-columns:${page.spanRows ? 1 : plan.spec.columns};--chart-font-size:${plan.spec.fontSize};--page-margin:${(plan.spec.margin / plan.spec.pageWidth * 100).toFixed(3)}%">
         <header class="chart-page-header"><strong>${this.escape(song.title)}</strong><span>${this.escape(this.plannedKeyText(song))}</span></header>
         <div class="chart-page-columns">${columns}</div>
@@ -142,7 +152,8 @@ class ChartRenderer {
     const content = groups.map(group => group.metadata
       ? this.renderPlannedMetadata(group.rows[0], song, options.editable)
       : this.renderPlannedSection(group, song, options)).join('');
-    return options.bare ? content : `<div class="chart-page-column">${content}</div>`;
+    const auto = options.editable && options.autoBoundary ? `<div class="layout-break-target has-layout-break auto-layout-break" data-layout-boundary="true" data-break-id="" data-break-type="${options.autoBoundary.type}" data-song-id="${this.escape(song.id)}" data-section-index="${options.autoBoundary.sectionIndex}" data-line-index="${options.autoBoundary.lineIndex}" tabindex="0" role="separator" aria-label="Drag automatic ${options.autoBoundary.type} termination"><span>${options.autoBoundary.type === 'page' ? 'Page ends here' : `Column ${options.autoBoundary.columnNumber} ends here`}</span></div>` : '';
+    return options.bare ? content : `<div class="chart-page-column">${content}${auto}</div>`;
   }
 
   renderPlannedMetadata(row, song, editable) {

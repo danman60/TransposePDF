@@ -1500,8 +1500,10 @@ body {
 .layout-break-target { position: relative; z-index: 3; height: .45em; margin: -.2em 0; border-top: 1px dotted transparent; cursor: ns-resize; }
 .is-layout-mode .layout-break-target:hover { border-color: rgba(0,112,184,.45); }
 .layout-break-target.has-layout-break { height: 1.1em; margin: .05em 0; border-top: 2px dotted #0070b8; color: #00598f; }
+.layout-break-target.auto-layout-break { border-color: #0070b8; background: linear-gradient(90deg, rgba(0,112,184,.08), transparent); }
+.layout-break-target.auto-layout-break span::before { content: "↕ "; font-size: 1.25em; }
 .layout-break-target.layout-dragging { opacity: .45; }
-.layout-break-target span { position: absolute; right: 0; top: -.8em; padding: 0 .25em; background: #fff; font: 700 .58em Arial,sans-serif; text-transform: uppercase; }
+.layout-break-target span { position: absolute; right: 0; top: -1.05em; padding: .18em .45em; border: 1px solid #0070b8; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px rgba(0,70,115,.2); font: 800 .7em Arial,sans-serif; letter-spacing: .02em; text-transform: uppercase; }
 .layout-break-target.layout-drop-active { border-color: #e06c00; border-top-width: 3px; }
 .chart-page-span { grid-column: 1 / -1; }
 

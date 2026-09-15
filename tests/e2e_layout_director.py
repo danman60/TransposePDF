@@ -17,11 +17,11 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-layout-director-") as prof
     }""")
     page.locator('[data-action="toggle-layout-mode"]').click()
     page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.layoutMode === true")
-    page.evaluate("() => window.transposeApp.setLayoutBreak('layout-director-proof',0,1,'column')")
-    page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.breaks.length === 1")
     checks = {}
-    checks['dotted_break_visible'] = page.locator('.layout-break-target.has-layout-break').count() == 1
-    source = page.locator('.layout-break-target.has-layout-break'); target = page.locator('.layout-break-target[data-section-index="0"][data-line-index="4"]')
+    checks['automatic_dotted_break_visible'] = page.locator('.layout-break-target.auto-layout-break').count() >= 1
+    checks['no_right_click_required'] = page.evaluate("() => window.transposeApp.currentSongs[0].layout.breaks.length === 0")
+    page.locator('.session-workspace').screenshot(path=str(SHOT.with_name('layout-director-auto.png')))
+    source = page.locator('.layout-break-target.auto-layout-break').first; target = page.locator('.layout-break-target[data-section-index="0"][data-line-index="4"]')
     page.evaluate("() => {window.__pointerEvents=[];for(const n of ['pointerdown','pointermove','pointerup'])document.addEventListener(n,e=>window.__pointerEvents.push({type:n,cls:e.target.className}),true)}")
     target.scroll_into_view_if_needed(); source.scroll_into_view_if_needed()
     a=source.bounding_box(); b=target.bounding_box(); page.mouse.move(a['x']+a['width']/2,a['y']+2); page.mouse.down(); page.mouse.move(b['x']+b['width']/2,b['y']+2,steps=8); page.mouse.up()

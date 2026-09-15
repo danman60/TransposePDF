@@ -6,6 +6,7 @@ v47 candidate implements semantic draggable column/page termination, section flo
 
 ## Recent Changes
 
+- v48 candidate: Layout mode now renders the current automatic column/page termination as a labeled draggable dotted handle immediately. No right-click or pre-existing manual break required; dragging promotes it to a persisted semantic override.
 - v47 candidate: Layout mode exposes pointer-draggable dotted termination lines anchored to stable lyric-line IDs. Right-click adds column/page breaks, keep-together, next-column/page, full-width section, and per-section spacing. Sidebar adds margins, spacing, balance, presets, saved custom presets, and reset. Shared planner/PDF consume the same constraints without rewriting chart content.
 - v46 live: restored visible section whitespace already reserved by PDF planner; added section-only recovery from any checkpoint. Recovery preserves all current sections and later edits.
 - AOG primary IndexedDB audit: revision 175 had 10 sections/52 lines/139 chords; revision 176 dropped section `20564478-f7c9-4c12-9625-99c16d2847ae` (Verse 1, 6 lines, 14 chords); current revision 192 has 9 sections/46 lines/125 chords. All other section IDs survived.
@@ -47,6 +48,7 @@ v47 candidate implements semantic draggable column/page termination, section flo
 
 ## Verification
 
+- v48 candidate: 7/7 real-browser lifecycle checks prove automatic handle visibility before any manual break, pointer drag, persistence, presets, content invariance, and shared export plan. Visual screenshot inspected at 2-column whole-page scale.
 - v47 candidate: layout director browser lifecycle 6/6; existing editor/PDF parity 6/6; layout/metadata regression 21/21; planner 15/15; full JavaScript syntax and diff checks pass. Content-count invariant verified across layout edits. Visual iteration DM `17015`.
 - v46 deployed through FIRMAMENT tunnel: section recovery 4/4; editor/PDF parity and spacing 6/6; cache `transpose-app-v46`. Exact live Armor render has 3 pages and zero overflow; spacing screenshot sent to Telegram (`17008`).
 - v45 deployed through FIRMAMENT tunnel: font/layout 21/21; canonical line insertion 9/9; editor/PDF parity 6/6; structured PDF 9/9; inline edit/drag 10/10; section move/copy/undo 6/6. Full Armor lifecycle passed with two analyses, immutable raw evidence, exact edits, transpose/reset, 34,916-byte PDF, and zero console errors. Exact saved Armor screenshot inspected and sent to Telegram (`16981`).
