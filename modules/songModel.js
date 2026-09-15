@@ -71,12 +71,27 @@ class SongModel {
       writer: this.normalizeCredit(input.credits?.writer),
       arranger: this.normalizeCredit(input.credits?.arranger)
     };
+    const layoutColumns = Math.max(1, Math.min(3, Math.trunc(Number(input.layout?.columns) || 1)));
+    const rawRatios = Array.isArray(input.layout?.columnRatios) && input.layout.columnRatios.length === layoutColumns
+      ? input.layout.columnRatios.map(value => Math.max(.15, Number(value) || 0)) : Array(layoutColumns).fill(1 / layoutColumns);
+    const ratioTotal = rawRatios.reduce((sum, value) => sum + value, 0) || 1;
+    const normalizedRatios = rawRatios.map(value => value / ratioTotal);
+    const pageSize = ['letter', 'a4', 'legal', 'tabloid', 'custom'].includes(input.layout?.pageSize) ? input.layout.pageSize : 'a4';
+    const customPage = input.layout?.customPage || {};
+    const rawMargins = input.layout?.margins || {};
     song.layout = {
-      columns: Math.max(1, Math.min(3, Math.trunc(Number(input.layout?.columns) || 1))),
+      columns: layoutColumns,
       fontSize: Math.max(10, Math.min(18, Math.round(Number(input.layout?.fontSize) || 13))),
       columnsProvenance: ['default', 'manual', 'imported'].includes(input.layout?.columnsProvenance)
         ? input.layout.columnsProvenance : 'default',
       margin: ['narrow', 'standard', 'wide'].includes(input.layout?.margin) ? input.layout.margin : 'standard',
+      pageSize,
+      orientation: input.layout?.orientation === 'landscape' ? 'landscape' : 'portrait',
+      customPage: { width: Math.max(288, Math.min(1296, Number(customPage.width) || 612)), height: Math.max(288, Math.min(1296, Number(customPage.height) || 792)) },
+      margins: Object.fromEntries(['top', 'right', 'bottom', 'left'].map(side => [side,
+        rawMargins[side] == null ? null : Math.max(0, Math.min(144, Number(rawMargins[side]) || 0))])),
+      gutter: Math.max(6, Math.min(72, Number(input.layout?.gutter) || 18)),
+      columnRatios: normalizedRatios,
       sectionSpacing: ['compact', 'normal', 'spacious'].includes(input.layout?.sectionSpacing) ? input.layout.sectionSpacing : 'normal',
       balance: input.layout?.balance === 'off' ? 'off' : 'auto',
       preset: String(input.layout?.preset || 'custom'),

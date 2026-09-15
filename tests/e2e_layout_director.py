@@ -20,7 +20,12 @@ with tempfile.TemporaryDirectory(prefix="transposepdf-layout-director-") as prof
     checks = {}
     checks['automatic_dotted_break_visible'] = page.locator('.layout-break-target.auto-layout-break').count() >= 1
     checks['no_right_click_required'] = page.evaluate("() => window.transposeApp.currentSongs[0].layout.breaks.length === 0")
+    checks['vertical_column_divider_visible'] = page.locator('.column-divider-handle').count() >= 1
     page.locator('.session-workspace').screenshot(path=str(SHOT.with_name('layout-director-auto.png')))
+    divider=page.locator('.column-divider-handle').first; divider.scroll_into_view_if_needed(); box=divider.bounding_box()
+    page.mouse.move(box['x']+box['width']/2,box['y']+80); page.mouse.down(); page.mouse.move(box['x']+box['width']/2+70,box['y']+80,steps=8); page.mouse.up()
+    page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.columnRatios[0] > .55")
+    checks['column_width_drag_persists'] = page.evaluate("() => {const r=window.transposeApp.currentSongs[0].layout.columnRatios;return r.length===2&&Math.abs(r[0]+r[1]-1)<.0001}")
     source = page.locator('.layout-break-target.auto-layout-break').first; target = page.locator('.layout-break-target[data-section-index="0"][data-line-index="4"]')
     page.evaluate("() => {window.__pointerEvents=[];for(const n of ['pointerdown','pointermove','pointerup'])document.addEventListener(n,e=>window.__pointerEvents.push({type:n,cls:e.target.className}),true)}")
     target.scroll_into_view_if_needed(); source.scroll_into_view_if_needed()

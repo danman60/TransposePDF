@@ -1,16 +1,34 @@
 /** Shared, deterministic A4 layout plan for editor and structured PDF output. */
 class ChartPageLayout {
-  static spec(columns = 1, requestedFontSize = 13, marginName = 'standard') {
-    const count = Math.max(1, Math.min(3, Math.trunc(Number(columns) || 1)));
-    const pageWidth = 595.28; const pageHeight = 841.89; const margins = { narrow: 24, standard: 36, wide: 54 };
-    const margin = margins[marginName] || margins.standard; const gutter = 18;
+  static spec(layoutOrColumns = 1, requestedFontSize = 13, marginName = 'standard') {
+    const layout = typeof layoutOrColumns === 'object' ? layoutOrColumns || {} : { columns: layoutOrColumns, fontSize: requestedFontSize, margin: marginName };
+    const count = Math.max(1, Math.min(3, Math.trunc(Number(layout.columns) || 1)));
+    const sizes = { letter: [612, 792], a4: [595.28, 841.89], legal: [612, 1008], tabloid: [792, 1224] };
+    let [pageWidth, pageHeight] = layout.pageSize === 'custom'
+      ? [Math.max(288, Math.min(1296, Number(layout.customPage?.width) || 612)), Math.max(288, Math.min(1296, Number(layout.customPage?.height) || 792))]
+      : sizes[layout.pageSize] || sizes.a4;
+    if (layout.orientation === 'landscape' && pageHeight > pageWidth) [pageWidth, pageHeight] = [pageHeight, pageWidth];
+    if (layout.orientation !== 'landscape' && pageWidth > pageHeight) [pageWidth, pageHeight] = [pageHeight, pageWidth];
+    const marginPresets = { narrow: 24, standard: 36, wide: 54 }; const fallbackMargin = marginPresets[layout.margin] || marginPresets.standard;
+    const margins = Object.fromEntries(['top', 'right', 'bottom', 'left'].map(side => [side,
+      layout.margins?.[side] == null ? fallbackMargin : Math.max(0, Math.min(144, Number(layout.margins[side]) || 0))]));
+    const margin = margins.left; const gutter = Math.max(6, Math.min(72, Number(layout.gutter) || 18));
     // One song-level point size drives wrapping and both renderers.
-    const fontSize = Math.max(10, Math.min(18, Math.round(Number(requestedFontSize) || 13)));
+    const fontSize = Math.max(10, Math.min(18, Math.round(Number(layout.fontSize) || 13)));
     const lineHeight = fontSize * 1.2; const headerHeight = 44;
-    const columnWidth = (pageWidth - margin * 2 - gutter * (count - 1)) / count;
-    return { columns: count, pageWidth, pageHeight, margin, gutter, fontSize, lineHeight, headerHeight,
-      columnWidth, maxCharacters: Math.max(18, Math.floor(columnWidth / (fontSize * .6))),
-      rowsPerColumn: Math.floor((pageHeight - margin * 2 - headerHeight) / lineHeight) };
+    const printableWidth = Math.max(144, pageWidth - margins.left - margins.right - gutter * (count - 1));
+    const rawRatios = Array.isArray(layout.columnRatios) && layout.columnRatios.length === count
+      ? layout.columnRatios.map(value => Math.max(.15, Number(value) || 0)) : Array(count).fill(1 / count);
+    const ratioTotal = rawRatios.reduce((sum, value) => sum + value, 0) || 1;
+    const columnRatios = rawRatios.map(value => value / ratioTotal);
+    const columnWidths = columnRatios.map(value => printableWidth * value);
+    const columnOffsets = columnWidths.map((_, index) => margins.left + columnWidths.slice(0, index).reduce((sum, value) => sum + value, 0) + gutter * index);
+    const maxCharactersByColumn = columnWidths.map(value => Math.max(18, Math.floor(value / (fontSize * .6))));
+    const columnWidth = columnWidths[0];
+    return { columns: count, pageWidth, pageHeight, margin, margins, gutter, fontSize, lineHeight, headerHeight,
+      printableWidth, columnWidth, columnWidths, columnOffsets, columnRatios, maxCharactersByColumn,
+      maxCharacters: Math.min(...maxCharactersByColumn),
+      rowsPerColumn: Math.floor((pageHeight - margins.top - margins.bottom - headerHeight) / lineHeight) };
   }
 
   static wrapLine(line, maxCharacters) {
@@ -63,7 +81,7 @@ class ChartPageLayout {
 
   static plan(song, options = {}) {
     const layout = song?.layout || {};
-    const spec = this.spec(layout.columns, layout.fontSize, layout.margin);
+    const spec = this.spec(layout);
     const pages = [{ columns: Array.from({ length: spec.columns }, () => []) }];
     let page = 0; let column = 0; let used = 0;
     const advance = () => { column += 1; used = 0; if (column >= spec.columns) { column = 0; page += 1; pages.push({ columns: Array.from({ length: spec.columns }, () => []) }); } };

@@ -46,4 +46,15 @@ assert.ok(directed.pages[0].columns[0].some(row => row.lineId === 's0l1'));
 assert.ok(!directed.pages[0].columns[0].some(row => row.lineId === 's0l2'), 'manual column termination honored');
 assert.ok(directed.pages.some(page => page.columns.some(rows => rows.filter(row => row.sectionId === 's0' && row.sectionGap).length === 2)), 'spacious gap honored');
 assert.ok(Array.isArray(directed.warnings));
-console.log('15/15 shared A4 layout planning checks passed');
+const geometry = ChartPageLayout.plan({ ...anchored, layout: { ...anchored.layout, pageSize: 'letter', orientation: 'landscape',
+  margins: { top: 36, right: 54, bottom: 72, left: 18 }, gutter: 24, columnRatios: [.35, .65] } });
+assert.deepEqual([geometry.spec.pageWidth, geometry.spec.pageHeight], [792, 612]);
+assert.deepEqual(geometry.spec.margins, { top: 36, right: 54, bottom: 72, left: 18 });
+assert.equal(geometry.spec.gutter, 24);
+assert.ok(Math.abs(geometry.spec.columnRatios[0] - .35) < .0001);
+assert.ok(geometry.spec.columnWidths[1] > geometry.spec.columnWidths[0]);
+assert.ok(Math.abs(geometry.spec.columnOffsets[1] - (18 + geometry.spec.columnWidths[0] + 24)) < .001);
+const custom = ChartPageLayout.spec({ columns: 3, pageSize: 'custom', customPage: { width: 720, height: 360 }, orientation: 'landscape', columnRatios: [.2,.3,.5] });
+assert.deepEqual([custom.pageWidth, custom.pageHeight], [720, 360]);
+assert.deepEqual(custom.columnRatios, [.2,.3,.5]);
+console.log('23/23 shared page geometry and layout planning checks passed');

@@ -3,7 +3,7 @@
  * Handles caching for offline functionality
  */
 
-const CACHE_NAME = 'transpose-app-v48';
+const CACHE_NAME = 'transpose-app-v49';
 const CACHE_FILES = [
   '/',
   '/index.html',

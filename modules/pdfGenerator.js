@@ -34,10 +34,12 @@ class PDFGenerator {
         throw new Error('jsPDF library not available');
       }
       
+      const firstSpec = typeof ChartPageLayout !== 'undefined' ? ChartPageLayout.spec(songs[0]?.layout || {}) : { pageWidth: 595.28, pageHeight: 841.89 };
+      this.pageWidth = firstSpec.pageWidth; this.pageHeight = firstSpec.pageHeight;
       const pdf = new jsPDFClass({
-        orientation: 'portrait',
+        orientation: firstSpec.pageWidth > firstSpec.pageHeight ? 'landscape' : 'portrait',
         unit: 'pt',
-        format: 'a4'
+        format: [firstSpec.pageWidth, firstSpec.pageHeight]
       });
 
       const hasTitlePage = songs.length > 1;
@@ -48,7 +50,10 @@ class PDFGenerator {
         const song = songs[i];
         logger.status(`Processing song ${i + 1}/${songs.length}: ${song.title}`, 'info');
         
-        if (hasTitlePage || i > 0) pdf.addPage();
+        if (hasTitlePage || i > 0) {
+          const spec = typeof ChartPageLayout !== 'undefined' ? ChartPageLayout.spec(song.layout || {}) : firstSpec;
+          pdf.addPage([spec.pageWidth, spec.pageHeight], spec.pageWidth > spec.pageHeight ? 'landscape' : 'portrait');
+        }
         await this.addSongToPDF(pdf, song);
       }
 
@@ -209,21 +214,21 @@ class PDFGenerator {
   async addStructuredSongToPDF(pdf, song) {
     if (typeof ChartPageLayout === 'undefined') throw new Error('Shared chart page layout is unavailable');
     const plan = ChartPageLayout.plan(song);
-    this.margin = plan.spec.margin;
+    this.pageWidth = plan.spec.pageWidth; this.pageHeight = plan.spec.pageHeight; this.margin = plan.spec.margins.left;
     this.fontSize = plan.spec.fontSize;
     this.lineHeight = plan.spec.lineHeight;
     for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex += 1) {
-      if (pageIndex > 0) pdf.addPage();
+      if (pageIndex > 0) pdf.addPage([plan.spec.pageWidth, plan.spec.pageHeight], plan.spec.pageWidth > plan.spec.pageHeight ? 'landscape' : 'portrait');
       const top = this.renderPlannedSongHeader(pdf, song, plan.spec, pageIndex > 0);
       if (plan.pages[pageIndex].spanRows) {
         let y = top;
         for (const plannedRow of plan.pages[pageIndex].spanRows) {
           const row = { ...plannedRow, structured: true };
           if (row.type === 'chords') row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
-          await this.renderLine(pdf, row, plan.spec.margin, y); y += plan.spec.lineHeight;
+          await this.renderLine(pdf, row, plan.spec.margins.left, y); y += plan.spec.lineHeight;
         }
       } else for (let columnIndex = 0; columnIndex < plan.spec.columns; columnIndex += 1) {
-        const x = plan.spec.margin + columnIndex * (plan.spec.columnWidth + plan.spec.gutter);
+        const x = plan.spec.columnOffsets[columnIndex];
         let y = top;
         for (const plannedRow of plan.pages[pageIndex].columns[columnIndex]) {
           const row = { ...plannedRow, structured: true };
@@ -233,13 +238,13 @@ class PDFGenerator {
         }
       }
       if (pageIndex === plan.pages.length - 1 && plan.metadata.length) {
-        let footerY = plan.spec.pageHeight - plan.spec.margin - (plan.metadataRows - 1) * plan.spec.lineHeight;
+        let footerY = plan.spec.pageHeight - plan.spec.margins.bottom - (plan.metadataRows - 1) * plan.spec.lineHeight;
         for (const item of plan.metadata) {
           const labels = { writer: 'Written by: ', arranger: 'Arrangement by: ', arrangement: 'Arrangement: ' };
           pdf.setFontSize(item.field === 'arrangement' ? 18 : plan.spec.fontSize);
           pdf.setFont('courier', item.field === 'arrangement' ? 'bold' : 'normal');
           pdf.setTextColor(0, 0, 0);
-          pdf.text(`${labels[item.field] || ''}${item.value}`, plan.spec.margin, footerY);
+          pdf.text(`${labels[item.field] || ''}${item.value}`, plan.spec.margins.left, footerY);
           footerY += (item.field === 'arrangement' ? 4 : 1) * plan.spec.lineHeight;
         }
         this.fontSize = plan.spec.fontSize;
@@ -251,9 +256,9 @@ class PDFGenerator {
   renderPlannedSongHeader(pdf, song, spec, continuation = false) {
     const header = this.getSongHeader(song, continuation);
     pdf.setTextColor(0, 0, 0);
-    pdf.setFont(undefined, 'bold'); pdf.setFontSize(20); pdf.text(header.title, spec.margin, spec.margin);
-    pdf.setFont(undefined, 'normal'); pdf.setFontSize(12); pdf.text(header.keyText, spec.margin, spec.margin + 22);
-    return spec.margin + spec.headerHeight;
+    pdf.setFont(undefined, 'bold'); pdf.setFontSize(20); pdf.text(header.title, spec.margins.left, spec.margins.top);
+    pdf.setFont(undefined, 'normal'); pdf.setFontSize(12); pdf.text(header.keyText, spec.margins.left, spec.margins.top + 22);
+    return spec.margins.top + spec.headerHeight;
   }
 
   /**

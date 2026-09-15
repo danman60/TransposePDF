@@ -117,9 +117,15 @@ class ChartRenderer {
           } : null;
           return this.renderPlannedColumn(rows, song, { ...options, editable, autoBoundary });
         }).join('');
-      return `<section class="chart-page${song.layout?.layoutMode ? ' layout-mode' : ''}" data-chart-page="${pageIndex + 1}" style="--page-columns:${page.spanRows ? 1 : plan.spec.columns};--chart-font-size:${plan.spec.fontSize};--page-margin:${(plan.spec.margin / plan.spec.pageWidth * 100).toFixed(3)}%">
+      const dividers = song.layout?.layoutMode && !page.spanRows && plan.spec.columns > 1
+        ? plan.spec.columnRatios.slice(0, -1).map((_, dividerIndex) => {
+          const contentWidth = plan.spec.pageWidth - plan.spec.margins.left - plan.spec.margins.right;
+          const left = (plan.spec.columnWidths.slice(0, dividerIndex + 1).reduce((sum, value) => sum + value, 0) + plan.spec.gutter * (dividerIndex + .5)) / contentWidth * 100;
+          return `<div class="column-divider-handle" style="--divider-left:${left.toFixed(4)}%" data-column-divider="${dividerIndex}" data-song-id="${this.escape(song.id)}" role="separator" tabindex="0" aria-orientation="vertical" aria-label="Resize columns ${dividerIndex + 1} and ${dividerIndex + 2}"><span>Drag column width</span></div>`;
+        }).join('') : '';
+      return `<section class="chart-page${song.layout?.layoutMode ? ' layout-mode' : ''}" data-chart-page="${pageIndex + 1}" style="--page-columns:${page.spanRows ? 1 : plan.spec.columns};--column-template:${page.spanRows ? '1fr' : plan.spec.columnRatios.map(value => `${value}fr`).join(' ')};--chart-font-size:${plan.spec.fontSize};--chart-render-font:${(plan.spec.fontSize / plan.spec.pageWidth * 100).toFixed(4)}cqi;--arrangement-render-font:${(18 / plan.spec.pageWidth * 100).toFixed(4)}cqi;--page-aspect:${plan.spec.pageWidth}/${plan.spec.pageHeight};--page-margin-top:${(plan.spec.margins.top / plan.spec.pageWidth * 100).toFixed(4)}%;--page-margin-right:${(plan.spec.margins.right / plan.spec.pageWidth * 100).toFixed(4)}%;--page-margin-bottom:${(plan.spec.margins.bottom / plan.spec.pageWidth * 100).toFixed(4)}%;--page-margin-left:${(plan.spec.margins.left / plan.spec.pageWidth * 100).toFixed(4)}%;--page-gutter:${(plan.spec.gutter / plan.spec.pageWidth * 100).toFixed(4)}cqi">
         <header class="chart-page-header"><strong>${this.escape(song.title)}</strong><span>${this.escape(this.plannedKeyText(song))}</span></header>
-        <div class="chart-page-columns">${columns}</div>
+        <div class="chart-page-columns">${columns}${dividers}</div>
         ${pageIndex === plan.pages.length - 1 ? this.renderPlannedFooter(plan.metadata, song, editable) : ''}
       </section>`;
     }).join('');

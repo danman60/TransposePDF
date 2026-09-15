@@ -1037,6 +1037,14 @@ class UIController {
         <label>Margins<select data-action="set-layout-field" data-layout-field="margin" data-song-id="${songId}">${['narrow','standard','wide'].map(value => `<option value="${value}"${song.layout?.margin === value ? ' selected' : ''}>${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>
         <label>Section space<select data-action="set-layout-field" data-layout-field="sectionSpacing" data-song-id="${songId}">${['compact','normal','spacious'].map(value => `<option value="${value}"${song.layout?.sectionSpacing === value ? ' selected' : ''}>${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>
         <label class="layout-check"><input type="checkbox" data-action="set-layout-balance" data-song-id="${songId}"${song.layout?.balance !== 'off' ? ' checked' : ''}> Auto-balance final page</label>
+        ${song.layout?.layoutMode ? `<fieldset class="page-geometry-controls"><legend>Page geometry · this song</legend>
+          <label>Page size<select data-action="set-layout-field" data-layout-field="pageSize" data-song-id="${songId}">${[['letter','Letter'],['a4','A4'],['legal','Legal'],['tabloid','Tabloid'],['custom','Custom']].map(([value,label]) => `<option value="${value}"${song.layout?.pageSize === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
+          <label>Orientation<select data-action="set-layout-field" data-layout-field="orientation" data-song-id="${songId}"><option value="portrait"${song.layout?.orientation !== 'landscape' ? ' selected' : ''}>Portrait</option><option value="landscape"${song.layout?.orientation === 'landscape' ? ' selected' : ''}>Landscape</option></select></label>
+          ${song.layout?.pageSize === 'custom' ? `<div class="geometry-pair"><label>Width <input type="number" min="4" max="18" step="0.1" value="${(song.layout.customPage.width / 72).toFixed(1)}" data-action="set-layout-number" data-layout-field="customPage.width" data-unit="in" data-song-id="${songId}"></label><label>Height <input type="number" min="4" max="18" step="0.1" value="${(song.layout.customPage.height / 72).toFixed(1)}" data-action="set-layout-number" data-layout-field="customPage.height" data-unit="in" data-song-id="${songId}"></label></div>` : ''}
+          <div class="geometry-pair"><label>Top <input type="number" min="0" max="2" step="0.05" value="${((song.layout.margins.top ?? ({narrow:24,standard:36,wide:54}[song.layout.margin] || 36)) / 72).toFixed(2)}" data-action="set-layout-number" data-layout-field="margins.top" data-unit="in" data-song-id="${songId}"></label><label>Right <input type="number" min="0" max="2" step="0.05" value="${((song.layout.margins.right ?? ({narrow:24,standard:36,wide:54}[song.layout.margin] || 36)) / 72).toFixed(2)}" data-action="set-layout-number" data-layout-field="margins.right" data-unit="in" data-song-id="${songId}"></label><label>Bottom <input type="number" min="0" max="2" step="0.05" value="${((song.layout.margins.bottom ?? ({narrow:24,standard:36,wide:54}[song.layout.margin] || 36)) / 72).toFixed(2)}" data-action="set-layout-number" data-layout-field="margins.bottom" data-unit="in" data-song-id="${songId}"></label><label>Left <input type="number" min="0" max="2" step="0.05" value="${((song.layout.margins.left ?? ({narrow:24,standard:36,wide:54}[song.layout.margin] || 36)) / 72).toFixed(2)}" data-action="set-layout-number" data-layout-field="margins.left" data-unit="in" data-song-id="${songId}"></label></div>
+          <label>Column gutter <input type="number" min="0.08" max="1" step="0.02" value="${(song.layout.gutter / 72).toFixed(2)}" data-action="set-layout-number" data-layout-field="gutter" data-unit="in" data-song-id="${songId}"></label>
+          <small>Drag vertical dashed dividers directly on page.</small>
+        </fieldset>` : ''}
         ${(song.layout?.breaks || []).length ? `<button type="button" data-action="clear-layout-breaks" data-song-id="${songId}">Reset ${song.layout.breaks.length} manual break${song.layout.breaks.length === 1 ? '' : 's'}</button>` : ''}
       </div>
       <div class="sidebar-tool-links"><button data-action="reset-song" data-song-id="${songId}" type="button">↺ Reset original key</button><button data-action="open-history" data-song-id="${songId}" type="button">◷ Version history</button></div>`;
@@ -1045,14 +1053,8 @@ class UIController {
   async setSongLayoutColumns(songId, value) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     if (!song) return false;
-    const edited = SongModel.create(song);
-    edited.layout = { ...edited.layout, columns: Math.max(1, Math.min(3, Math.round(Number(value) || 1))), columnsProvenance: 'manual' };
-    try {
-      const saved = await this.persistSong(edited, { addToSession: false });
-      this.displaySongs();
-      this.track('chart.layout.changed', { columns: saved.layout.columns }, saved);
-      return true;
-    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+    const columns = Math.max(1, Math.min(3, Math.round(Number(value) || 1)));
+    return this.updateSongLayout(songId, { columns, columnRatios: Array(columns).fill(1 / columns), columnsProvenance: 'manual' });
   }
 
   async setSongFontSize(songId, value) {
@@ -1081,6 +1083,22 @@ class UIController {
   }
 
   setSongLayoutField(songId, field, value) { return this.updateSongLayout(songId, { [field]: value }); }
+  setSongLayoutNumber(songId, field, rawValue, unit = '') {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId)); if (!song) return false;
+    const value = Math.max(0, Number(rawValue) || 0) * (unit === 'in' ? 72 : 1);
+    if (field.startsWith('margins.')) return this.updateSongLayout(songId, { margins: { ...song.layout.margins, [field.split('.')[1]]: value } });
+    if (field.startsWith('customPage.')) return this.updateSongLayout(songId, { customPage: { ...song.layout.customPage, [field.split('.')[1]]: value } });
+    return this.updateSongLayout(songId, { [field]: value });
+  }
+  setSongColumnDivider(songId, dividerIndex, cumulativeRatio) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId)); if (!song) return false;
+    const ratios = [...song.layout.columnRatios]; const index = Math.max(0, Math.min(ratios.length - 2, Number(dividerIndex) || 0));
+    const previous = ratios.slice(0, index).reduce((sum, value) => sum + value, 0);
+    const next = ratios.slice(0, index + 2).reduce((sum, value) => sum + value, 0);
+    const target = Math.max(previous + .15, Math.min(next - .15, Number(cumulativeRatio) || .5));
+    ratios[index] = target - previous; ratios[index + 1] = next - target;
+    return this.updateSongLayout(songId, { columnRatios: ratios }, 'Column widths saved');
+  }
   toggleSongLayoutMode(songId) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     return this.updateSongLayout(songId, { layoutMode: !song?.layout?.layoutMode }, song?.layout?.layoutMode ? 'Layout locked' : 'Drag dotted boundaries or use right-click');
@@ -1092,9 +1110,9 @@ class UIController {
   }
   setSongLayoutPreset(songId, preset) {
     const presets = {
-      'lead-sheet': { columns: 1, fontSize: 12, margin: 'narrow', sectionSpacing: 'compact', balance: 'auto' },
-      stage: { columns: 2, fontSize: 13, margin: 'standard', sectionSpacing: 'normal', balance: 'auto' },
-      'large-print': { columns: 1, fontSize: 16, margin: 'wide', sectionSpacing: 'spacious', balance: 'off' }
+      'lead-sheet': { columns: 1, columnRatios: [1], fontSize: 12, pageSize: 'letter', orientation: 'portrait', margin: 'narrow', margins: {top:null,right:null,bottom:null,left:null}, gutter: 18, sectionSpacing: 'compact', balance: 'auto' },
+      stage: { columns: 2, columnRatios: [.5,.5], fontSize: 13, pageSize: 'letter', orientation: 'portrait', margin: 'standard', margins: {top:null,right:null,bottom:null,left:null}, gutter: 18, sectionSpacing: 'normal', balance: 'auto' },
+      'large-print': { columns: 1, columnRatios: [1], fontSize: 16, pageSize: 'letter', orientation: 'portrait', margin: 'wide', margins: {top:null,right:null,bottom:null,left:null}, gutter: 18, sectionSpacing: 'spacious', balance: 'off' }
     };
     const custom = preset.startsWith('saved:') ? this.savedLayoutPresets()[preset.slice(6)] : null;
     return this.updateSongLayout(songId, { ...(custom || presets[preset] || {}), preset }, `${preset.replace(/^saved:/, '').replace(/-/g, ' ')} preset applied`);
@@ -1107,7 +1125,9 @@ class UIController {
     const song = this.currentSongs.find(item => String(item.id) === String(songId)); if (!song) return false;
     const name = String(window.prompt('Preset name', song.title) || '').trim(); if (!name) return false;
     const presets = this.savedLayoutPresets();
-    presets[name] = { columns: song.layout.columns, fontSize: song.layout.fontSize, margin: song.layout.margin,
+    presets[name] = { columns: song.layout.columns, columnRatios: song.layout.columnRatios, fontSize: song.layout.fontSize,
+      pageSize: song.layout.pageSize, orientation: song.layout.orientation, customPage: song.layout.customPage,
+      margin: song.layout.margin, margins: song.layout.margins, gutter: song.layout.gutter,
       sectionSpacing: song.layout.sectionSpacing, balance: song.layout.balance };
     localStorage.setItem('transposepdf.layout-presets.v1', JSON.stringify(presets));
     return this.updateSongLayout(songId, { preset: `saved:${name}` }, `${name} preset saved`);

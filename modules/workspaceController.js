@@ -111,6 +111,7 @@ class WorkspaceController {
     if (target.dataset.action === 'set-layout-field') this.ui.setSongLayoutField(target.dataset.songId, target.dataset.layoutField, target.value);
     if (target.dataset.action === 'set-layout-balance') this.ui.setSongLayoutField(target.dataset.songId, 'balance', target.checked ? 'auto' : 'off');
     if (target.dataset.action === 'set-layout-preset') this.ui.setSongLayoutPreset(target.dataset.songId, target.value);
+    if (target.dataset.action === 'set-layout-number') this.ui.setSongLayoutNumber(target.dataset.songId, target.dataset.layoutField, target.value, target.dataset.unit);
   }
 
   handleDragStart(event) {
@@ -382,6 +383,18 @@ class WorkspaceController {
   }
 
   handlePointerDown(event) {
+    const divider = event.target.closest?.('.column-divider-handle[data-column-divider]');
+    if (divider && this.root.contains(divider)) {
+      event.preventDefault(); const songId = divider.dataset.songId;
+      const song = this.ui.currentSongs.find(item => String(item.id) === String(songId));
+      const container = divider.closest('.chart-page-columns'); const page = divider.closest('.chart-page');
+      if (!song || !container || !page) return;
+      const spec = ChartPageLayout.spec(song.layout); const rect = container.getBoundingClientRect();
+      const pageWidthPx = page.getBoundingClientRect().width; const gutterPx = spec.gutter / spec.pageWidth * pageWidthPx;
+      this.columnDividerDrag = { pointerId: event.pointerId, songId, index: Number(divider.dataset.columnDivider),
+        rect, gutterPx, printablePx: rect.width - gutterPx * (spec.columns - 1), ratios: [...spec.columnRatios] };
+      divider.setPointerCapture?.(event.pointerId); divider.classList.add('is-dragging'); return;
+    }
     const boundary = event.target.closest?.('.layout-break-target.has-layout-break');
     if (boundary && this.root.contains(boundary)) {
       event.preventDefault();
@@ -399,6 +412,10 @@ class WorkspaceController {
   }
 
   handlePointerMove(event) {
+    if (this.columnDividerDrag?.pointerId === event.pointerId) {
+      event.preventDefault(); const ratios = this.previewColumnDivider(event.clientX);
+      if (ratios) this.columnDividerDrag.previewRatios = ratios; return;
+    }
     if (this.layoutPointerDrag?.pointerId === event.pointerId) {
       event.preventDefault();
       const target = this.nearestLayoutTarget(event.clientX, event.clientY);
@@ -426,6 +443,12 @@ class WorkspaceController {
   }
 
   handlePointerUp(event) {
+    if (this.columnDividerDrag?.pointerId === event.pointerId) {
+      const drag = this.columnDividerDrag; const ratios = this.previewColumnDivider(event.clientX) || drag.previewRatios;
+      this.columnDividerDrag = null; this.root.querySelectorAll('.column-divider-handle.is-dragging').forEach(item => item.classList.remove('is-dragging'));
+      if (ratios) this.ui.setSongColumnDivider(drag.songId, drag.index, ratios.slice(0, drag.index + 1).reduce((sum, value) => sum + value, 0));
+      return;
+    }
     if (this.layoutPointerDrag?.pointerId === event.pointerId) {
       const drag = this.layoutPointerDrag; this.layoutPointerDrag = null;
       const target = this.nearestLayoutTarget(event.clientX, event.clientY) || drag.target;
@@ -446,6 +469,9 @@ class WorkspaceController {
   }
 
   handlePointerCancel(event) {
+    if (this.columnDividerDrag?.pointerId === event.pointerId) {
+      this.columnDividerDrag = null; this.root.querySelectorAll('.column-divider-handle.is-dragging').forEach(item => item.classList.remove('is-dragging')); this.ui.displaySongs(); return;
+    }
     if (this.layoutPointerDrag?.pointerId === event.pointerId) {
       this.layoutPointerDrag = null; this.root.querySelectorAll('.layout-drop-active, .layout-dragging').forEach(item => item.classList.remove('layout-drop-active', 'layout-dragging')); return;
     }
@@ -462,6 +488,23 @@ class WorkspaceController {
     targets.forEach(item => { const rect = item.getBoundingClientRect(); const dx = x < rect.left ? rect.left - x : x > rect.right ? x - rect.right : 0;
       const dy = Math.abs(y - (rect.top + rect.height / 2)); const value = Math.hypot(dx, dy); if (value < distance) { distance = value; nearest = item; } });
     return nearest;
+  }
+
+  previewColumnDivider(clientX) {
+    const drag = this.columnDividerDrag; if (!drag || drag.printablePx <= 0) return null;
+    const ratios = [...drag.ratios]; const previous = ratios.slice(0, drag.index).reduce((sum, value) => sum + value, 0);
+    const next = ratios.slice(0, drag.index + 2).reduce((sum, value) => sum + value, 0);
+    const raw = (clientX - drag.rect.left - drag.gutterPx * (drag.index + .5)) / drag.printablePx;
+    const target = Math.max(previous + .15, Math.min(next - .15, raw));
+    ratios[drag.index] = target - previous; ratios[drag.index + 1] = next - target;
+    this.root.querySelectorAll(`.lead-sheet[data-song-id="${CSS.escape(String(drag.songId))}"] .chart-page-columns`).forEach(container => {
+      container.style.gridTemplateColumns = ratios.map(value => `${value}fr`).join(' ');
+      const width = container.getBoundingClientRect().width; const printable = width - drag.gutterPx * (ratios.length - 1);
+      container.querySelectorAll('.column-divider-handle').forEach(handle => { const index = Number(handle.dataset.columnDivider);
+        const left = (printable * ratios.slice(0, index + 1).reduce((sum, value) => sum + value, 0) + drag.gutterPx * (index + .5)) / width * 100;
+        handle.style.setProperty('--divider-left', `${left}%`); });
+    });
+    return ratios;
   }
 
   handleDoubleClick(event) {
