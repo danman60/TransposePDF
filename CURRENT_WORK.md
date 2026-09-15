@@ -57,6 +57,7 @@ Professional chart publishing plan is complete. v55 is committed, pushed, deploy
 
 ## Verification
 
+- 2026-09-15 9:09 AM EDT: restored FIRMAMENT server after port 8000 had no listener. Direct FIRMAMENT loopback returns HTTP 200/27,528 bytes, service worker serves `transpose-app-v55`, and python PID 9376 owns `127.0.0.1:8000`. Opened live URL on FIRMAMENT without restarting Chrome.
 - v55 live: served SHA-256 matches local for service worker and all changed runtime families; cache `transpose-app-v55`. Live 27/27 notation, metadata/preset, and editor/PDF parity gates pass. Live isolated Armor lifecycle: two analyses, correction replay, exact editor text, immutable raw evidence, transpose/reset, 34,906-byte PDF, zero console errors. Full local real-browser matrix passed after restoring legacy preset aliases and sticky editor access; notation surfaced and fixed contextual manual-chord spelling (A→B♭, not A♯).
 
 - v54 candidate: real-browser publication lifecycle 11/11 proves manual page break, reload, transpose, undo, numbering, continuation setting, orphan protection, and searchable PDF output. Existing planner 31/31, metrics 8/8, mixed regions 8/8, geometry 9/9, parity 6/6, layout director 10/10, section drag 6/6, and structured PDF 16/16 pass. Screenshot inspected and Telegram DM `17045` sent.
