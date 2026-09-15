@@ -9,7 +9,7 @@ class ChordPro {
     let unknown;
 
     const reset = () => {
-      metadata = { title: '', artist: '', originalKey: 'C', tempo: null, timeSignature: '', credits: {} };
+      metadata = { title: '', artist: '', originalKey: 'C', tempo: null, timeSignature: '', credits: {}, metadata: {} };
       sections = [];
       current = { type: 'section', label: '', lines: [] };
       unknown = [];
@@ -59,8 +59,18 @@ class ChordPro {
       else if (name === 'composer' || name === 'writer') metadata.credits.writer = { value, provenance: 'imported' };
       else if (name === 'x_arranger') metadata.credits.arranger = { value, provenance: 'imported' };
       else if (name === 'x_arrangement') metadata.arrangement = { mode: 'manual', value, inferredValue: '', updatedAt: null };
+      else if (name === 'x_recording') metadata.metadata.recording = value;
+      else if (name === 'copyright') metadata.metadata.copyright = value;
+      else if (name === 'ccli') metadata.metadata.ccliSongNumber = value;
+      else if (name === 'x_ccli_license') metadata.metadata.ccliLicenseNumber = value;
       else if (name === 'x_columns') metadata.layout = { ...(metadata.layout || {}), columns: Math.max(1, Math.min(3, Math.trunc(Number(value) || 1))), columnsProvenance: 'imported' };
       else if (name === 'x_font_size') metadata.layout = { ...(metadata.layout || {}), fontSize: Math.max(10, Math.min(18, Math.round(Number(value) || 13))) };
+      else if (name === 'x_notation') {
+        const Notation = this.chartNotation();
+        const notation = Notation.parse(value);
+        current.lines.push({ lyrics: '', notation: { version: notation.version, source: notation.source, runs: notation.runs },
+          chords: notation.chords, startTime: null, endTime: null });
+      }
       else if (this.sectionStarts()[name]) {
         pushSection();
         const definition = this.sectionStarts()[name];
@@ -87,12 +97,16 @@ class ChordPro {
     if (song.credits?.writer?.value) directive('composer', song.credits.writer.value);
     if (song.credits?.arranger?.value) directive('x_arranger', song.credits.arranger.value);
     if (song.arrangement?.mode === 'manual') directive('x_arrangement', song.arrangement.value || '');
+    if (song.metadata?.recording) directive('x_recording', song.metadata.recording);
+    if (song.metadata?.copyright) directive('copyright', song.metadata.copyright);
+    if (song.metadata?.ccliSongNumber) directive('ccli', song.metadata.ccliSongNumber);
+    if (song.metadata?.ccliLicenseNumber) directive('x_ccli_license', song.metadata.ccliLicenseNumber);
     if (song.layout?.columns && (song.layout.columns !== 1 || song.layout.columnsProvenance !== 'default')) {
       directive('x_columns', String(song.layout.columns));
     }
     if (song.layout?.fontSize && song.layout.fontSize !== 13) directive('x_font_size', String(song.layout.fontSize));
     const emitted = new Set(['title', 't', 'subtitle', 'st', 'artist', 'key', 'tempo', 'time',
-      'time_signature', 'capo', 'composer', 'writer', 'x_arranger', 'x_arrangement', 'x_columns', 'x_font_size']);
+      'time_signature', 'capo', 'composer', 'writer', 'x_arranger', 'x_arrangement', 'x_recording', 'copyright', 'ccli', 'x_ccli_license', 'x_columns', 'x_font_size', 'x_notation']);
     (song.source?.chordPro?.directives || []).forEach(item => {
       if (emitted.has(String(item.name || '').toLowerCase())) return;
       if (item.raw) lines.push(item.raw);
@@ -102,7 +116,10 @@ class ChordPro {
     (song.sections || []).forEach(section => {
       const pair = this.sectionDirective(section.type);
       if (pair) directive(pair.start, section.label || pair.label);
-      (section.lines || []).forEach(line => lines.push(this.serializeLine(line, chordDisplay)));
+      (section.lines || []).forEach(line => {
+        if (line.notation?.source) directive('x_notation', this.chartNotation().serialize(line.notation, chordDisplay, line.chords));
+        else lines.push(this.serializeLine(line, chordDisplay));
+      });
       if (pair) directive(pair.end, '');
     });
     return `${lines.join('\n')}\n`;
@@ -218,6 +235,12 @@ class ChordPro {
     if (typeof SongModel !== 'undefined') return SongModel;
     if (typeof require !== 'undefined') return require('./songModel');
     throw new Error('SongModel is required');
+  }
+
+  static chartNotation() {
+    if (typeof ChartNotation !== 'undefined') return ChartNotation;
+    if (typeof require !== 'undefined') return require('./chartNotation');
+    throw new Error('ChartNotation is required');
   }
 }
 

@@ -115,9 +115,9 @@ class ChartRenderer {
       const continuationHidden = pageIndex > 0 && song.layout?.continuationHeader === 'none';
       return `<section class="chart-page${song.layout?.layoutMode ? ' layout-mode' : ''}" data-chart-page="${pageIndex + 1}" data-typography="${plan.spec.typography}" style="--page-columns:${page.spanRows ? 1 : plan.spec.columns};--column-template:${page.spanRows ? '1fr' : plan.spec.columnRatios.map(value => `${value}fr`).join(' ')};--chart-font-size:${plan.spec.fontSize};--chart-render-font:${(plan.spec.fontSize / plan.spec.pageWidth * 100).toFixed(4)}cqi;--arrangement-render-font:${(18 / plan.spec.pageWidth * 100).toFixed(4)}cqi;--page-header-height:${(plan.spec.headerHeight / plan.spec.pageWidth * 100).toFixed(4)}cqi;--page-aspect:${plan.spec.pageWidth}/${plan.spec.pageHeight};--page-margin-top:${(plan.spec.margins.top / plan.spec.pageHeight * 100).toFixed(4)}%;--page-margin-right:${(plan.spec.margins.right / plan.spec.pageWidth * 100).toFixed(4)}%;--page-margin-bottom:${(plan.spec.margins.bottom / plan.spec.pageHeight * 100).toFixed(4)}%;--page-margin-left:${(plan.spec.margins.left / plan.spec.pageWidth * 100).toFixed(4)}%;--page-gutter:${(plan.spec.gutter / plan.spec.pageWidth * 100).toFixed(4)}cqi">
         <div class="chart-page-body">
-          <header class="chart-page-header${continuationHidden ? ' continuation-header-hidden' : ''}">${continuationHidden ? '' : `<strong>${this.escape(song.title)}${pageIndex ? ' · continued' : ''}</strong><span>${this.escape(this.plannedKeyText(song))}</span>`}</header>
+          <header class="chart-page-header${continuationHidden || song.layout?.headerVisibility === 'none' || (song.layout?.headerVisibility === 'first' && pageIndex > 0) ? ' continuation-header-hidden' : ''}">${continuationHidden || song.layout?.headerVisibility === 'none' || (song.layout?.headerVisibility === 'first' && pageIndex > 0) ? '' : `<strong>${this.escape(song.title)}${pageIndex ? ' · continued' : ''}</strong><span>${this.escape(this.plannedKeyText(song))}</span>`}</header>
           <div class="${mixed ? 'chart-page-flow' : 'chart-page-flow chart-page-flow-single'}">${content}</div>
-          ${pageIndex === plan.pages.length - 1 ? this.renderPlannedFooter(plan.metadata, song, editable) : ''}
+          ${song.layout?.footerVisibility !== 'none' && (song.layout?.footerVisibility === 'all' || pageIndex === plan.pages.length - 1) ? this.renderPlannedFooter(plan.metadata, song, editable) : ''}
         </div>
         ${song.layout?.pageNumbers ? `<div class="chart-page-number" aria-label="Page ${pageIndex + 1} of ${plan.pages.length}">${pageIndex + 1} / ${plan.pages.length}</div>` : ''}
       </section>`;
@@ -149,7 +149,7 @@ class ChartRenderer {
   renderPlannedFooter(metadata, song, editable) {
     if (!metadata?.length) return '';
     return `<footer class="chart-page-footer" aria-label="Song credits and arrangement">${metadata.map(row => {
-      const labels = { writer: 'Written by', arranger: 'Arrangement by', arrangement: 'Arrangement' };
+      const labels = { writer: 'Written by', arranger: 'Arrangement by', arrangement: 'Arrangement', recording: 'Recording', copyright: 'Copyright', ccliSongNumber: 'CCLI Song #', ccliLicenseNumber: 'CCLI License #' };
       return `<div class="planned-footer-row planned-footer-${row.field}"><span>${labels[row.field]}</span><div${editable ? ` contenteditable="plaintext-only" role="textbox" data-inline-field="${row.field}" data-song-id="${this.escape(song.id)}"` : ''}>${this.escape(row.value || '')}</div>${editable && row.field === 'arrangement' && song.arrangement?.mode === 'manual' ? `<button type="button" class="use-song-order" data-action="use-song-order" data-song-id="${this.escape(song.id)}">Use song order</button>` : ''}</div>`;
     }).join('')}</footer>`;
   }
@@ -177,11 +177,12 @@ class ChartRenderer {
 
   renderPlannedMetadata(row, song, editable) {
     if (row.type === 'empty') return '<div class="planned-row planned-empty-row"></div>';
-    const prefixes = { writer: 'Written by: ', arranger: 'Arrangement by: ', arrangement: 'Arrangement: ' };
+    const prefixes = { writer: 'Written by: ', arranger: 'Arrangement by: ', arrangement: 'Arrangement: ', recording: 'Recording: ', copyright: 'Copyright: ', ccliSongNumber: 'CCLI Song #: ', ccliLicenseNumber: 'CCLI License #: ' };
     const prefix = prefixes[row.field] || '';
     const value = row.field === 'writer' ? song.credits?.writer?.value
       : row.field === 'arranger' ? song.credits?.arranger?.value
-      : row.field === 'arrangement' ? (song.arrangement?.mode === 'manual' ? song.arrangement?.value : song.arrangement?.inferredValue) : row.content;
+      : row.field === 'arrangement' ? (song.arrangement?.mode === 'manual' ? song.arrangement?.value : song.arrangement?.inferredValue)
+      : song.metadata?.[row.field] ?? row.content;
     return `<div class="planned-row planned-metadata-row${row.field === 'arrangement' ? ' planned-arrangement-row' : ''}"><span>${this.escape(prefix)}</span><span${editable ? ` contenteditable="plaintext-only" role="textbox" data-inline-field="${row.field}" data-song-id="${this.escape(song.id)}"` : ''}>${this.escape(value || '')}</span></div>`;
   }
 
@@ -199,6 +200,7 @@ class ChartRenderer {
     for (let index = 0; index < lineRows.length; index += 1) {
       const row = lineRows[index];
       if (row.type === 'empty' && row.lineIndex == null) { lines.push('<div class="planned-section-gap" aria-hidden="true"></div>'); continue; }
+      if (row.type === 'notation') { lines.push(this.renderNotationLine(row, song, options)); continue; }
       if (row.type === 'chords') {
         const lyric = lineRows[index + 1]?.lineIndex === row.lineIndex ? lineRows[++index] : { ...row, type: 'empty', content: '' };
         lines.push(this.renderPlannedLine(row, lyric, song, options));
@@ -210,6 +212,17 @@ class ChartRenderer {
   renderPlannedSectionHeading(section, sectionIndex, song, editable) {
     if (!editable) return section.label ? `<div class="section-label">${this.escape(section.label)}</div>` : '';
     return `<div class="section-heading"><span class="section-drag-handle" draggable="true" tabindex="0" aria-label="Drag to reorder section">⠿</span><div class="section-label${section.label ? '' : ' inline-edit-empty'}" contenteditable="plaintext-only" role="textbox" data-inline-field="section-label" data-section-index="${sectionIndex}" data-placeholder="Section">${this.escape(section.label || '')}</div></div>`;
+  }
+
+  renderNotationLine(row, song, options) {
+    const line = song.sections?.[Number(row.sectionIndex)]?.lines?.[Number(row.lineIndex)];
+    const notation = typeof ChartNotation !== 'undefined' ? ChartNotation.parse(line?.notation?.source || row.content || '') : line?.notation;
+    const display = (notation?.runs || []).map(run => {
+      let text = run.text;
+      if (run.type === 'chord') text = this.displayStoredChord(line?.chords?.[run.chordIndex] || { symbol: run.text }, song, this.musicTheory());
+      return `<span class="notation-run notation-${this.escape(run.type)}">${this.escape(text)}</span>`;
+    }).join('<span class="notation-space"> </span>');
+    return `<div class="chart-line planned-chart-line notation-chart-line"><div class="notation-line"${options.editable ? ` contenteditable="plaintext-only" role="textbox" aria-label="Edit musical notation" spellcheck="false" data-inline-field="notation" data-section-index="${row.sectionIndex}" data-line-index="${row.lineIndex}"` : ''}>${display}</div></div>`;
   }
 
   renderPlannedLine(chordRow, lyricRow, song, options) {

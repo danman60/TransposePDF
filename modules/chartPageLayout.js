@@ -77,6 +77,9 @@ class ChartPageLayout {
   }
 
   static lineRows(section, sectionIndex, line, lineIndex, maxCharacters) {
+    if (line.notation?.source) return [{ type: 'notation', content: line.notation.source,
+      notation: line.notation, chords: line.chords || [], firstSegment: true, finalSegment: true,
+      sectionIndex, lineIndex, sectionId: section.id, lineId: line.id, sectionLabel: String(section?.label || 'Section') }];
     const rows = []; const segments = this.wrapLine(line, maxCharacters);
     segments.forEach((segment, segmentIndex) => {
       const segmentState = { firstSegment: segmentIndex === 0, finalSegment: segmentIndex === segments.length - 1 };
@@ -156,6 +159,9 @@ class ChartPageLayout {
     const arrangement = String(song?.arrangement?.mode === 'manual' ? song?.arrangement?.value || '' : song?.arrangement?.inferredValue || '').trim();
     if (writer || options.includeEmptyMetadata) metadata.push({ field: 'writer', value: writer });
     if (arranger || options.includeEmptyMetadata) metadata.push({ field: 'arranger', value: arranger });
+    [['recording','Recording'],['copyright','Copyright'],['ccliSongNumber','CCLI Song #'],['ccliLicenseNumber','CCLI License #']].forEach(([field]) => {
+      const value = String(song?.metadata?.[field] || '').trim(); if (value || options.includeEmptyMetadata) metadata.push({ field, value });
+    });
     if (arrangement) metadata.push({ field: 'arrangement', value: arrangement });
     const metadataRows = metadata.reduce((total, row) => total + (row.field === 'arrangement' ? 4 : 1), 0);
     const balanceFinalPage = reservedRows => {

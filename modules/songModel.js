@@ -20,11 +20,20 @@ class SongModel {
       type: section.type || 'section',
       label: section.label || '',
       labelProvenance: section.labelProvenance || (imported ? 'imported' : 'inferred'),
-      lines: (section.lines || []).map((line, lineIndex) => ({
+      lines: (section.lines || []).map((line, lineIndex) => {
+        const Notation = typeof ChartNotation !== 'undefined'
+          ? ChartNotation : (typeof require === 'function' ? require('./chartNotation') : null);
+        const notation = line.notation?.source && Notation ? Notation.parse(line.notation.source) : line.notation;
+        const savedChords = line.chords || [];
+        const sourceChords = notation ? notation.chords.map((parsed, index) => savedChords.length === notation.chords.length
+          ? { ...parsed, ...savedChords[index], symbol: savedChords[index]?.symbol || parsed.symbol }
+          : parsed) : savedChords;
+        return {
         ...line,
         id: line.id || this.createId('line'),
         lyrics: line.lyrics || '',
-        chords: (line.chords || []).map(chord => {
+        ...(notation ? { notation: { version: notation.version || 1, source: notation.source, runs: notation.runs || [] } } : {}),
+        chords: sourceChords.map(chord => {
           const characterOffset = Math.max(0, Number(chord.characterOffset) || 0);
           const provenance = chord.anchor?.provenance
             || (chord.manualEntry?.provenance === 'manual' ? 'manual' : imported ? 'imported' : 'inferred');
@@ -40,7 +49,8 @@ class SongModel {
         endTime: line.endTime ?? null,
         lyricConfidence: line.lyricConfidence ?? null,
         timedWords: line.timedWords || []
-      }))
+        };
+      })
     }));
     const sections = this.collapseUnsectionedSections(normalizedSections);
 
@@ -66,6 +76,9 @@ class SongModel {
       keyConfidence: input.keyConfidence ?? null,
       chords: input.chords || []
     };
+
+    song.metadata = Object.fromEntries(['recording', 'copyright', 'ccliSongNumber', 'ccliLicenseNumber']
+      .map(field => [field, String(input.metadata?.[field] || '')]));
 
     song.credits = {
       writer: this.normalizeCredit(input.credits?.writer),
@@ -98,6 +111,8 @@ class SongModel {
       avoidOrphans: input.layout?.avoidOrphans !== false && input.layout?.avoidOrphans !== 'false',
       continuationHeader: input.layout?.continuationHeader === 'none' ? 'none' : 'title-key',
       pageNumbers: input.layout?.pageNumbers === true || input.layout?.pageNumbers === 'true',
+      headerVisibility: ['all', 'first', 'none'].includes(input.layout?.headerVisibility) ? input.layout.headerVisibility : 'all',
+      footerVisibility: ['all', 'last', 'none'].includes(input.layout?.footerVisibility) ? input.layout.footerVisibility : 'last',
       preset: String(input.layout?.preset || 'custom'),
       layoutMode: Boolean(input.layout?.layoutMode),
       breaks: (Array.isArray(input.layout?.breaks) ? input.layout.breaks : []).filter(item =>
@@ -210,6 +225,15 @@ class SongModel {
         continue;
       }
 
+      const Notation = typeof ChartNotation !== 'undefined'
+        ? ChartNotation : (typeof require === 'function' ? require('./chartNotation') : null);
+      if (Notation?.looksLike(row)) {
+        const notation = Notation.parse(row);
+        current.lines.push({ lyrics: '', notation: { version: notation.version, source: notation.source, runs: notation.runs },
+          chords: notation.chords, startTime: null, endTime: null });
+        continue;
+      }
+
       if (this.isChordRow(row) && index + 1 < rows.length && !this.isChordRow(rows[index + 1])) {
         const lyricRow = rows[index + 1];
         current.lines.push({
@@ -256,6 +280,12 @@ class SongModel {
       const output = [];
       if (section.label) output.push(section.label);
       for (const line of section.lines || []) {
+        if (line.notation?.source) {
+          const Notation = typeof ChartNotation !== 'undefined'
+            ? ChartNotation : (typeof require === 'function' ? require('./chartNotation') : null);
+          output.push(Notation ? Notation.serialize(line.notation, null, line.chords) : line.notation.source);
+          continue;
+        }
         if (line.chords?.length) output.push(this.buildChordRow(line));
         output.push(line.lyrics || '');
       }

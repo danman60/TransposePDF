@@ -30,5 +30,8 @@ const nashville = theory.canonicalChordFromDisplay('1m7', { originalKey: 'C' }, 
 if (nashville.ok || !nashville.error.includes('Switch Notation')) throw new Error('Nashville entry was not safely rejected');
 const invalid = theory.canonicalChordFromDisplay('hello', { originalKey: 'C' }, {});
 if (invalid.ok) throw new Error('Invalid chord was accepted');
+const baseline = theory.canonicalChordFromDisplay('A', { originalKey: 'A', transposition: 0 }, {});
+const transposedManual = theory.displayManualChord(baseline.canonical, baseline.manualEntry, { originalKey: 'A', transposition: 1 }, {});
+if (transposedManual !== 'Bb') throw new Error(`Manual A transposed in Bb as ${transposedManual}`);
 
-console.log(`${cases.length + 2}/9 display-to-canonical checks passed`);
+console.log(`${cases.length + 3}/10 display-to-canonical checks passed`);

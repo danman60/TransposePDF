@@ -419,7 +419,9 @@ class MusicTheory {
     const instrument = view.instrument || song.view?.instrument || 'concert';
     const capo = Math.max(0, Math.min(11, Number(view.capo ?? song.view?.capo) || 0));
     const currentTotal = transposition + this.concertToWrittenOffset(instrument) - capo;
-    return this.transposeChord(symbol, currentTotal - Number(manualEntry.totalDisplayOffset || 0), { policy });
+    const targetKey = this.transposeKey(song.originalKey || 'C', currentTotal, policy);
+    return this.transposeChord(symbol, currentTotal - Number(manualEntry.totalDisplayOffset || 0),
+      { policy, sourceKey: song.originalKey || 'C', targetKey, allowDoubleAccidentals: false });
   }
 
   /**

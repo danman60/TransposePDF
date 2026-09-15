@@ -287,7 +287,7 @@ body {
 .sidebar-song-heading h2 { margin: .1rem 0; color: var(--text-primary); font-size: 1.15rem; line-height: 1.2; }
 .sidebar-song-heading p { display: flex; flex-wrap: wrap; gap: .3rem .65rem; color: var(--text-secondary); font-size: .76rem; }
 .sidebar-song-heading p strong { color: #9edcf2; }
-.sidebar-edit-state { width: 100%; min-height: 38px; margin: .8rem 0 .9rem; border: 0; border-radius: 6px; background: var(--primary-color); color: #07151b; font-weight: 800; cursor: pointer; }
+.sidebar-edit-state { position: sticky; top: 0; z-index: 4; width: 100%; min-height: 38px; margin: .8rem 0 .9rem; border: 0; border-radius: 6px; background: var(--primary-color); color: #07151b; font-weight: 800; cursor: pointer; box-shadow: 0 5px 12px rgba(8, 15, 18, .3); }
 .sidebar-control-group { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem .5rem; }
 .sidebar-control-group label { display: grid; gap: .25rem; color: var(--text-secondary); font-size: .69rem; font-weight: 700; }
 .sidebar-control-group select { min-width: 0; width: 100%; min-height: 36px; border: 1px solid #4b5a60; border-radius: 5px; background: #111719; color: var(--text-primary); padding: .35rem; }
@@ -1480,6 +1480,12 @@ body {
 .paginated-chart .chart-line.planned-text-only { min-height: 1.2em; }
 .paginated-chart .chord-line { min-height: 1.2em; color: #0000c8; font-size: 1em !important; line-height: 1.2; }
 .paginated-chart .lyric-line { min-height: 1.2em; margin-bottom: 0; color: #111; font-size: 1em !important; line-height: 1.2; white-space: pre; }
+.paginated-chart .notation-chart-line { min-height: 1.35em; }
+.notation-line { min-height: 1.25em; line-height: 1.25; white-space: pre-wrap; color: #142656; font-weight: 650; outline: none; }
+.notation-line:focus { background: rgba(37, 99, 235, .06); box-shadow: 0 0 0 1px rgba(37, 99, 235, .22); }
+.notation-bar, .notation-doubleBar, .notation-repeatStart, .notation-repeatEnd { color: #111827; font-weight: 800; }
+.notation-cue, .notation-ending { color: #4b5563; font-style: italic; font-weight: 600; }
+.notation-slash, .notation-hold { color: #6b7280; }
 .planned-row { min-height: 1.2em; color: #111; white-space: pre; }
 .planned-section-gap { min-height: 1.2em; }
 .planned-metadata-row { display: flex; gap: .35em; }

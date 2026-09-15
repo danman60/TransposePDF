@@ -225,12 +225,14 @@ class PDFGenerator {
           row.content = this.buildChordRow(row.chords || [], song.transposition, new MusicTheory(), song);
           row.chords = (row.chords || []).map(chord => ({ ...chord, displaySymbol: this.displayChord(chord.symbol, song, new MusicTheory(), chord) }));
         }
+        if (row.type === 'notation') row.song = song;
         await this.renderLine(pdf, row, x, y); y += plan.spec.lineHeight;
       }
     };
     for (let pageIndex = 0; pageIndex < plan.pages.length; pageIndex += 1) {
       if (pageIndex > 0) pdf.addPage([plan.spec.pageWidth, plan.spec.pageHeight], plan.spec.pageWidth > plan.spec.pageHeight ? 'landscape' : 'portrait');
-      const top = this.renderPlannedSongHeader(pdf, song, plan.spec, pageIndex > 0);
+      const hideHeader = song.layout?.headerVisibility === 'none' || (song.layout?.headerVisibility === 'first' && pageIndex > 0);
+      const top = hideHeader ? plan.spec.margins.top + plan.spec.headerHeight : this.renderPlannedSongHeader(pdf, song, plan.spec, pageIndex > 0);
       const page = plan.pages[pageIndex];
       const regions = page.regions || (page.spanRows ? [{ kind: 'span', rows: page.spanRows }] : [{ kind: 'columns', columns: page.columns }]);
       let rowOffset = 0;
@@ -246,10 +248,10 @@ class PDFGenerator {
         pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(70, 70, 70);
         pdf.text(`${pageIndex + 1} / ${plan.pages.length}`, plan.spec.pageWidth - plan.spec.margins.right, plan.spec.pageHeight - Math.max(10, plan.spec.margins.bottom / 2), { align: 'right' });
       }
-      if (pageIndex === plan.pages.length - 1 && plan.metadata.length) {
+      if (song.layout?.footerVisibility !== 'none' && (song.layout?.footerVisibility === 'all' || pageIndex === plan.pages.length - 1) && plan.metadata.length) {
         let footerY = plan.spec.pageHeight - plan.spec.margins.bottom - (plan.metadataRows - 1) * plan.spec.lineHeight;
         for (const item of plan.metadata) {
-          const labels = { writer: 'Written by: ', arranger: 'Arrangement by: ', arrangement: 'Arrangement: ' };
+          const labels = { writer: 'Written by: ', arranger: 'Arrangement by: ', arrangement: 'Arrangement: ', recording: 'Recording: ', copyright: 'Copyright: ', ccliSongNumber: 'CCLI Song #: ', ccliLicenseNumber: 'CCLI License #: ' };
           pdf.setFontSize(item.field === 'arrangement' ? 18 : plan.spec.fontSize);
           pdf.setFont(this.typography === 'sans' ? 'helvetica' : 'courier', item.field === 'arrangement' ? 'bold' : 'normal');
           pdf.setTextColor(0, 0, 0);
@@ -483,6 +485,18 @@ class PDFGenerator {
         pdf.setFont(line.structured ? (this.typography === 'sans' ? 'helvetica' : 'courier') : undefined, 'normal');
         pdf.text(line.content, x, y);
         break;
+
+      case 'notation': {
+        const Notation = typeof ChartNotation !== 'undefined' ? ChartNotation : null;
+        if (!Notation) throw new Error('Chart notation is unavailable');
+        const value = Notation.serialize(line.notation, symbol => this.displayChord(symbol, line.song, new MusicTheory()), line.chords);
+        pdf.setFontSize(this.fontSize);
+        pdf.setFont(this.typography === 'sans' ? 'helvetica' : 'courier', 'bold');
+        pdf.setTextColor(20, 38, 86);
+        pdf.text(value, x, y);
+        pdf.setTextColor(0, 0, 0);
+        break;
+      }
 
       case 'section':
         pdf.setFontSize(this.fontSize);

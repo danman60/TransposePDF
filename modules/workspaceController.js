@@ -529,17 +529,18 @@ class WorkspaceController {
     if (!sheet || !this.root.contains(sheet)) return;
     const chord = event.target.closest?.('.inline-chord-anchor[data-chord-id]');
     const lyric = event.target.closest?.('[data-inline-field="lyrics"]');
+    const notation = event.target.closest?.('[data-inline-field="notation"]');
     const sectionLabel = event.target.closest?.('[data-inline-field="section-label"]');
     const lane = event.target.closest?.('.chord-line[data-section-index]');
     const editable = event.target.closest?.('[contenteditable="true"], [contenteditable="plaintext-only"]');
-    if (editable && !chord && !lyric && !sectionLabel) return;
+    if (editable && !chord && !lyric && !notation && !sectionLabel) return;
     event.preventDefault();
     this.closeContextMenu();
     const section = event.target.closest?.('.section-block[data-section-reorder-index]');
     const sectionIndex = section ? Number(section.dataset.sectionReorderIndex) : null;
     const songId = sheet.dataset.songId;
-    const lineIndex = lyric ? Number(lyric.dataset.lineIndex) : lane ? Number(lane.dataset.lineIndex) : null;
-    const chartLine = (lyric || lane)?.closest?.('.chart-line');
+    const lineIndex = lyric ? Number(lyric.dataset.lineIndex) : notation ? Number(notation.dataset.lineIndex) : lane ? Number(lane.dataset.lineIndex) : null;
+    const chartLine = (lyric || notation || lane)?.closest?.('.chart-line');
     const lineRect = chartLine?.getBoundingClientRect();
     const insertionLineIndex = Number.isFinite(lineIndex) ? lineIndex + (lineRect && event.clientY > lineRect.top + lineRect.height / 2 ? 1 : 0) : null;
     const offset = lane ? this.ui.authoringController.projectAuthorPointer(lane, event.clientX).offset : 0;
@@ -555,17 +556,20 @@ class WorkspaceController {
         ['Move to previous lyric line', 'move-chord-prev'], ['Move to next lyric line', 'move-chord-next'],
         ['Mark spelling canonical', 'canonical-chord'], ['Set exact timing…', 'time-chord'], ['Flag for review', 'review-chord']];
       (song?.sections || []).forEach((item, index) => { if (index !== sectionIndex) actions.push([`Copy to ${item.label || `section ${index + 1}`}`, 'copy-chord-section', '', index]); });
+    } else if (notation) {
+      actions = [['Add section here', 'section-here-line'], ['Add line above', 'line-above'], ['Add line below', 'line-below'],
+        ['End column after this line', 'column-break'], ['Start new page after this line', 'page-break']];
     } else if (lyric) {
       actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
         ['End column after this line', 'column-break'], ['Start new page after this line', 'page-break'],
         ['Join with previous', 'join-prev'], ['Join with next', 'join-next'], ['Paste lyrics here', 'paste-lyrics'],
-        ['Clear chords from line', 'clear-line-chords', 'danger'], ['Copy chord pattern from matching section', 'copy-line-pattern']];
+        ['Convert to notation line', 'convert-notation'], ['Clear chords from line', 'clear-line-chords', 'danger'], ['Copy chord pattern from matching section', 'copy-line-pattern']];
     } else if (lane) {
       actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add chord here', 'add-chord'], ['Paste copied chord', 'paste-chord'], ['Paste chord sequence…', 'paste-chord-sequence'],
         ['Add N.C.', 'add-no-chord'], ['Copy matching section chords', 'copy-matching-section']];
     } else if (Number.isFinite(sectionIndex)) {
       actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Rename section', 'rename-section'],
-        ['Duplicate section', 'duplicate-section-context'], ['Copy matching chords', 'copy-matching-section'], ['Copy entire section', 'duplicate-section-context'],
+        ['Duplicate section', 'duplicate-section-context'], ['Copy matching chords', 'copy-matching-section'],
         ['Keep section together', 'keep-section'], ['Start in next column', 'start-section-column'], ['Start on next page', 'start-section-page'], ['Span all columns', 'span-section'], ['Reset section flow', 'reset-section-flow'], ['Compact section spacing', 'section-space-compact'], ['Normal section spacing', 'section-space-normal'], ['Spacious section spacing', 'section-space-spacious'],
         ['Move left / up', 'section-prev'], ['Move right / down', 'section-next'], ['Delete section', 'delete-section-context', 'danger']];
     } else {
@@ -631,6 +635,7 @@ class WorkspaceController {
       'paste-lyrics': async () => this.ui.replaceInlineLyrics(state.songId, state.sectionIndex, state.lineIndex, await navigator.clipboard.readText()),
       'clear-line-chords': () => this.ui.clearInlineLineChords(state.songId, state.sectionIndex, state.lineIndex),
       'copy-line-pattern': () => this.ui.copyMatchingLinePattern(state.songId, state.sectionIndex, state.lineIndex),
+      'convert-notation': () => this.ui.convertInlineLineToNotation(state.songId, state.sectionIndex, state.lineIndex),
       'column-break': () => this.ui.setLayoutBreak(state.songId, state.sectionIndex, state.lineIndex, 'column'),
       'page-break': () => this.ui.setLayoutBreak(state.songId, state.sectionIndex, state.lineIndex, 'page'),
       'add-chord': () => this.ui.insertInlineChord(state.songId, state.sectionIndex, state.lineIndex, state.characterOffset),

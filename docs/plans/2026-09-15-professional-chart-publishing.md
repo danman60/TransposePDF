@@ -76,6 +76,8 @@ Acceptance:
 
 ## Phase 4 — structured musical notation
 
+Status: implemented in v55 candidate. Canonical notation source derives typed runs; chord runs preserve stable IDs/manual provenance while literal repeat, ending, slash, hold, and navigation tokens never transpose. Inline editing, ChordPro `x_notation`, reload, and PDF share this model.
+
 - Extend line schema with notation runs: barline, repeat-start/end, measure, ending, rhythmic slash, rest/hold, `N.C.`, and navigation cue.
 - Reuse ChordPro directive parser/exporter; preserve unknown directives.
 - Add inline notation toolbar and keyboard entry on main surface.
@@ -86,6 +88,8 @@ Acceptance:
 - Chord transposition changes chord tokens only; cues and bar structure remain unchanged.
 
 ## Phase 5 — professional metadata and templates
+
+Status: implemented in v55 candidate. Recording, copyright, CCLI song/license metadata are inline-editable in the shared footer and round-trip through ChordPro. Per-song header/footer visibility and six non-destructive professional presets extend the existing layout director.
 
 - Extend existing song metadata with recording attribution, copyright, CCLI song/license numbers, subtitle, and header/footer visibility.
 - Make all fields inline-editable and canonical.

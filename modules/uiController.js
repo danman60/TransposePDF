@@ -1033,11 +1033,13 @@ class UIController {
       <label class="sidebar-font-size">Typography<select data-action="set-layout-field" data-layout-field="typography" data-song-id="${songId}" aria-label="Chart typography for ${this.escapeHtml(song.title)}"><option value="mono"${song.layout?.typography !== 'sans' ? ' selected' : ''}>Precise mono</option><option value="sans"${song.layout?.typography === 'sans' ? ' selected' : ''}>Professional sans</option></select><small>Measured editor and PDF</small></label>
       <div class="sidebar-layout-director">
         <button type="button" data-action="toggle-layout-mode" data-song-id="${songId}" aria-pressed="${Boolean(song.layout?.layoutMode)}">${song.layout?.layoutMode ? 'Done arranging layout' : 'Arrange page layout'}</button>
-        <label>Preset<select data-action="set-layout-preset" data-song-id="${songId}">${[['custom','Custom'],['lead-sheet','Single-page lead sheet'],['stage','Two-column stage chart'],['large-print','Large print']].map(([value,label]) => `<option value="${value}"${song.layout?.preset === value ? ' selected' : ''}>${label}</option>`).join('')}${Object.keys(customPresets).map(name => `<option value="saved:${this.escapeHtml(name)}"${song.layout?.preset === `saved:${name}` ? ' selected' : ''}>${this.escapeHtml(name)}</option>`).join('')}</select></label>
+        <label>Preset<select data-action="set-layout-preset" data-song-id="${songId}">${[['custom','Custom'],['songselect','SongSelect full-width'],['compact','Compact two-column'],['hymnal','Hymnal three-column'],['nashville','Nashville chart'],['stage','Large-print stage'],['tablet','Tablet'],['lead-sheet','Classic lead sheet'],['large-print','Classic large print']].map(([value,label]) => `<option value="${value}"${song.layout?.preset === value ? ' selected' : ''}>${label}</option>`).join('')}${Object.keys(customPresets).map(name => `<option value="saved:${this.escapeHtml(name)}"${song.layout?.preset === `saved:${name}` ? ' selected' : ''}>${this.escapeHtml(name)}</option>`).join('')}</select></label>
         <button type="button" data-action="save-layout-preset" data-song-id="${songId}">Save current as preset</button>
         <label>Margins<select data-action="set-layout-field" data-layout-field="margin" data-song-id="${songId}">${['narrow','standard','wide'].map(value => `<option value="${value}"${song.layout?.margin === value ? ' selected' : ''}>${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>
         <label>Section space<select data-action="set-layout-field" data-layout-field="sectionSpacing" data-song-id="${songId}">${['compact','normal','spacious'].map(value => `<option value="${value}"${song.layout?.sectionSpacing === value ? ' selected' : ''}>${value[0].toUpperCase() + value.slice(1)}</option>`).join('')}</select></label>
         <label>Continuation header<select data-action="set-layout-field" data-layout-field="continuationHeader" data-song-id="${songId}"><option value="title-key"${song.layout?.continuationHeader !== 'none' ? ' selected' : ''}>Repeat title and key</option><option value="none"${song.layout?.continuationHeader === 'none' ? ' selected' : ''}>No repeated header</option></select></label>
+        <label>Header<select data-action="set-layout-field" data-layout-field="headerVisibility" data-song-id="${songId}">${[['all','Every page'],['first','First page'],['none','Hidden']].map(([value,label]) => `<option value="${value}"${song.layout?.headerVisibility === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
+        <label>Footer metadata<select data-action="set-layout-field" data-layout-field="footerVisibility" data-song-id="${songId}">${[['last','Last page'],['all','Every page'],['none','Hidden']].map(([value,label]) => `<option value="${value}"${song.layout?.footerVisibility === value ? ' selected' : ''}>${label}</option>`).join('')}</select></label>
         <label>Page numbers<select data-action="set-layout-field" data-layout-field="pageNumbers" data-song-id="${songId}"><option value="false"${!song.layout?.pageNumbers ? ' selected' : ''}>Hidden</option><option value="true"${song.layout?.pageNumbers ? ' selected' : ''}>Shown</option></select></label>
         <label>Heading flow<select data-action="set-layout-field" data-layout-field="avoidOrphans" data-song-id="${songId}"><option value="true"${song.layout?.avoidOrphans !== false ? ' selected' : ''}>Keep with first line</option><option value="false"${song.layout?.avoidOrphans === false ? ' selected' : ''}>Allow manual flow</option></select></label>
         <label class="layout-check"><input type="checkbox" data-action="set-layout-balance" data-song-id="${songId}"${song.layout?.balance !== 'off' ? ' checked' : ''}> Auto-balance final page</label>
@@ -1120,9 +1122,14 @@ class UIController {
   }
   setSongLayoutPreset(songId, preset) {
     const presets = {
-      'lead-sheet': { columns: 1, columnRatios: [1], fontSize: 12, typography: 'sans', pageSize: 'letter', orientation: 'portrait', margin: 'narrow', margins: {top:null,right:null,bottom:null,left:null}, gutter: 18, sectionSpacing: 'compact', balance: 'auto', continuationHeader: 'title-key', pageNumbers: true, avoidOrphans: true },
-      stage: { columns: 2, columnRatios: [.5,.5], fontSize: 13, typography: 'sans', pageSize: 'letter', orientation: 'portrait', margin: 'standard', margins: {top:null,right:null,bottom:null,left:null}, gutter: 18, sectionSpacing: 'normal', balance: 'auto', continuationHeader: 'title-key', pageNumbers: true, avoidOrphans: true },
-      'large-print': { columns: 1, columnRatios: [1], fontSize: 16, typography: 'sans', pageSize: 'letter', orientation: 'portrait', margin: 'wide', margins: {top:null,right:null,bottom:null,left:null}, gutter: 18, sectionSpacing: 'spacious', balance: 'off', continuationHeader: 'title-key', pageNumbers: true, avoidOrphans: true }
+      songselect: { columns: 1, columnRatios: [1], fontSize: 12, typography: 'sans', pageSize: 'letter', orientation: 'portrait', margin: 'narrow', sectionSpacing: 'compact', balance: 'auto', pageNumbers: true },
+      compact: { columns: 2, columnRatios: [.5,.5], fontSize: 11, typography: 'sans', pageSize: 'letter', orientation: 'portrait', margin: 'narrow', sectionSpacing: 'compact', balance: 'auto', pageNumbers: true },
+      hymnal: { columns: 3, columnRatios: [1/3,1/3,1/3], fontSize: 10, typography: 'sans', pageSize: 'letter', orientation: 'portrait', margin: 'narrow', sectionSpacing: 'compact', balance: 'auto', pageNumbers: true },
+      nashville: { columns: 1, columnRatios: [1], fontSize: 13, typography: 'mono', pageSize: 'letter', orientation: 'portrait', margin: 'standard', sectionSpacing: 'normal', balance: 'off', pageNumbers: true },
+      stage: { columns: 2, columnRatios: [.5,.5], fontSize: 16, typography: 'sans', pageSize: 'letter', orientation: 'landscape', margin: 'wide', sectionSpacing: 'spacious', balance: 'off', pageNumbers: true },
+      tablet: { columns: 1, columnRatios: [1], fontSize: 15, typography: 'sans', pageSize: 'custom', customPage: {width:768,height:1024}, orientation: 'portrait', margin: 'standard', sectionSpacing: 'normal', balance: 'off', pageNumbers: false }
+      ,'lead-sheet': { columns: 1, columnRatios: [1], fontSize: 12, typography: 'sans', pageSize: 'letter', orientation: 'portrait', margin: 'narrow', sectionSpacing: 'compact', balance: 'auto', pageNumbers: true }
+      ,'large-print': { columns: 1, columnRatios: [1], fontSize: 16, typography: 'sans', pageSize: 'letter', orientation: 'portrait', margin: 'wide', sectionSpacing: 'spacious', balance: 'off', pageNumbers: true }
     };
     const custom = preset.startsWith('saved:') ? this.savedLayoutPresets()[preset.slice(6)] : null;
     return this.updateSongLayout(songId, { ...(custom || presets[preset] || {}), preset }, `${preset.replace(/^saved:/, '').replace(/-/g, ' ')} preset applied`);
@@ -1259,9 +1266,10 @@ class UIController {
     } else if (field === 'arrangement') {
       edited.arrangement = { ...(edited.arrangement || {}), mode: 'manual', value: String(value).replace(/[\r\n]+/g, ''), updatedAt: Date.now() };
     }
+    if (['recording', 'copyright', 'ccliSongNumber', 'ccliLicenseNumber'].includes(field)) edited.metadata[field] = String(value).replace(/[\r\n]+/g, '').trim();
     const sectionIndex = Number(target.dataset.sectionIndex);
     const section = edited.sections[sectionIndex];
-    if (!['writer', 'arranger', 'arrangement'].includes(field) && !section) return false;
+    if (!['writer', 'arranger', 'arrangement', 'recording', 'copyright', 'ccliSongNumber', 'ccliLicenseNumber'].includes(field) && !section) return false;
     if (target.dataset.inlineField === 'section-label') {
       section.label = String(value).replace(/[\r\n]+/g, '').trim();
       section.labelProvenance = 'manual';
@@ -1269,7 +1277,7 @@ class UIController {
       this.updateInferredArrangement(edited);
     }
     const line = section?.lines?.[Number(target.dataset.lineIndex)];
-    if (!['section-label', 'writer', 'arranger', 'arrangement'].includes(field) && !line) return false;
+    if (!['section-label', 'writer', 'arranger', 'arrangement', 'recording', 'copyright', 'ccliSongNumber', 'ccliLicenseNumber'].includes(field) && !line) return false;
     if (target.dataset.inlineField === 'lyrics') {
       const segmentText = String(value).replace(/[\r\n]+/g, '');
       const sourceStart = Number(target.dataset.sourceStart);
@@ -1278,6 +1286,15 @@ class UIController {
         ? `${String(line.lyrics || '').slice(0, sourceStart)}${segmentText}${String(line.lyrics || '').slice(sourceEnd)}`
         : segmentText;
       Object.assign(line, LyricAnchor.reconcileLine(line, line.lyrics || '', nextLyrics));
+    }
+    if (target.dataset.inlineField === 'notation') {
+      const notation = ChartNotation.parse(String(value));
+      line.lyrics = '';
+      line.notation = { version: notation.version, source: notation.source, runs: notation.runs };
+      const theory = new MusicTheory(); const view = { ...(edited.sessionView || {}), spellingPolicy: edited.spellingPolicy };
+      line.chords = notation.chords.map(chord => { const converted = theory.canonicalChordFromDisplay(chord.symbol, edited, view);
+        return { ...chord, id: this.createStableChordId(), symbol: converted.ok ? converted.canonical : chord.symbol,
+          originalSymbol: converted.ok ? converted.canonical : chord.symbol, ...(converted.ok ? { manualEntry: converted.manualEntry } : {}) }; });
     }
     if (target.dataset.inlineField === 'chord') {
       const chordId = target.dataset.chordId || target.closest('.inline-chord-anchor')?.dataset.chordId;
@@ -1348,6 +1365,24 @@ class UIController {
       this.track('chart.line.inserted', { sectionIndex, lineIndex: lineIndex + 1 }, saved);
       return true;
     } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  async convertInlineLineToNotation(songId, sectionIndex, lineIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    if (!song?.sections?.[sectionIndex]?.lines?.[lineIndex]) return false;
+    const previous = SongModel.create(song); const edited = SongModel.create(song);
+    const line = edited.sections[sectionIndex].lines[lineIndex];
+    const notation = ChartNotation.parse(line.notation?.source || line.lyrics || '| C |');
+    line.lyrics = ''; line.notation = { version: notation.version, source: notation.source, runs: notation.runs };
+    const theory = new MusicTheory(); const view = { ...(edited.sessionView || {}), spellingPolicy: edited.spellingPolicy };
+    line.chords = notation.chords.map(chord => { const converted = theory.canonicalChordFromDisplay(chord.symbol, edited, view);
+      return { ...chord, id: this.createStableChordId(), symbol: converted.ok ? converted.canonical : chord.symbol,
+        originalSymbol: converted.ok ? converted.canonical : chord.symbol, ...(converted.ok ? { manualEntry: converted.manualEntry } : {}) }; });
+    edited.songText = SongModel.toSongText(edited);
+    const saved = await this.persistSong(edited, { addToSession: false });
+    this.recordInlineUndo(previous); this.updateLeadSheetDisplay(saved);
+    requestAnimationFrame(() => this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] [data-inline-field="notation"][data-section-index="${sectionIndex}"][data-line-index="${lineIndex}"]`)?.focus());
+    this.updateStatus('Notation line ready', 'success'); return true;
   }
 
   async removeInlineChartLine(songId, sectionIndex, lineIndex) {

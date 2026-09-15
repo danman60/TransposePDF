@@ -2,9 +2,11 @@
 
 ## Active Task — 2026-09-15 Exact Column-Edge Wrapping
 
-Professional chart publishing implementation is active under `docs/plans/2026-09-15-professional-chart-publishing.md`. Scope covers measured proportional typography, mixed section regions, publication flow, structured musical notation, professional metadata/templates, and presets while preserving canonical manual edits and exact editor/PDF parity. v51 remains live on FIRMAMENT.
+Professional chart publishing Phase 6 verification/release is active under `docs/plans/2026-09-15-professional-chart-publishing.md`. v55 candidate adds structured notation, professional metadata, header/footer visibility, and six presets while preserving canonical manual edits and exact editor/PDF parity. v54 remains live on FIRMAMENT.
 
 ## Recent Changes
+
+- v55 candidate: structured notation rows with repeats, endings, slashes, holds, N.C., cues, inline editing, transposition, ChordPro, and PDF parity. Recording, copyright, CCLI song/license metadata are inline-editable. Header/footer visibility and SongSelect/compact/hymnal/Nashville/stage/tablet presets are per song and content-safe.
 
 - v54 candidate: publication-flow settings add repeated/hidden continuation headers, editor/PDF page numbers, and user-overridable orphan-heading protection. Manual page breaks persist through reload and transpose and participate in Ctrl/Cmd+Z undo.
 - v53 candidate: full-width sections and balanced 2/3-column sections can coexist sequentially on one editor/PDF page. Existing right-click `Span all columns` is the control. Mixed region planning preserves section/line/chord source data and persists rules across reload.
