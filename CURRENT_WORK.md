@@ -2,10 +2,11 @@
 
 ## Active Task — 2026-09-15 Exact Column-Edge Wrapping
 
-v51 is live on FIRMAMENT. Editor typography and gutter now scale against the CSS page content box, matching the planner/PDF point geometry. Text reaches the draggable divider instead of wrapping against an invisible narrower budget. Exact AOG recovery remains available from revision 175: repeated Verse 1 before Bridge, 6 lines and 14 chords.
+Professional chart publishing implementation is active under `docs/plans/2026-09-15-professional-chart-publishing.md`. Scope covers measured proportional typography, mixed section regions, publication flow, structured musical notation, professional metadata/templates, and presets while preserving canonical manual edits and exact editor/PDF parity. v51 remains live on FIRMAMENT.
 
 ## Recent Changes
 
+- Written reuse-first six-phase implementation plan for all eight requested publishing upgrades. Existing semantic anchors, section rules, breaks, shared planner, metadata, and presets are extension points; parallel surfaces are prohibited.
 - v51 live: fixed page-width/content-box mismatch in chart font and gutter scaling. Saved font size, margins, gutter, column ratios, editor wrapping, and PDF wrapping now use one physical geometry.
 - v50 candidate: center-divider pointer movement renders an unsaved preview from canonical song data; each column wraps at its own computed width. Release persists one ratio revision. Shared PDF consumes identical per-column row plan. Unequal-width final pages no longer run equal-column balancing.
 - v49 candidate: vertical full-height divider handles resize adjacent columns live and persist semantic ratios per song. Letter/A4/Legal/Tabloid/custom page sizes, portrait/landscape, independent margins, and gutter settings now drive the shared editor/PDF plan. Variable-page typography scales from actual page width rather than the prior A4 constant.
