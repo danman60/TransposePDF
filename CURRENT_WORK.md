@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-16 Collapsible Sections
 
-v59 candidate adds persistent editor-only section collapse/expand for compact whole-section rearrangement.
+v59 is committed, pushed, deployed, and live-verified. It adds persistent editor-only section collapse/expand for compact whole-section rearrangement.
 
 ## Recent Changes
 
@@ -61,6 +61,7 @@ v59 candidate adds persistent editor-only section collapse/expand for compact wh
 
 ## Verification
 
+- v59 live on FIRMAMENT: HTTP 200, cache `transpose-app-v59`, and 10/10 collapse/reorder lifecycle checks through a fresh loopback tunnel. Chrome reopened at cache-busted v59 URL.
 - v59 local: collapse lifecycle 10/10; existing section drag 6/6; exact section-line/page-wrap 10/10; whole-line/chord lifecycle 18/18; editor/PDF parity 6/6; geometry 9/9. Screenshot inspected; Telegram DM `17180`.
 - v58 live on FIRMAMENT: HTTP 200, cache `transpose-app-v58`, and 18/18 live-browser lifecycle checks through the FIRMAMENT loopback tunnel. Chrome reopened at cache-busted v58 URL.
 - v58 local: 18/18 whole-line/chord interaction lifecycle; inline edit/drag 10/10; line insertion 9/9; chord copy/insert 11/11; section drag 6/6; exact section-line/page-wrap 10/10; publication 11/11; geometry 9/9; editor/PDF parity 6/6. Screenshot inspected and Telegram DM `17178`.
