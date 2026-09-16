@@ -163,7 +163,12 @@ class ChartPageLayout {
       const value = String(song?.metadata?.[field] || '').trim(); if (value || options.includeEmptyMetadata) metadata.push({ field, value });
     });
     if (arrangement) metadata.push({ field: 'arrangement', value: arrangement });
-    const metadataRows = metadata.reduce((total, row) => total + (row.field === 'arrangement' ? 4 : 1), 0);
+    const ordinaryMetadataRows = metadata.filter(row => row.field !== 'arrangement').length;
+    const arrangementRows = metadata.some(row => row.field === 'arrangement')
+      ? Math.ceil((4.8 * 18) / spec.lineHeight) : 0;
+    const footerChromeRows = metadata.length
+      ? Math.ceil((.7 * spec.fontSize + Math.max(0, metadata.length - 1) * .2 * spec.fontSize + 1) / spec.lineHeight) : 0;
+    const metadataRows = ordinaryMetadataRows + arrangementRows + footerChromeRows;
     const balanceFinalPage = reservedRows => {
       const finalPage = pages[pages.length - 1];
       const finalRows = finalPage.columns.flat();

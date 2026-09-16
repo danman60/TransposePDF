@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-16 Reliable Physical Chord Drag
+## Active Task — 2026-09-16 Footer-Safe Section Reflow
 
-v61 is committed, pushed, deployed, and live-verified. It removes browser text-selection competition from non-editing chord symbols so physical cross-line drag and Alt-drag copy start reliably.
+v62 candidate reserves the footer’s actual rendered height so added sections wrap before writer/arrangement credits instead of overlapping them.
 
 ## Recent Changes
 
+- v62 candidate: shared planner footer reservation now includes actual 18pt Arrangement height, 13pt credit rows, grid gaps, padding, and border. At 13pt the reserve is 14 rows rather than 10; editor and PDF use the same reflow.
 - v61 candidate: chord symbols suppress text selection until double-click enters edit mode; pointer-down prevents Chrome text-drag behavior. Single-click selection, body drag, cross-line move, Alt-copy, touch drag, and double-click editing share the same canonical paths.
 - v60 candidate: chord symbols and empty chord lanes now expose `End column after this line` and `Start new page after this line`. Section headings use explicit `Add column/page break before this section` labels. Shift-clicking left-side line checkboxes selects or clears the full intervening range for batch drag/copy/paste/delete.
 - v59 candidate: each editable section heading has a disclosure control and line/chord summary. Collapsed sections keep their heading and whole-section drag handle, hide every page fragment, persist by stable section ID through reload/reorder, and never alter canonical or PDF content.
@@ -63,6 +64,7 @@ v61 is committed, pushed, deployed, and live-verified. It removes browser text-s
 
 ## Verification
 
+- v62 local: populated added-section footer reflow 6/6; page-boundary 10/10; editor/PDF parity 6/6; geometry 9/9; publication 11/11. Visual shows added Chorus on page 2 fully above footer; Telegram DM `17185`.
 - v61 live on FIRMAMENT: HTTP 200, cache `transpose-app-v61`, and exact selected-chord cross-line move/Alt-copy gate 8/8 through loopback tunnel.
 - v61 local: exact selected-symbol cross-line move/Alt-copy into an empty lane 8/8; full chord/edit regression matrix 49/49. Screenshot inspected; Telegram DM `17184`.
 - v60 live on FIRMAMENT: HTTP 200, cache `transpose-app-v60`, page-break menus 10/10, and whole-line/Shift-selection lifecycle 18/18 through loopback tunnel.
