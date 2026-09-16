@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-16 Discoverable Page Breaks and Shift Line Selection
+## Active Task — 2026-09-16 Reliable Physical Chord Drag
 
-v60 is committed, pushed, deployed, and live-verified. It exposes page/column break commands from every chart-row right-click target and adds Shift-click range selection for whole-line checkboxes.
+v61 candidate removes browser text-selection competition from non-editing chord symbols so physical cross-line drag and Alt-drag copy start reliably.
 
 ## Recent Changes
 
+- v61 candidate: chord symbols suppress text selection until double-click enters edit mode; pointer-down prevents Chrome text-drag behavior. Single-click selection, body drag, cross-line move, Alt-copy, touch drag, and double-click editing share the same canonical paths.
 - v60 candidate: chord symbols and empty chord lanes now expose `End column after this line` and `Start new page after this line`. Section headings use explicit `Add column/page break before this section` labels. Shift-clicking left-side line checkboxes selects or clears the full intervening range for batch drag/copy/paste/delete.
 - v59 candidate: each editable section heading has a disclosure control and line/chord summary. Collapsed sections keep their heading and whole-section drag handle, hide every page fragment, persist by stable section ID through reload/reorder, and never alter canonical or PDF content.
 - v58 candidate: left-side line checkboxes select multiple complete lyric/chord rows. Drag moves selected rows; Alt-drag copies them; Ctrl/Cmd+C/V copies and pastes independent rows; Delete/Backspace removes selected rows and chords. Row hover exposes whole-line drag/delete controls. Chords now single-click select, body-drag, Delete/Backspace remove, and double-click edit. Shared planner reserves a chord lane above every lyric line, including new blank-chord lines.
@@ -62,6 +63,7 @@ v60 is committed, pushed, deployed, and live-verified. It exposes page/column br
 
 ## Verification
 
+- v61 local: exact selected-symbol cross-line move/Alt-copy into an empty lane 8/8; full chord/edit regression matrix 49/49. Screenshot inspected; Telegram DM `17184`.
 - v60 live on FIRMAMENT: HTTP 200, cache `transpose-app-v60`, page-break menus 10/10, and whole-line/Shift-selection lifecycle 18/18 through loopback tunnel.
 - v60 local: page-break context menus 10/10; publication/page-break lifecycle 11/11; whole-line/chord lifecycle including Shift range selection 18/18. Screenshot inspected; Telegram DM `17182`.
 - v59 live on FIRMAMENT: HTTP 200, cache `transpose-app-v59`, and 10/10 collapse/reorder lifecycle checks through a fresh loopback tunnel. Chrome reopened at cache-busted v59 URL.

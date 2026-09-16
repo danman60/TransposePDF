@@ -560,6 +560,7 @@ class WorkspaceController {
     }
     const chord = event.target.closest?.('.inline-chord-anchor');
     if (!chord || !this.root.contains(chord)) return;
+    event.preventDefault();
     this.pointerDrag = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, active: false,
       element: chord,
       source: { songId: chord.closest('.lead-sheet[data-song-id]')?.dataset.songId,

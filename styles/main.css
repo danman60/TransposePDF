@@ -787,8 +787,9 @@ body {
   cursor: grab;
   position: relative;
   z-index: 1;
+  user-select: none;
 }
-.lead-sheet .inline-chord-edit[contenteditable="true"], .lead-sheet .inline-chord-edit[contenteditable="plaintext-only"] { cursor: text; }
+.lead-sheet .inline-chord-edit[contenteditable="true"], .lead-sheet .inline-chord-edit[contenteditable="plaintext-only"] { cursor: text; user-select: text; }
 .lead-sheet .inline-chord-anchor.is-selected .inline-chord-edit {
   color: #07151b;
   background: var(--primary-color);
