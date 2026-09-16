@@ -6,6 +6,7 @@ Professional chart publishing plan is complete. v55 is committed, pushed, deploy
 
 ## Recent Changes
 
+- v56 candidate: `Alt+↑` moves from lyrics to the nearest chord or creates one at the caret; `Alt+↓` returns to the anchored lyric position. Notation rows can be safely deleted by Delete/Backspace or right-click without leaking chords into lyrics. Section right-click can clear every chord or copy its chord pattern to a named chord-free section.
 - v55 candidate: structured notation rows with repeats, endings, slashes, holds, N.C., cues, inline editing, transposition, ChordPro, and PDF parity. Recording, copyright, CCLI song/license metadata are inline-editable. Header/footer visibility and SongSelect/compact/hymnal/Nashville/stage/tablet presets are per song and content-safe.
 
 - v54 candidate: publication-flow settings add repeated/hidden continuation headers, editor/PDF page numbers, and user-overridable orphan-heading protection. Manual page breaks persist through reload and transpose and participate in Ctrl/Cmd+Z undo.
@@ -57,6 +58,7 @@ Professional chart publishing plan is complete. v55 is committed, pushed, deploy
 
 ## Verification
 
+- v56 candidate: new real-browser lifecycle 15/15; existing inline edit/drag, notation, chord copy/insert, editor/PDF parity, ChordPro, anchor/schema, and syntax gates pass. Visual artifact `artifacts/e2e/chord-hotkey-notation-delete.png`; Telegram DM `17175`.
 - 2026-09-15 9:09 AM EDT: restored FIRMAMENT server after port 8000 had no listener. Direct FIRMAMENT loopback returns HTTP 200/27,528 bytes, service worker serves `transpose-app-v55`, and python PID 9376 owns `127.0.0.1:8000`. Opened live URL on FIRMAMENT without restarting Chrome.
 - v55 live: served SHA-256 matches local for service worker and all changed runtime families; cache `transpose-app-v55`. Live 27/27 notation, metadata/preset, and editor/PDF parity gates pass. Live isolated Armor lifecycle: two analyses, correction replay, exact editor text, immutable raw evidence, transpose/reset, 34,906-byte PDF, zero console errors. Full local real-browser matrix passed after restoring legacy preset aliases and sticky editor access; notation surfaced and fixed contextual manual-chord spelling (A→B♭, not A♯).
 

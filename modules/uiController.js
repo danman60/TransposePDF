@@ -1385,6 +1385,27 @@ class UIController {
     this.updateStatus('Notation line ready', 'success'); return true;
   }
 
+  async deleteInlineNotationLine(songId, sectionIndex, lineIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const source = song?.sections?.[sectionIndex]?.lines?.[lineIndex];
+    if (!song || !source?.notation) return false;
+    const previous = SongModel.create(song); const edited = SongModel.create(song);
+    const lines = edited.sections[sectionIndex].lines;
+    if (lines.length === 1) lines[0] = { id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null,
+      endTime: null, lyricConfidence: null, timedWords: [] };
+    else lines.splice(lineIndex, 1);
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false });
+      this.recordInlineUndo(previous);
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved);
+      this.updateStatus('Notation line deleted · Ctrl+Z to undo', 'success');
+      this.track('chart.notation.deleted', { sectionIndex, lineIndex }, saved);
+      return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
   async removeInlineChartLine(songId, sectionIndex, lineIndex) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     const lines = song?.sections?.[sectionIndex]?.lines;
@@ -1706,6 +1727,13 @@ class UIController {
   clearInlineLineChords(songId, sectionIndex, lineIndex) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     return this.deleteInlineChords(songId, song?.sections?.[sectionIndex]?.lines?.[lineIndex]?.chords?.map(chord => chord.id) || []);
+  }
+
+  clearInlineSectionChords(songId, sectionIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const ids = (song?.sections?.[sectionIndex]?.lines || []).flatMap(line => (line.chords || []).map(chord => chord.id));
+    if (!ids.length) { this.updateStatus('Section has no chords', 'info'); return false; }
+    return this.deleteInlineChords(songId, ids);
   }
 
   copyMatchingLinePattern(songId, sectionIndex, lineIndex) {
