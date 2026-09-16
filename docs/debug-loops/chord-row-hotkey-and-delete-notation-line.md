@@ -1,7 +1,7 @@
 # Loop Debug: chord row hotkey and delete notation line
 URL: http://127.0.0.1:8000 on FIRMAMENT
 Started: 2026-09-16
-Status: IN_PROGRESS
+Status: RESOLVED
 
 ## Attempt 1 — 2026-09-16
 ### Evidence Gathered
@@ -18,6 +18,7 @@ The reported behavior is caused by missing command paths, not focus or persisten
 - `modules/uiController.js`: safe notation-row deletion and section-wide chord clearing through existing undo/persistence paths.
 - `service-worker.js`: cache v56.
 - Real-browser regression: `tests/e2e_chord_hotkey_notation_delete.py` passes 15/15.
+- Commit: `515b5b1`
 
 ### Result After Deploy
-- PENDING
+- SUCCESS: FIRMAMENT serves matching runtime hashes and cache `transpose-app-v56`; live tunnel passes all 15 interaction, persistence, undo, and neighboring-data checks.
