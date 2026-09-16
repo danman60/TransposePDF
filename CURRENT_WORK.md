@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-16 Collapsible Sections
+## Active Task — 2026-09-16 Discoverable Page Breaks and Shift Line Selection
 
-v59 is committed, pushed, deployed, and live-verified. It adds persistent editor-only section collapse/expand for compact whole-section rearrangement.
+v60 candidate exposes page/column break commands from every chart-row right-click target and adds Shift-click range selection for whole-line checkboxes.
 
 ## Recent Changes
 
+- v60 candidate: chord symbols and empty chord lanes now expose `End column after this line` and `Start new page after this line`. Section headings use explicit `Add column/page break before this section` labels. Shift-clicking left-side line checkboxes selects or clears the full intervening range for batch drag/copy/paste/delete.
 - v59 candidate: each editable section heading has a disclosure control and line/chord summary. Collapsed sections keep their heading and whole-section drag handle, hide every page fragment, persist by stable section ID through reload/reorder, and never alter canonical or PDF content.
 - v58 candidate: left-side line checkboxes select multiple complete lyric/chord rows. Drag moves selected rows; Alt-drag copies them; Ctrl/Cmd+C/V copies and pastes independent rows; Delete/Backspace removes selected rows and chords. Row hover exposes whole-line drag/delete controls. Chords now single-click select, body-drag, Delete/Backspace remove, and double-click edit. Shared planner reserves a chord lane above every lyric line, including new blank-chord lines.
 - v57 candidate: section delineators can split another section at any exact chord/lyric row; visible insertion rule follows the owned row, suffix lines transfer under the moved heading, IDs remain stable, and Ctrl/Cmd+Z restores exact structure. Paginated chord and notation CSS now matches the planner's row-height budget so overflow wraps to the next page.
@@ -61,6 +62,7 @@ v59 is committed, pushed, deployed, and live-verified. It adds persistent editor
 
 ## Verification
 
+- v60 local: page-break context menus 10/10; publication/page-break lifecycle 11/11; whole-line/chord lifecycle including Shift range selection 18/18. Screenshot inspected; Telegram DM `17182`.
 - v59 live on FIRMAMENT: HTTP 200, cache `transpose-app-v59`, and 10/10 collapse/reorder lifecycle checks through a fresh loopback tunnel. Chrome reopened at cache-busted v59 URL.
 - v59 local: collapse lifecycle 10/10; existing section drag 6/6; exact section-line/page-wrap 10/10; whole-line/chord lifecycle 18/18; editor/PDF parity 6/6; geometry 9/9. Screenshot inspected; Telegram DM `17180`.
 - v58 live on FIRMAMENT: HTTP 200, cache `transpose-app-v58`, and 18/18 live-browser lifecycle checks through the FIRMAMENT loopback tunnel. Chrome reopened at cache-busted v58 URL.

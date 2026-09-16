@@ -62,6 +62,20 @@ class WorkspaceController {
       this.closeContextMenu();
       return;
     }
+    const lineCheckbox = event.target.closest?.('.line-select-checkbox');
+    if (lineCheckbox && this.root.contains(lineCheckbox)) {
+      const key = `${lineCheckbox.dataset.sectionIndex}:${lineCheckbox.dataset.lineIndex}`;
+      if (event.shiftKey && this.lastLineSelectionKey) {
+        const boxes = [...this.root.querySelectorAll('.lead-sheet .line-select-checkbox')];
+        const start = boxes.findIndex(item => `${item.dataset.sectionIndex}:${item.dataset.lineIndex}` === this.lastLineSelectionKey);
+        const end = boxes.indexOf(lineCheckbox); const checked = lineCheckbox.checked;
+        if (start >= 0 && end >= 0) boxes.slice(Math.min(start, end), Math.max(start, end) + 1).forEach(item => {
+          item.checked = checked; const itemKey = `${item.dataset.sectionIndex}:${item.dataset.lineIndex}`;
+          if (checked) this.selectedLineKeys.add(itemKey); else this.selectedLineKeys.delete(itemKey);
+        });
+      }
+      this.lastLineSelectionKey = key; return;
+    }
     const chord = event.target.closest?.('.inline-chord-anchor[data-chord-id]');
     if (chord && this.root.contains(chord)) {
       event.preventDefault(); chord.focus();
@@ -701,6 +715,7 @@ class WorkspaceController {
     if (chord) {
       actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Edit chord', 'edit-chord'], ['Delete chord', 'delete-chord', 'danger'], ['Duplicate chord', 'duplicate-chord'], ['Copy chord', 'copy-chord'],
         ['Move to previous lyric line', 'move-chord-prev'], ['Move to next lyric line', 'move-chord-next'],
+        ['End column after this line', 'column-break'], ['Start new page after this line', 'page-break'],
         ['Mark spelling canonical', 'canonical-chord'], ['Set exact timing…', 'time-chord'], ['Flag for review', 'review-chord']];
       (song?.sections || []).forEach((item, index) => { if (index !== sectionIndex) actions.push([`Copy to ${item.label || `section ${index + 1}`}`, 'copy-chord-section', '', index]); });
     } else if (notation) {
@@ -713,12 +728,12 @@ class WorkspaceController {
         ['Convert to notation line', 'convert-notation'], ['Clear chords from line', 'clear-line-chords', 'danger'], ['Copy chord pattern from matching section', 'copy-line-pattern']];
     } else if (lane) {
       actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add chord here', 'add-chord'], ['Paste copied chord', 'paste-chord'], ['Paste chord sequence…', 'paste-chord-sequence'],
-        ['Add N.C.', 'add-no-chord'], ['Copy matching section chords', 'copy-matching-section']];
+        ['Add N.C.', 'add-no-chord'], ['End column after this line', 'column-break'], ['Start new page after this line', 'page-break'], ['Copy matching section chords', 'copy-matching-section']];
     } else if (Number.isFinite(sectionIndex)) {
       actions = [['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Rename section', 'rename-section'],
         ['Duplicate section', 'duplicate-section-context'], ['Copy matching chords', 'copy-matching-section'],
         ['Delete all chords in this section', 'clear-section-chords', 'danger'],
-        ['Keep section together', 'keep-section'], ['Start in next column', 'start-section-column'], ['Start on next page', 'start-section-page'], ['Span all columns', 'span-section'], ['Reset section flow', 'reset-section-flow'], ['Compact section spacing', 'section-space-compact'], ['Normal section spacing', 'section-space-normal'], ['Spacious section spacing', 'section-space-spacious'],
+        ['Keep section together', 'keep-section'], ['Add column break before this section', 'start-section-column'], ['Add page break before this section', 'start-section-page'], ['Span all columns', 'span-section'], ['Reset section flow', 'reset-section-flow'], ['Compact section spacing', 'section-space-compact'], ['Normal section spacing', 'section-space-normal'], ['Spacious section spacing', 'section-space-spacious'],
         ['Move left / up', 'section-prev'], ['Move right / down', 'section-next'], ['Delete section', 'delete-section-context', 'danger']];
       if ((song?.sections?.[sectionIndex]?.lines || []).some(item => item.chords?.length)) {
         (song.sections || []).forEach((item, index) => {

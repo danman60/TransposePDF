@@ -18,6 +18,7 @@ Purpose: This exists so that “need to be able to DRAG whole lines (incld chord
 5. Add real-browser lifecycle coverage for move, cross-section move, Alt-copy IDs, delete-with-chords, undo, and reload.
 6. Reserve a chord lane above every lyric segment in the shared planner, including new/empty-chord lines.
 7. Add left-side multi-select checkboxes with batch Delete, Ctrl/Cmd+C/V, and grouped move/Alt-copy drag.
+8. Support Shift-click range selection across the left-side line checkboxes.
 
 ## Acceptance
 
