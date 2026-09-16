@@ -1478,10 +1478,10 @@ body {
 .paginated-chart .section-drag-handle { color: #667; }
 .paginated-chart .chart-line { min-height: 2.4em; font-size: 1em !important; }
 .paginated-chart .chart-line.planned-text-only { min-height: 1.2em; }
-.paginated-chart .chord-line { min-height: 1.2em; color: #0000c8; font-size: 1em !important; line-height: 1.2; }
+.paginated-chart .chord-line { min-height: 1.2em; margin-bottom: 0; color: #0000c8; font-size: 1em !important; line-height: 1.2; }
 .paginated-chart .lyric-line { min-height: 1.2em; margin-bottom: 0; color: #111; font-size: 1em !important; line-height: 1.2; white-space: pre; }
-.paginated-chart .notation-chart-line { min-height: 1.35em; }
-.notation-line { min-height: 1.25em; line-height: 1.25; white-space: pre-wrap; color: #142656; font-weight: 650; outline: none; }
+.paginated-chart .notation-chart-line { min-height: 1.2em; }
+.notation-line { min-height: 1.2em; line-height: 1.2; white-space: pre-wrap; color: #142656; font-weight: 650; outline: none; }
 .notation-line:focus { background: rgba(37, 99, 235, .06); box-shadow: 0 0 0 1px rgba(37, 99, 235, .22); }
 .notation-bar, .notation-doubleBar, .notation-repeatStart, .notation-repeatEnd { color: #111827; font-weight: 800; }
 .notation-cue, .notation-ending { color: #4b5563; font-style: italic; font-weight: 600; }
@@ -1589,6 +1589,7 @@ body {
 .section-block.section-drop-after::after { content: ''; position: absolute; z-index: 6; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--primary-color); box-shadow: 0 0 0 1px #07151b, 0 0 10px rgba(79,195,247,.75); pointer-events: none; }
 .section-block.section-drop-before::before { top: -.7rem; }
 .section-block.section-drop-after::after { bottom: -.7rem; }
+.chart-line.section-line-drop-before::before { content: ''; position: absolute; z-index: 8; left: 0; right: 0; top: -2px; height: 3px; border-radius: 2px; background: var(--primary-color); box-shadow: 0 0 0 1px #07151b, 0 0 10px rgba(79,195,247,.85); pointer-events: none; }
 .section-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; min-width: 0; min-height: 1.8rem; }
 .section-drag-handle { color: var(--text-secondary); cursor: grab; opacity: .55; user-select: none; }
 .section-drag-handle:active { cursor: grabbing; }

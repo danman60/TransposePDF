@@ -1,11 +1,12 @@
 # Current Work - TransposePDF
 
-## Active Task — 2026-09-15 Exact Column-Edge Wrapping
+## Active Task — 2026-09-16 Exact Section-Line Drops and Page-Edge Wrapping
 
-Professional chart publishing plan is complete. v55 is committed, pushed, deployed, and verified live on FIRMAMENT. Structured notation, professional metadata, header/footer visibility, and six presets preserve canonical manual edits and exact editor/PDF parity.
+v57 candidate makes a dragged section delineator target an exact lyric-row boundary and prevents chord/lyric or notation rows from crossing the physical page edge.
 
 ## Recent Changes
 
+- v57 candidate: section delineators can split another section at any exact chord/lyric row; visible insertion rule follows the owned row, suffix lines transfer under the moved heading, IDs remain stable, and Ctrl/Cmd+Z restores exact structure. Paginated chord and notation CSS now matches the planner's row-height budget so overflow wraps to the next page.
 - v56 candidate: `Alt+↑` moves from lyrics to the nearest chord or creates one at the caret; `Alt+↓` returns to the anchored lyric position. Notation rows can be safely deleted by Delete/Backspace or right-click without leaking chords into lyrics. Section right-click can clear every chord or copy its chord pattern to a named chord-free section.
 - v55 candidate: structured notation rows with repeats, endings, slashes, holds, N.C., cues, inline editing, transposition, ChordPro, and PDF parity. Recording, copyright, CCLI song/license metadata are inline-editable. Header/footer visibility and SongSelect/compact/hymnal/Nashville/stage/tablet presets are per song and content-safe.
 
@@ -58,6 +59,7 @@ Professional chart publishing plan is complete. v55 is committed, pushed, deploy
 
 ## Verification
 
+- v57 local: 10/10 exact row targeting, boundary transfer, ID integrity, undo, and page-edge wrap checks. Existing section drag 6/6, publication 11/11, geometry 9/9, editor/PDF parity 6/6, and chord/notation 15/15. Screenshot inspected; Telegram DM `17176`.
 - v56 live on FIRMAMENT: HTTP 200, cache `transpose-app-v56`, and exact SHA-256 matches for all three deployed runtime files. Live tunnel passes 15/15 chord hotkey, notation deletion, section chord copy/clear, undo, neighbor safety, and reload checks.
 - v56 candidate: new real-browser lifecycle 15/15; existing inline edit/drag, notation, chord copy/insert, editor/PDF parity, ChordPro, anchor/schema, and syntax gates pass. Visual artifact `artifacts/e2e/chord-hotkey-notation-delete.png`; Telegram DM `17175`.
 - 2026-09-15 9:09 AM EDT: restored FIRMAMENT server after port 8000 had no listener. Direct FIRMAMENT loopback returns HTTP 200/27,528 bytes, service worker serves `transpose-app-v55`, and python PID 9376 owns `127.0.0.1:8000`. Opened live URL on FIRMAMENT without restarting Chrome.

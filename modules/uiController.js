@@ -1612,6 +1612,25 @@ class UIController {
     });
   }
 
+  placeInlineSectionAtLine(songId, from, targetSectionIndex, targetLineIndex, { copy = false } = {}) {
+    return this.mutateInlineSections(songId, copy ? 'chart.section.duplicated_at_line' : 'chart.section.boundary_moved', sections => {
+      const sourceOriginal = sections[from]; const target = sections[targetSectionIndex];
+      if (!sourceOriginal || !target || sourceOriginal === target) return;
+      let source = sourceOriginal;
+      if (copy) {
+        source = JSON.parse(JSON.stringify(sourceOriginal)); source.id = SongModel.createId('section'); source.labelProvenance = 'manual';
+        source.lines.forEach(line => { line.id = SongModel.createId('line'); line.chords.forEach(chord => { chord.id = this.createStableChordId(); }); });
+      } else sections.splice(sections.indexOf(sourceOriginal), 1);
+      const targetPosition = sections.indexOf(target); if (targetPosition < 0) return;
+      const boundary = Math.max(0, Math.min(target.lines.length, Number(targetLineIndex) || 0));
+      if (boundary === 0) { sections.splice(targetPosition, 0, source); return; }
+      const suffix = target.lines.splice(boundary);
+      const sourceLines = source.pendingSection && source.lines.length === 1 && !source.lines[0].lyrics && !source.lines[0].chords?.length ? [] : source.lines;
+      source.lines = [...suffix, ...sourceLines]; source.pendingSection = false;
+      sections.splice(targetPosition + 1, 0, source);
+    });
+  }
+
   focusInlineChart(songId) {
     const sheet = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"]`);
     const target = sheet?.querySelector('[data-inline-field="lyrics"]');

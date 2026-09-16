@@ -139,7 +139,8 @@ class WorkspaceController {
     const section = sectionHandle?.closest('.section-block[data-section-reorder-index]');
     if (section && this.root.contains(section)) {
       this.sectionDrag = { songId: section.closest('.lead-sheet')?.dataset.songId,
-        sectionIndex: Number(section.dataset.sectionReorderIndex), copy: Boolean(event.altKey), insertionIndex: null };
+        sectionIndex: Number(section.dataset.sectionReorderIndex), copy: Boolean(event.altKey), insertionIndex: null,
+        targetSectionIndex: null, targetLineIndex: null };
       section.classList.add('section-dragging');
       event.dataTransfer?.setData('text/section-index', String(section.dataset.sectionReorderIndex));
       if (event.dataTransfer) event.dataTransfer.effectAllowed = this.sectionDrag.copy ? 'copy' : 'move';
@@ -186,7 +187,9 @@ class WorkspaceController {
       event.preventDefault();
       const source = this.sectionDrag; this.sectionDrag = null;
       this.clearSectionDropIndicator();
-      this.ui.placeInlineSection(source.songId, source.sectionIndex, source.insertionIndex, { copy: source.copy });
+      if (Number.isFinite(source.targetSectionIndex) && Number.isFinite(source.targetLineIndex)) {
+        this.ui.placeInlineSectionAtLine(source.songId, source.sectionIndex, source.targetSectionIndex, source.targetLineIndex, { copy: source.copy });
+      } else this.ui.placeInlineSection(source.songId, source.sectionIndex, source.insertionIndex, { copy: source.copy });
       return;
     }
     const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
@@ -221,15 +224,30 @@ class WorkspaceController {
       candidates.push({ section, index, edge: 'before', distance: Math.hypot(dx, clientY - box.top) });
       candidates.push({ section, index: index + 1, edge: 'after', distance: Math.hypot(dx, clientY - box.bottom) });
     });
+    chart.querySelectorAll('.chart-line').forEach(line => {
+      const field = line.querySelector('[data-section-index][data-line-index]');
+      if (!field) return;
+      const box = line.getBoundingClientRect();
+      const dx = clientX < box.left ? box.left - clientX : clientX > box.right ? clientX - box.right : 0;
+      const dy = clientY < box.top ? box.top - clientY : clientY > box.bottom ? clientY - box.bottom : 0;
+      candidates.push({ line, sectionIndex: Number(field.dataset.sectionIndex), lineIndex: Number(field.dataset.lineIndex),
+        edge: 'line', distance: Math.hypot(dx, dy) });
+    });
     const nearest = candidates.sort((a, b) => a.distance - b.distance)[0];
     this.clearSectionDropIndicator(false);
-    nearest.section.classList.add(nearest.edge === 'before' ? 'section-drop-before' : 'section-drop-after');
-    this.sectionDrag.insertionIndex = nearest.index;
+    if (nearest.edge === 'line') {
+      nearest.line.classList.add('section-line-drop-before'); nearest.line.dataset.lineIndex = String(nearest.lineIndex);
+      this.sectionDrag.targetSectionIndex = nearest.sectionIndex; this.sectionDrag.targetLineIndex = nearest.lineIndex;
+      this.sectionDrag.insertionIndex = null;
+    } else {
+      nearest.section.classList.add(nearest.edge === 'before' ? 'section-drop-before' : 'section-drop-after');
+      this.sectionDrag.insertionIndex = nearest.index; this.sectionDrag.targetSectionIndex = null; this.sectionDrag.targetLineIndex = null;
+    }
   }
 
   clearSectionDropIndicator(clearDrag = true) {
-    this.root.querySelectorAll('.section-drop-before, .section-drop-after, .section-dragging').forEach(item => {
-      item.classList.remove('section-drop-before', 'section-drop-after', 'section-dragging');
+    this.root.querySelectorAll('.section-drop-before, .section-drop-after, .section-line-drop-before, .section-dragging').forEach(item => {
+      item.classList.remove('section-drop-before', 'section-drop-after', 'section-line-drop-before', 'section-dragging');
     });
     if (clearDrag) this.sectionDrag = null;
   }
