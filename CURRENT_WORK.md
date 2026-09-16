@@ -203,3 +203,27 @@ PASSING. JavaScript syntax, 28 focused theory checks, 30/30 visual/function brow
 - `docs/plans/2026-09-13-all-edit-learning.md`
 - `docs/plans/2026-09-13-songwide-spelling-rules.md`
 - `CURRENT_WORK.md`
+## Active Task — 2026-09-16 Resizable Footer
+
+Complete. Credits/Arrangement footer now has a horizontal drag boundary. Height persists per song, feeds the shared editor/PDF planner, cannot shrink below measured content, supports Arrow Up/Down, and resets to automatic with Home or double-click.
+
+## Recent Changes
+
+- Added normalized `layout.footerRows` and shared natural/effective footer row calculation.
+- Editor footer renders at exact planned height with an accessible dotted splitter.
+- Pointer drag previews live repagination before persistence.
+- Added QA checklist, deterministic lifecycle test, and cache v63.
+
+## Blockers
+
+- QA Agent cloud-provider adapter returned HTTP 400 before all checklist actions in two runs. Deterministic real-browser lifecycle test passed instead. Existing provider issue is outside app.
+
+## Next Steps
+
+- Deploy v63 to FIRMAMENT and verify live persisted drag/reset path.
+
+## Context for Next Session
+
+- Test screenshot: `artifacts/e2e/resizable-footer.png`.
+- Focused results: footer lifecycle 10/10, structured PDF 16/16, footer reflow 6/6, metadata pass.
+- Automatic footer size remains the hard minimum. Custom rows only reserve more space.

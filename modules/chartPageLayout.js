@@ -168,7 +168,9 @@ class ChartPageLayout {
       ? Math.ceil((4.8 * 18) / spec.lineHeight) : 0;
     const footerChromeRows = metadata.length
       ? Math.ceil((.7 * spec.fontSize + Math.max(0, metadata.length - 1) * .2 * spec.fontSize + 1) / spec.lineHeight) : 0;
-    const metadataRows = ordinaryMetadataRows + arrangementRows + footerChromeRows;
+    const naturalMetadataRows = ordinaryMetadataRows + arrangementRows + footerChromeRows;
+    const requestedFooterRows = layout.footerRows == null ? naturalMetadataRows : Math.round(Number(layout.footerRows) || naturalMetadataRows);
+    const metadataRows = metadata.length ? Math.max(naturalMetadataRows, Math.min(spec.rowsPerColumn - 1, requestedFooterRows)) : 0;
     const balanceFinalPage = reservedRows => {
       const finalPage = pages[pages.length - 1];
       const finalRows = finalPage.columns.flat();
@@ -238,7 +240,7 @@ class ChartPageLayout {
       const termination = region.terminations?.find(value => value.column === columnIndex);
       if (termination && rows.length && rows.length < Math.floor(spec.rowsPerColumn * .35)) warnings.push({ type: 'sparse', page: pageIndex + 1, column: columnIndex + 1, breakId: termination.breakId, message: `Manual ${termination.type} break leaves page ${pageIndex + 1}, column ${columnIndex + 1} sparse` });
     })));
-    return { spec, pages, metadata, metadataRows, warnings };
+    return { spec, pages, metadata, metadataRows, naturalMetadataRows, warnings };
   }
 }
 

@@ -113,6 +113,7 @@ class SongModel {
       pageNumbers: input.layout?.pageNumbers === true || input.layout?.pageNumbers === 'true',
       headerVisibility: ['all', 'first', 'none'].includes(input.layout?.headerVisibility) ? input.layout.headerVisibility : 'all',
       footerVisibility: ['all', 'last', 'none'].includes(input.layout?.footerVisibility) ? input.layout.footerVisibility : 'last',
+      footerRows: input.layout?.footerRows == null ? null : Math.max(1, Math.min(40, Math.round(Number(input.layout.footerRows) || 1))),
       preset: String(input.layout?.preset || 'custom'),
       layoutMode: Boolean(input.layout?.layoutMode),
       breaks: (Array.isArray(input.layout?.breaks) ? input.layout.breaks : []).filter(item =>

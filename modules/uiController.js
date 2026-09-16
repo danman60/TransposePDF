@@ -1097,6 +1097,9 @@ class UIController {
     if (field.startsWith('customPage.')) return this.updateSongLayout(songId, { customPage: { ...song.layout.customPage, [field.split('.')[1]]: value } });
     return this.updateSongLayout(songId, { [field]: value });
   }
+  setSongFooterRows(songId, rows) {
+    return this.updateSongLayout(songId, { footerRows: rows == null ? null : Math.max(1, Math.min(40, Math.round(Number(rows) || 1))) }, rows == null ? 'Footer height set to automatic' : 'Footer height saved');
+  }
   setSongColumnDivider(songId, dividerIndex, cumulativeRatio) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId)); if (!song) return false;
     const ratios = [...song.layout.columnRatios]; const index = Math.max(0, Math.min(ratios.length - 2, Number(dividerIndex) || 0));

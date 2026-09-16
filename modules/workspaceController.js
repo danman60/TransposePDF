@@ -400,6 +400,17 @@ class WorkspaceController {
       this.closeContextMenu();
       return;
     }
+    const footerHandle = event.target.closest?.('.footer-resize-handle[data-footer-resize]');
+    if (footerHandle && ['ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) {
+      event.preventDefault();
+      if (event.key === 'Home') this.ui.setSongFooterRows(footerHandle.dataset.songId, null);
+      else {
+        const direction = event.key === 'ArrowUp' ? 1 : -1;
+        const rows = Math.max(Number(footerHandle.dataset.minFooterRows) || 1, Math.min(40, (Number(footerHandle.dataset.footerRows) || 1) + direction));
+        this.ui.setSongFooterRows(footerHandle.dataset.songId, rows);
+      }
+      return;
+    }
     const activeEdit = this.inlineTarget(event);
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c' && this.selectedLineKeys.size && !activeEdit) {
       event.preventDefault(); this.copiedLines = [...this.selectedLineKeys]; this.ui.updateStatus(`${this.copiedLines.length} whole line${this.copiedLines.length === 1 ? '' : 's'} copied`, 'success'); return;
@@ -539,6 +550,18 @@ class WorkspaceController {
   }
 
   handlePointerDown(event) {
+    const footerHandle = event.target.closest?.('.footer-resize-handle[data-footer-resize]');
+    if (footerHandle && this.root.contains(footerHandle)) {
+      event.preventDefault();
+      const page = footerHandle.closest('.chart-page');
+      const song = this.ui.currentSongs.find(item => String(item.id) === String(footerHandle.dataset.songId));
+      if (!page || !song) return;
+      const spec = ChartPageLayout.spec(song.layout); const pageWidthPx = page.getBoundingClientRect().width;
+      this.footerResizeDrag = { pointerId: event.pointerId, songId: footerHandle.dataset.songId, startY: event.clientY,
+        startRows: Number(footerHandle.dataset.footerRows) || 1, minRows: Number(footerHandle.dataset.minFooterRows) || 1,
+        pixelsPerRow: spec.lineHeight / spec.pageWidth * pageWidthPx, previewRows: Number(footerHandle.dataset.footerRows) || 1 };
+      footerHandle.classList.add('is-dragging'); return;
+    }
     const divider = event.target.closest?.('.column-divider-handle[data-column-divider]');
     if (divider && this.root.contains(divider)) {
       event.preventDefault(); const songId = divider.dataset.songId;
@@ -569,6 +592,14 @@ class WorkspaceController {
   }
 
   handlePointerMove(event) {
+    if (this.footerResizeDrag?.pointerId === event.pointerId) {
+      event.preventDefault(); const drag = this.footerResizeDrag;
+      const delta = Math.round((drag.startY - event.clientY) / Math.max(1, drag.pixelsPerRow));
+      const rows = Math.max(drag.minRows, Math.min(40, drag.startRows + delta));
+      if (rows !== drag.previewRows) { drag.previewRows = rows; this.ui.previewSongLayout(drag.songId, { footerRows: rows }); }
+      this.root.querySelectorAll(`.lead-sheet[data-song-id="${CSS.escape(String(drag.songId))}"] .footer-resize-handle`).forEach(item => item.classList.add('is-dragging'));
+      return;
+    }
     if (this.columnDividerDrag?.pointerId === event.pointerId) {
       event.preventDefault(); const ratios = this.previewColumnDivider(event.clientX);
       if (ratios) this.columnDividerDrag.previewRatios = ratios; return;
@@ -599,6 +630,11 @@ class WorkspaceController {
   }
 
   handlePointerUp(event) {
+    if (this.footerResizeDrag?.pointerId === event.pointerId) {
+      const drag = this.footerResizeDrag; this.footerResizeDrag = null;
+      this.root.querySelectorAll('.footer-resize-handle.is-dragging').forEach(item => item.classList.remove('is-dragging'));
+      this.ui.setSongFooterRows(drag.songId, drag.previewRows); return;
+    }
     if (this.columnDividerDrag?.pointerId === event.pointerId) {
       const drag = this.columnDividerDrag; const ratios = this.previewColumnDivider(event.clientX) || drag.previewRatios;
       this.columnDividerDrag = null; this.root.querySelectorAll('.column-divider-handle.is-dragging').forEach(item => item.classList.remove('is-dragging'));
@@ -625,6 +661,9 @@ class WorkspaceController {
   }
 
   handlePointerCancel(event) {
+    if (this.footerResizeDrag?.pointerId === event.pointerId) {
+      this.footerResizeDrag = null; this.root.querySelectorAll('.footer-resize-handle.is-dragging').forEach(item => item.classList.remove('is-dragging')); this.ui.displaySongs(); return;
+    }
     if (this.columnDividerDrag?.pointerId === event.pointerId) {
       this.columnDividerDrag = null; this.root.querySelectorAll('.column-divider-handle.is-dragging').forEach(item => item.classList.remove('is-dragging')); this.ui.displaySongs(); return;
     }
@@ -666,6 +705,10 @@ class WorkspaceController {
   }
 
   handleDoubleClick(event) {
+    const footerHandle = event.target.closest?.('.footer-resize-handle[data-footer-resize]');
+    if (footerHandle && this.root.contains(footerHandle)) {
+      event.preventDefault(); this.ui.setSongFooterRows(footerHandle.dataset.songId, null); return;
+    }
     const boundary = event.target.closest?.('.layout-break-target.has-layout-break');
     if (boundary && this.root.contains(boundary)) {
       event.preventDefault(); this.ui.removeSongLayoutBreak(boundary.dataset.songId, boundary.dataset.breakId); return;
