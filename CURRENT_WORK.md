@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-16 Reliable Physical Chord Drag
 
-v61 candidate removes browser text-selection competition from non-editing chord symbols so physical cross-line drag and Alt-drag copy start reliably.
+v61 is committed, pushed, deployed, and live-verified. It removes browser text-selection competition from non-editing chord symbols so physical cross-line drag and Alt-drag copy start reliably.
 
 ## Recent Changes
 
@@ -63,6 +63,7 @@ v61 candidate removes browser text-selection competition from non-editing chord 
 
 ## Verification
 
+- v61 live on FIRMAMENT: HTTP 200, cache `transpose-app-v61`, and exact selected-chord cross-line move/Alt-copy gate 8/8 through loopback tunnel.
 - v61 local: exact selected-symbol cross-line move/Alt-copy into an empty lane 8/8; full chord/edit regression matrix 49/49. Screenshot inspected; Telegram DM `17184`.
 - v60 live on FIRMAMENT: HTTP 200, cache `transpose-app-v60`, page-break menus 10/10, and whole-line/Shift-selection lifecycle 18/18 through loopback tunnel.
 - v60 local: page-break context menus 10/10; publication/page-break lifecycle 11/11; whole-line/chord lifecycle including Shift range selection 18/18. Screenshot inspected; Telegram DM `17182`.

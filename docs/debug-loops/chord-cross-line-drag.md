@@ -1,7 +1,7 @@
 # Loop Debug: chord cross-line drag and Alt-copy
 URL: http://127.0.0.1:8000 on FIRMAMENT
 Started: 2026-09-16
-Status: IN_PROGRESS
+Status: RESOLVED
 
 ## Attempt 1 — 2026-09-16
 ### Evidence Gathered
@@ -18,5 +18,5 @@ Coverage misses selected-symbol to empty-lane and selected-symbol Alt-copy paths
 - Prevented default pointer-down text selection while preserving click selection, double-click edit, move, and Alt-copy.
 
 ### Result After Deploy
-- Local exact-path gate 8/8; full chord/edit regression matrix 49/49.
-- Deployment verification pending.
+- Local and FIRMAMENT live exact-path gates pass 8/8; full chord/edit regression matrix 49/49.
+- FIRMAMENT serves HTTP 200 and cache `transpose-app-v61`.
