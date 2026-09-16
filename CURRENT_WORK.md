@@ -220,10 +220,11 @@ Complete. Credits/Arrangement footer now has a horizontal drag boundary. Height 
 
 ## Next Steps
 
-- Deploy v63 to FIRMAMENT and verify live persisted drag/reset path.
+- User can drag dotted line above credits/Arrangement on FIRMAMENT. Double-click or press Home on line to restore automatic height.
 
 ## Context for Next Session
 
 - Test screenshot: `artifacts/e2e/resizable-footer.png`.
 - Focused results: footer lifecycle 10/10, structured PDF 16/16, footer reflow 6/6, metadata pass.
 - Automatic footer size remains the hard minimum. Custom rows only reserve more space.
+- FIRMAMENT deployed cache v63. Live SSH-tunnel lifecycle passed 10/10.
