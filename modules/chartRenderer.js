@@ -212,7 +212,8 @@ class ChartRenderer {
 
   renderPlannedSectionHeading(section, sectionIndex, song, editable) {
     if (!editable) return section.label ? `<div class="section-label">${this.escape(section.label)}</div>` : '';
-    return `<div class="section-heading"><span class="section-drag-handle" draggable="true" tabindex="0" aria-label="Drag to reorder section">⠿</span><div class="section-label${section.label ? '' : ' inline-edit-empty'}" contenteditable="plaintext-only" role="textbox" data-inline-field="section-label" data-section-index="${sectionIndex}" data-placeholder="Section">${this.escape(section.label || '')}</div></div>`;
+    const chordCount = (section.lines || []).reduce((count, line) => count + (line.chords?.length || 0), 0);
+    return `<div class="section-heading"><button type="button" class="section-collapse-toggle" data-action="toggle-section-collapse" data-song-id="${this.escape(song.id)}" data-section-index="${sectionIndex}" aria-expanded="true" title="Collapse section">▾</button><span class="section-drag-handle" draggable="true" tabindex="0" aria-label="Drag to reorder section">⠿</span><div class="section-label${section.label ? '' : ' inline-edit-empty'}" contenteditable="plaintext-only" role="textbox" data-inline-field="section-label" data-section-index="${sectionIndex}" data-placeholder="Section">${this.escape(section.label || '')}</div><span class="section-collapse-summary">${section.lines?.length || 0} lines · ${chordCount} chords</span></div>`;
   }
 
   renderNotationLine(row, song, options) {

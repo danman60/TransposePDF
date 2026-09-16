@@ -83,6 +83,7 @@ class WorkspaceController {
       'reset-song': () => this.ui.resetSong(songId),
       'add-chart-line': () => this.ui.insertInlineChartLine(songId, Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), null),
       'delete-chart-line': () => this.ui.deleteInlineChartLine(songId, Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex)),
+      'toggle-section-collapse': () => this.toggleSectionCollapse(songId, Number(target.dataset.sectionIndex)),
       'add-section-before': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex)),
       'add-section-after': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex) + 1),
       'add-section-end': () => this.ui.addInlineSection(songId),
@@ -320,6 +321,32 @@ class WorkspaceController {
     if (!row) return;
     const delta = target.dataset.direction === 'up' ? -1 : 1;
     this.ui.reorderSessionSong(songId, [...row.parentElement.children].indexOf(row) + delta);
+  }
+
+  collapsedSectionIds(songId) {
+    try { return new Set(JSON.parse(localStorage.getItem('transposepdf.collapsed-sections.v1') || '{}')[String(songId)] || []); }
+    catch (_) { return new Set(); }
+  }
+
+  toggleSectionCollapse(songId, sectionIndex) {
+    const song = this.ui.currentSongs.find(item => String(item.id) === String(songId));
+    const sectionId = song?.sections?.[sectionIndex]?.id; if (!sectionId) return;
+    const ids = this.collapsedSectionIds(songId); if (ids.has(String(sectionId))) ids.delete(String(sectionId)); else ids.add(String(sectionId));
+    let state = {}; try { state = JSON.parse(localStorage.getItem('transposepdf.collapsed-sections.v1') || '{}'); } catch (_) {}
+    state[String(songId)] = [...ids]; localStorage.setItem('transposepdf.collapsed-sections.v1', JSON.stringify(state));
+    this.applyCollapsedSections(song);
+  }
+
+  applyCollapsedSections(song) {
+    const sheet = this.root.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(song.id))}"]`); if (!sheet) return;
+    const ids = this.collapsedSectionIds(song.id);
+    sheet.querySelectorAll('.section-block[data-section-reorder-index]').forEach(block => {
+      const section = song.sections?.[Number(block.dataset.sectionReorderIndex)]; const collapsed = Boolean(section && ids.has(String(section.id)));
+      const hasHeading = Boolean(block.querySelector(':scope > .section-heading'));
+      block.classList.toggle('is-collapsed', collapsed); block.hidden = collapsed && !hasHeading;
+      const toggle = block.querySelector(':scope > .section-heading .section-collapse-toggle');
+      if (toggle) { toggle.setAttribute('aria-expanded', String(!collapsed)); toggle.title = collapsed ? 'Expand section' : 'Collapse section'; toggle.textContent = collapsed ? '▸' : '▾'; }
+    });
   }
 
   inlineTarget(event) {

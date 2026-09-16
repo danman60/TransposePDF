@@ -985,6 +985,7 @@ class UIController {
     const activeSong = this.currentSongs.find(song => String(song.id) === String(this.activeSongId));
     this.renderSidebarSongControls(activeSong);
     this.elements.songsContainer.appendChild(this.createLeadSheetView(activeSong, this.currentSongs.indexOf(activeSong)));
+    this.workspaceController?.applyCollapsedSections(activeSong);
     
     // Show sections
     this.elements.uploadSection.style.display = 'none';
@@ -2212,6 +2213,7 @@ class UIController {
     const leadSheetContent = document.getElementById(`leadSheet-${song.id}`);
     if (leadSheetContent) {
       leadSheetContent.innerHTML = this.renderLeadSheetContent(song);
+      this.workspaceController?.applyCollapsedSections(song);
       
       // Add transition effect for smooth chord changes
       leadSheetContent.style.opacity = '0.7';

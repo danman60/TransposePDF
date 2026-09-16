@@ -1604,6 +1604,12 @@ body {
 .section-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .75rem; min-width: 0; min-height: 1.8rem; }
 .section-drag-handle { color: var(--text-secondary); cursor: grab; opacity: .55; user-select: none; }
 .section-drag-handle:active { cursor: grabbing; }
+.section-collapse-toggle { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; flex: 0 0 auto; border: 1px solid color-mix(in srgb, var(--primary-color) 45%, var(--border-color)); border-radius: .3rem; background: transparent; color: var(--primary-color); cursor: pointer; font: 800 .9rem/1 sans-serif; }
+.section-collapse-toggle:hover, .section-collapse-toggle:focus-visible { background: color-mix(in srgb, var(--primary-color) 12%, transparent); }
+.section-collapse-summary { color: var(--text-secondary); font-size: .67rem; letter-spacing: .02em; text-transform: none; white-space: nowrap; opacity: .72; }
+.section-block.is-collapsed { margin-bottom: .35rem; padding: .28rem .4rem; border: 1px solid color-mix(in srgb, var(--primary-color) 24%, transparent); background: color-mix(in srgb, var(--primary-color) 5%, transparent); }
+.section-block.is-collapsed > :not(.section-heading) { display: none !important; }
+.section-block.is-collapsed .section-heading { min-height: 2rem; }
 .section-heading .section-label { min-width: 6rem; margin-bottom: 0; }
 .section-actions { display: flex; flex: 1 1 8rem; flex-wrap: wrap; min-width: 0; max-width: 100%; gap: .25rem; opacity: 0; transition: opacity 120ms ease; }
 .section-block:hover .section-actions, .section-block:focus-within .section-actions { opacity: 1; }
