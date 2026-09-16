@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-16 Footer-Safe Section Reflow
 
-v62 candidate reserves the footer’s actual rendered height so added sections wrap before writer/arrangement credits instead of overlapping them.
+v62 is committed, pushed, deployed, and live-verified. It reserves the footer’s actual rendered height so added sections wrap before writer/arrangement credits instead of overlapping them.
 
 ## Recent Changes
 
@@ -64,6 +64,7 @@ v62 candidate reserves the footer’s actual rendered height so added sections w
 
 ## Verification
 
+- v62 live on FIRMAMENT: HTTP 200, cache `transpose-app-v62`, and populated added-section/footer-clearance lifecycle 6/6 through a fresh loopback tunnel.
 - v62 local: populated added-section footer reflow 6/6; page-boundary 10/10; editor/PDF parity 6/6; geometry 9/9; publication 11/11. Visual shows added Chorus on page 2 fully above footer; Telegram DM `17185`.
 - v61 live on FIRMAMENT: HTTP 200, cache `transpose-app-v61`, and exact selected-chord cross-line move/Alt-copy gate 8/8 through loopback tunnel.
 - v61 local: exact selected-symbol cross-line move/Alt-copy into an empty lane 8/8; full chord/edit regression matrix 49/49. Screenshot inspected; Telegram DM `17184`.

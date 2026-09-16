@@ -1,7 +1,7 @@
 # Loop Debug: added section overlaps bottom credits
 URL: http://127.0.0.1:8000 on FIRMAMENT
 Started: 2026-09-16
-Status: IN_PROGRESS
+Status: RESOLVED
 
 ## Attempt 1 — 2026-09-16
 ### Evidence Gathered
@@ -18,6 +18,6 @@ Under-reserved footer height lets newly inserted section rows remain on final pa
 - At 13pt this changes editable footer reservation from 10 to 14 rows, forcing newly added content onto the next page/column before collision.
 
 ### Result After Deploy
-- Local populated-section lifecycle passes 6/6. Added Chorus reflows to page 2 with zero chart-line/footer intersection.
+- Local and FIRMAMENT live populated-section lifecycles pass 6/6. Added Chorus reflows to page 2 with zero chart-line/footer intersection.
 - Existing page-boundary 10/10, editor/PDF parity 6/6, page geometry 9/9, and publication 11/11 pass.
-- Deployment verification pending.
+- FIRMAMENT serves HTTP 200 and cache `transpose-app-v62`.
