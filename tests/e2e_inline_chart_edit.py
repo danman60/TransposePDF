@@ -40,7 +40,7 @@ def main():
         page.locator("#authorContent").fill("C       G\nAmazing grace how sweet the sound\nF       C\nThat saved a soul")
         page.locator("#saveChartButton").click()
         lyric = '.lead-sheet [data-inline-field="lyrics"][data-line-index="0"]'
-        chord = '.lead-sheet [data-inline-field="chord"][data-line-index="0"][data-chord-index="0"]'
+        chord = '.lead-sheet [data-inline-field="chord"][data-line-index="0"][data-chord-index="1"]'
         page.locator(lyric).wait_for()
         page.evaluate("() => window.transposeApp.updateSongLayout(window.transposeApp.currentSongs[0].id,{typography:'sans'})")
         page.wait_for_function("() => window.transposeApp.currentSongs[0].layout.typography === 'sans'")
@@ -55,15 +55,16 @@ def main():
         expected_lyric = page.locator(lyric).text_content()
         results["lyric_type_delete"] = expected_lyric == "Wonderful how sweet the sound"
 
+        page.locator(chord).dblclick(force=True)
         select_text(page, chord, 0, 1)
         page.keyboard.type("Dm7")
         page.locator(".sidebar-song-heading h2").click()
         page.wait_for_function("() => document.querySelector('#sessionSaveState')?.textContent.includes('Saved')")
         results["chord_replace"] = page.locator(chord).text_content() == "Dm7"
 
-        # A normal click must remain an edit gesture; the drag threshold must not eat it.
+        # A double click enters edit mode; a single click is reserved for select/drag.
         chord_box = page.locator(chord).bounding_box()
-        page.mouse.click(chord_box["x"] + chord_box["width"] / 2, chord_box["y"] + chord_box["height"] / 2)
+        page.locator(chord).dblclick(force=True)
         page.keyboard.press("End")
         page.keyboard.type("sus2")
         page.locator(".sidebar-song-heading h2").click()

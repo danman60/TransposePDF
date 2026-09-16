@@ -1434,6 +1434,71 @@ class UIController {
     } catch (_) { this.updateLeadSheetDisplay(song); return false; }
   }
 
+  async deleteInlineChartLine(songId, sectionIndex, lineIndex) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const source = song?.sections?.[sectionIndex]?.lines?.[lineIndex];
+    if (!song || !source) return false;
+    const previous = SongModel.create(song); const edited = SongModel.create(song);
+    const lines = edited.sections[sectionIndex].lines;
+    if (lines.length === 1) lines[0] = { id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null,
+      endTime: null, lyricConfidence: null, timedWords: [] };
+    else lines.splice(lineIndex, 1);
+    edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false }); this.recordInlineUndo(previous);
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved); this.updateStatus('Whole line deleted · Ctrl+Z to undo', 'success');
+      this.track('chart.line.deleted', { sectionIndex, lineIndex, chordCount: source.chords?.length || 0 }, saved); return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  async moveInlineChartLine(songId, sourceSectionIndex, sourceLineIndex, targetSectionIndex, insertionIndex, { copy = false } = {}) {
+    return this.moveInlineChartLines(songId, [{ sectionIndex: sourceSectionIndex, lineIndex: sourceLineIndex }], targetSectionIndex, insertionIndex, { copy });
+  }
+
+  async moveInlineChartLines(songId, sources, targetSectionIndex, insertionIndex, { copy = false } = {}) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId));
+    const targetSection = song?.sections?.[targetSectionIndex];
+    const ordered = (sources || []).map(item => ({ sectionIndex: Number(item.sectionIndex), lineIndex: Number(item.lineIndex) }))
+      .filter(item => song?.sections?.[item.sectionIndex]?.lines?.[item.lineIndex])
+      .sort((a, b) => a.sectionIndex - b.sectionIndex || a.lineIndex - b.lineIndex);
+    if (!song || !targetSection || !ordered.length) return false;
+    const previous = SongModel.create(song); const edited = SongModel.create(song);
+    let moved = ordered.map(item => edited.sections[item.sectionIndex].lines[item.lineIndex]);
+    if (copy) {
+      moved = JSON.parse(JSON.stringify(moved)).map(line => ({ ...line, id: SongModel.createId('line'),
+        chords: (line.chords || []).map(chord => ({ ...chord, id: this.createStableChordId() })) }));
+    } else {
+      insertionIndex -= ordered.filter(item => item.sectionIndex === Number(targetSectionIndex) && item.lineIndex < insertionIndex).length;
+      [...ordered].reverse().forEach(item => edited.sections[item.sectionIndex].lines.splice(item.lineIndex, 1));
+      [...new Set(ordered.map(item => item.sectionIndex))].forEach(index => { if (!edited.sections[index].lines.length) edited.sections[index].lines.push({ id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null, endTime: null, lyricConfidence: null, timedWords: [] }); });
+    }
+    const targetLines = edited.sections[targetSectionIndex].lines;
+    const destination = Math.max(0, Math.min(targetLines.length, Number(insertionIndex) || 0));
+    targetLines.splice(destination, 0, ...moved); edited.songText = SongModel.toSongText(edited);
+    try {
+      const saved = await this.persistSong(edited, { addToSession: false }); this.recordInlineUndo(previous);
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
+      this.updateLeadSheetDisplay(saved); this.updateStatus(copy ? 'Whole line copied' : 'Whole line moved', 'success');
+      this.track(copy ? 'chart.line.copied' : 'chart.line.moved', { count: moved.length, targetSectionIndex, insertionIndex: destination }, saved); return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
+  async deleteInlineChartLines(songId, sources) {
+    const song = this.currentSongs.find(item => String(item.id) === String(songId)); if (!song) return false;
+    const previous = SongModel.create(song); const edited = SongModel.create(song);
+    const ordered = (sources || []).map(item => ({ sectionIndex: Number(item.sectionIndex), lineIndex: Number(item.lineIndex) }))
+      .filter(item => edited.sections?.[item.sectionIndex]?.lines?.[item.lineIndex]).sort((a,b) => b.sectionIndex-a.sectionIndex || b.lineIndex-a.lineIndex);
+    if (!ordered.length) return false;
+    ordered.forEach(item => edited.sections[item.sectionIndex].lines.splice(item.lineIndex, 1));
+    [...new Set(ordered.map(item => item.sectionIndex))].forEach(index => { if (!edited.sections[index].lines.length) edited.sections[index].lines.push({ id: SongModel.createId('line'), lyrics: '', chords: [], startTime: null, endTime: null, lyricConfidence: null, timedWords: [] }); });
+    edited.songText = SongModel.toSongText(edited);
+    try { const saved = await this.persistSong(edited, { addToSession: false }); this.recordInlineUndo(previous);
+      if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved); this.updateLeadSheetDisplay(saved);
+      this.updateStatus(`${ordered.length} whole line${ordered.length === 1 ? '' : 's'} deleted · Ctrl+Z to undo`, 'success'); return true;
+    } catch (_) { this.updateLeadSheetDisplay(song); return false; }
+  }
+
   async joinInlineChartLine(songId, sectionIndex, lineIndex, direction) {
     const song = this.currentSongs.find(item => String(item.id) === String(songId));
     const lines = song?.sections?.[sectionIndex]?.lines;
@@ -1703,6 +1768,7 @@ class UIController {
 
   focusInlineChord(songId, chordId) {
     const target = this.elements.songsContainer.querySelector(`.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] .inline-chord-anchor[data-chord-id="${CSS.escape(String(chordId))}"] [data-inline-field="chord"]`);
+    target?.setAttribute('contenteditable', 'plaintext-only'); target?.setAttribute('role', 'textbox');
     target?.focus();
     if (target) { const selection = window.getSelection?.(); const range = document.createRange(); range.selectNodeContents(target); selection?.removeAllRanges(); selection?.addRange(range); }
   }
@@ -1848,12 +1914,7 @@ class UIController {
       if (saved.sourceType === 'audio') this.correctionMemory.learn(previous, saved);
       this.updateLeadSheetDisplay(saved);
       requestAnimationFrame(() => {
-        const selector = `.lead-sheet[data-song-id="${CSS.escape(String(songId))}"] .inline-chord-anchor[data-chord-id="${CSS.escape(String(chord.id))}"] [data-inline-field="chord"]`;
-        const target = this.elements.songsContainer.querySelector(selector);
-        if (!target) return;
-        target.focus();
-        const selection = window.getSelection?.();
-        if (selection) { const range = document.createRange(); range.selectNodeContents(target); selection.removeAllRanges(); selection.addRange(range); }
+        this.focusInlineChord(songId, chord.id);
       });
       this.updateStatus(`New chord at column ${chord.characterOffset + 1}`, 'success');
       this.track('chart.chord.inserted', { sectionIndex, lineIndex, characterOffset: chord.characterOffset }, saved);

@@ -761,6 +761,17 @@ body {
 }
 .chart-line:hover .inline-add-line, .chart-line:focus-within .inline-add-line, .inline-add-line:focus { opacity: 1; }
 .inline-add-line:hover { color: #fff; background: #217ba1; }
+.chart-line-controls { position: absolute; z-index: 10; right: 3.35rem; top: 50%; display: flex; gap: .2rem; align-items: center; transform: translateY(-50%); opacity: 0; transition: opacity 120ms ease; }
+.line-select-control { position: absolute; z-index: 10; left: -1.65rem; top: 50%; transform: translateY(-50%); display: grid; place-items: center; width: 1.35rem; height: 1.35rem; opacity: .45; transition: opacity 120ms ease; }
+.chart-line:hover .line-select-control, .chart-line:focus-within .line-select-control, .line-select-control:has(input:checked) { opacity: 1; }
+.line-select-checkbox { width: 1rem; height: 1rem; accent-color: var(--primary-color); cursor: pointer; }
+.chart-line:hover .chart-line-controls, .chart-line:focus-within .chart-line-controls { opacity: 1; }
+.line-drag-handle, .line-delete-button { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; border: 1px solid rgba(100,116,139,.45); border-radius: .25rem; background: rgba(15,23,42,.88); color: #dbeafe; cursor: grab; font: 700 .85rem/1 sans-serif; }
+.line-delete-button { cursor: pointer; color: #fecaca; }
+.line-dragging { opacity: .48; }
+.chart-line.line-drop-before::before, .chart-line.line-drop-after::after { content: ''; position: absolute; z-index: 12; left: 0; right: 0; height: 3px; border-radius: 2px; background: var(--primary-color); box-shadow: 0 0 0 1px #07151b, 0 0 10px rgba(79,195,247,.85); pointer-events: none; }
+.chart-line.line-drop-before::before { top: -2px; }
+.chart-line.line-drop-after::after { bottom: -2px; }
 
 .lead-sheet .chord-line { position: relative; }
 .lead-sheet .inline-chord-anchor {
@@ -777,7 +788,7 @@ body {
   position: relative;
   z-index: 1;
 }
-.lead-sheet .inline-chord-edit:focus { cursor: text; }
+.lead-sheet .inline-chord-edit[contenteditable="true"], .lead-sheet .inline-chord-edit[contenteditable="plaintext-only"] { cursor: text; }
 .lead-sheet .inline-chord-anchor.is-selected .inline-chord-edit {
   color: #07151b;
   background: var(--primary-color);

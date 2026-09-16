@@ -6,6 +6,7 @@ class WorkspaceController {
     this.attached = false;
     this.listeners = {};
     this.selectedChordIds = new Set();
+    this.selectedLineKeys = new Set();
   }
 
   attach() {
@@ -63,6 +64,7 @@ class WorkspaceController {
     }
     const chord = event.target.closest?.('.inline-chord-anchor[data-chord-id]');
     if (chord && this.root.contains(chord)) {
+      event.preventDefault(); chord.focus();
       this.selectInlineChord(chord, event.shiftKey);
       return;
     }
@@ -80,6 +82,7 @@ class WorkspaceController {
       'transpose-song': () => this.ui.transposeSong(songId, Number(target.dataset.semitones) || 0),
       'reset-song': () => this.ui.resetSong(songId),
       'add-chart-line': () => this.ui.insertInlineChartLine(songId, Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex), null),
+      'delete-chart-line': () => this.ui.deleteInlineChartLine(songId, Number(target.dataset.sectionIndex), Number(target.dataset.lineIndex)),
       'add-section-before': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex)),
       'add-section-after': () => this.ui.addInlineSection(songId, Number(target.dataset.sectionIndex) + 1),
       'add-section-end': () => this.ui.addInlineSection(songId),
@@ -103,6 +106,12 @@ class WorkspaceController {
   }
 
   handleChange(event) {
+    const lineCheckbox = event.target.closest?.('.line-select-checkbox');
+    if (lineCheckbox && this.root.contains(lineCheckbox)) {
+      const key = `${lineCheckbox.dataset.sectionIndex}:${lineCheckbox.dataset.lineIndex}`;
+      if (lineCheckbox.checked) this.selectedLineKeys.add(key); else this.selectedLineKeys.delete(key);
+      return;
+    }
     const target = event.target.closest?.('[data-action][data-song-id]');
     if (!target || !this.root.contains(target)) return;
     if (target.dataset.action === 'set-spelling') this.ui.setSpellingPolicy(target.dataset.songId, target.value);
@@ -121,6 +130,17 @@ class WorkspaceController {
       event.dataTransfer?.setData('text/layout-break', this.layoutDrag.type);
       if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
       return;
+    }
+    const lineHandle = event.target.closest?.('.line-drag-handle');
+    if (lineHandle && this.root.contains(lineHandle)) {
+      const ownKey = `${lineHandle.dataset.sectionIndex}:${lineHandle.dataset.lineIndex}`;
+      const selected = this.selectedLineKeys.has(ownKey) ? [...this.selectedLineKeys] : [ownKey];
+      this.lineDrag = { songId: lineHandle.dataset.songId, sectionIndex: Number(lineHandle.dataset.sectionIndex),
+        lineIndex: Number(lineHandle.dataset.lineIndex), sources: selected.map(key => { const [sectionIndex,lineIndex]=key.split(':').map(Number); return {sectionIndex,lineIndex}; }),
+        copy: Boolean(event.altKey), targetSectionIndex: null, insertionIndex: null };
+      lineHandle.closest('.chart-line')?.classList.add('line-dragging');
+      event.dataTransfer?.setData('text/chart-line', `${this.lineDrag.sectionIndex}:${this.lineDrag.lineIndex}`);
+      if (event.dataTransfer) event.dataTransfer.effectAllowed = this.lineDrag.copy ? 'copy' : 'move'; return;
     }
     const chord = event.target.closest?.('.inline-chord-anchor');
     if (chord && this.root.contains(chord)) {
@@ -156,6 +176,11 @@ class WorkspaceController {
       event.preventDefault(); this.root.querySelectorAll('.layout-drop-active').forEach(item => item.classList.remove('layout-drop-active'));
       layoutTarget.classList.add('layout-drop-active'); if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'; return;
     }
+    const lineChart = event.target.closest?.('.structured-chart');
+    if (lineChart && this.lineDrag) {
+      event.preventDefault(); this.updateLineDropIndicator(lineChart, event.clientX, event.clientY);
+      if (event.dataTransfer) event.dataTransfer.dropEffect = this.lineDrag.copy ? 'copy' : 'move'; return;
+    }
     const chart = event.target.closest?.('.structured-chart');
     if (chart && this.sectionDrag) {
       event.preventDefault();
@@ -181,6 +206,14 @@ class WorkspaceController {
       event.preventDefault(); const drag = this.layoutDrag; this.layoutDrag = null;
       this.root.querySelectorAll('.layout-drop-active').forEach(item => item.classList.remove('layout-drop-active'));
       this.ui.setLayoutBreak(drag.songId, Number(layoutTarget.dataset.sectionIndex), Number(layoutTarget.dataset.lineIndex), drag.type, 'after', drag.breakId); return;
+    }
+    const lineChart = event.target.closest?.('.structured-chart');
+    if (lineChart && this.lineDrag) {
+      event.preventDefault(); const drag = this.lineDrag; this.clearLineDropIndicator();
+      this.selectedLineKeys.clear();
+      if (Number.isFinite(drag.targetSectionIndex) && Number.isFinite(drag.insertionIndex)) this.ui.moveInlineChartLines(
+        drag.songId, drag.sources, drag.targetSectionIndex, drag.insertionIndex, { copy: drag.copy });
+      return;
     }
     const chart = event.target.closest?.('.structured-chart');
     if (chart && this.sectionDrag) {
@@ -252,8 +285,28 @@ class WorkspaceController {
     if (clearDrag) this.sectionDrag = null;
   }
 
+  updateLineDropIndicator(chart, clientX, clientY) {
+    const candidates = [];
+    chart.querySelectorAll('.chart-line').forEach(line => {
+      const field = line.querySelector('[data-section-index][data-line-index]'); if (!field) return;
+      const box = line.getBoundingClientRect(); const after = clientY > box.top + box.height / 2;
+      const dx = clientX < box.left ? box.left - clientX : clientX > box.right ? clientX - box.right : 0;
+      const dy = clientY < box.top ? box.top - clientY : clientY > box.bottom ? clientY - box.bottom : 0;
+      candidates.push({ line, sectionIndex: Number(field.dataset.sectionIndex), insertionIndex: Number(field.dataset.lineIndex) + (after ? 1 : 0), after, distance: Math.hypot(dx, dy) });
+    });
+    const nearest = candidates.sort((a, b) => a.distance - b.distance)[0]; if (!nearest) return;
+    this.clearLineDropIndicator(false); nearest.line.classList.add(nearest.after ? 'line-drop-after' : 'line-drop-before');
+    this.lineDrag.targetSectionIndex = nearest.sectionIndex; this.lineDrag.insertionIndex = nearest.insertionIndex;
+  }
+
+  clearLineDropIndicator(clearDrag = true) {
+    this.root.querySelectorAll('.line-drop-before, .line-drop-after, .line-dragging').forEach(item => item.classList.remove('line-drop-before', 'line-drop-after', 'line-dragging'));
+    if (clearDrag) this.lineDrag = null;
+  }
+
   handleDragEnd() {
     this.clearSectionDropIndicator();
+    this.clearLineDropIndicator();
     this.root.querySelectorAll('.dragging, .author-drop-target').forEach(item => {
       item.classList.remove('dragging', 'author-drop-target'); item.style.removeProperty('--drop-caret-left');
     });
@@ -271,7 +324,7 @@ class WorkspaceController {
 
   inlineTarget(event) {
     const target = event.target.closest?.('[data-inline-field][contenteditable]');
-    return target && this.root.contains(target) ? target : null;
+    return target?.isContentEditable && this.root.contains(target) ? target : null;
   }
 
   handleFocusIn(event) {
@@ -307,6 +360,20 @@ class WorkspaceController {
       return;
     }
     const activeEdit = this.inlineTarget(event);
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c' && this.selectedLineKeys.size && !activeEdit) {
+      event.preventDefault(); this.copiedLines = [...this.selectedLineKeys]; this.ui.updateStatus(`${this.copiedLines.length} whole line${this.copiedLines.length === 1 ? '' : 's'} copied`, 'success'); return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v' && this.copiedLines?.length && !activeEdit) {
+      event.preventDefault(); const targetKey = [...this.selectedLineKeys][0] || this.copiedLines[this.copiedLines.length - 1];
+      const [targetSectionIndex, targetLineIndex] = targetKey.split(':').map(Number); const refs = this.copiedLines.map(key => { const [sectionIndex,lineIndex]=key.split(':').map(Number); return {sectionIndex,lineIndex}; });
+      const songId = event.target.closest?.('.lead-sheet[data-song-id]')?.dataset.songId || this.root.querySelector('.lead-sheet[data-song-id]')?.dataset.songId;
+      this.selectedLineKeys.clear(); this.ui.moveInlineChartLines(songId, refs, targetSectionIndex, targetLineIndex + 1, { copy: true }); return;
+    }
+    if ((event.key === 'Delete' || event.key === 'Backspace') && this.selectedLineKeys.size && !event.isComposing && !activeEdit) {
+      event.preventDefault(); const refs = [...this.selectedLineKeys].map(key => { const [sectionIndex,lineIndex]=key.split(':').map(Number); return {sectionIndex,lineIndex}; });
+      const songId = event.target.closest?.('.lead-sheet[data-song-id]')?.dataset.songId || this.root.querySelector('.lead-sheet[data-song-id]')?.dataset.songId;
+      this.selectedLineKeys.clear(); this.ui.deleteInlineChartLines(songId, refs); return;
+    }
     const hasUnsavedText = activeEdit && (activeEdit.textContent || '') !== (activeEdit.dataset.originalText || '');
     if ((event.altKey || event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.isComposing && !hasUnsavedText && this.ui.hasInlineUndo?.()) {
       event.preventDefault();
@@ -314,7 +381,7 @@ class WorkspaceController {
       this.ui.undoInlineEdit();
       return;
     }
-    if (event.key === 'Delete' && this.selectedChordIds.size && !event.isComposing) {
+    if ((event.key === 'Delete' || event.key === 'Backspace') && this.selectedChordIds.size && !event.isComposing && !activeEdit) {
       const sheet = event.target.closest?.('.lead-sheet[data-song-id]')
         || this.root.querySelector('.inline-chord-anchor.is-selected')?.closest('.lead-sheet[data-song-id]');
       if (sheet && this.root.contains(sheet)) {
@@ -561,7 +628,11 @@ class WorkspaceController {
     if (boundary && this.root.contains(boundary)) {
       event.preventDefault(); this.ui.removeSongLayoutBreak(boundary.dataset.songId, boundary.dataset.breakId); return;
     }
-    if (event.target.closest?.('.inline-chord-anchor')) return;
+    const chord = event.target.closest?.('.inline-chord-anchor[data-chord-id]');
+    if (chord && this.root.contains(chord)) {
+      event.preventDefault(); this.selectInlineChord(chord, false);
+      this.ui.focusInlineChord(chord.closest('.lead-sheet[data-song-id]')?.dataset.songId, chord.dataset.chordId); return;
+    }
     const chordLine = event.target.closest?.('.lead-sheet .chord-line[data-section-index]');
     if (!chordLine || !this.root.contains(chordLine)) return;
     const sheet = chordLine.closest('.lead-sheet[data-song-id]');
@@ -606,10 +677,10 @@ class WorkspaceController {
         ['Mark spelling canonical', 'canonical-chord'], ['Set exact timing…', 'time-chord'], ['Flag for review', 'review-chord']];
       (song?.sections || []).forEach((item, index) => { if (index !== sectionIndex) actions.push([`Copy to ${item.label || `section ${index + 1}`}`, 'copy-chord-section', '', index]); });
     } else if (notation) {
-      actions = [['Delete notation line', 'delete-notation', 'danger'], ['Add section here', 'section-here-line'], ['Add line above', 'line-above'], ['Add line below', 'line-below'],
+      actions = [['Delete whole line', 'delete-whole-line', 'danger'], ['Add section here', 'section-here-line'], ['Add line above', 'line-above'], ['Add line below', 'line-below'],
         ['End column after this line', 'column-break'], ['Start new page after this line', 'page-break']];
     } else if (lyric) {
-      actions = [['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
+      actions = [['Delete whole line', 'delete-whole-line', 'danger'], ['Add section here', 'section-here-line'], ['Add section above', 'section-above'], ['Add section below', 'section-below'], ['Add line above', 'line-above'], ['Add line below', 'line-below'], ['Split line at cursor', 'split-line'],
         ['End column after this line', 'column-break'], ['Start new page after this line', 'page-break'],
         ['Join with previous', 'join-prev'], ['Join with next', 'join-next'], ['Paste lyrics here', 'paste-lyrics'],
         ['Convert to notation line', 'convert-notation'], ['Clear chords from line', 'clear-line-chords', 'danger'], ['Copy chord pattern from matching section', 'copy-line-pattern']];
@@ -693,6 +764,7 @@ class WorkspaceController {
       'copy-line-pattern': () => this.ui.copyMatchingLinePattern(state.songId, state.sectionIndex, state.lineIndex),
       'convert-notation': () => this.ui.convertInlineLineToNotation(state.songId, state.sectionIndex, state.lineIndex),
       'delete-notation': () => this.ui.deleteInlineNotationLine(state.songId, state.sectionIndex, state.lineIndex),
+      'delete-whole-line': () => this.ui.deleteInlineChartLine(state.songId, state.sectionIndex, state.lineIndex),
       'column-break': () => this.ui.setLayoutBreak(state.songId, state.sectionIndex, state.lineIndex, 'column'),
       'page-break': () => this.ui.setLayoutBreak(state.songId, state.sectionIndex, state.lineIndex, 'page'),
       'add-chord': () => this.ui.insertInlineChord(state.songId, state.sectionIndex, state.lineIndex, state.characterOffset),

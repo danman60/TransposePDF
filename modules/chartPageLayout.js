@@ -83,7 +83,7 @@ class ChartPageLayout {
     const rows = []; const segments = this.wrapLine(line, maxCharacters);
     segments.forEach((segment, segmentIndex) => {
       const segmentState = { firstSegment: segmentIndex === 0, finalSegment: segmentIndex === segments.length - 1 };
-      if (segment.chords.length) rows.push({ type: 'chords', ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
+      rows.push({ type: 'chords', ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
       rows.push({ type: segment.lyrics ? 'text' : 'empty', content: segment.lyrics, ...segment, ...segmentState, sectionIndex, lineIndex, sectionId: section.id, lineId: line.id });
     });
     rows.forEach(row => { row.sectionLabel = String(section?.label || 'Section'); }); return rows;
