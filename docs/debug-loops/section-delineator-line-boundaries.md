@@ -1,7 +1,7 @@
 # Loop Debug: section delineator line boundaries
 URL: http://127.0.0.1:8000 on FIRMAMENT
 Started: 2026-09-16
-Status: LOCAL_VERIFIED
+Status: RESOLVED
 
 ## Attempt 1 — 2026-09-16
 ### Evidence Gathered
@@ -19,6 +19,6 @@ Missing line-level candidates cause the delineator jump. Unbudgeted browser-only
 - Removed the unbudgeted paginated chord-row bottom margin and aligned notation row height with the shared 1.2em planner budget.
 
 ### Result After Deploy
-- Local real-browser gate: 10/10.
+- Local and FIRMAMENT live real-browser gates: 10/10 each.
 - Existing section drag: 6/6. Publication: 11/11. Geometry: 9/9. Editor/PDF parity: 6/6. Chord/notation lifecycle: 15/15.
-- Deployment verification pending.
+- FIRMAMENT HTTP 200, cache `transpose-app-v57`, and exact SHA-256 identity for all four runtime files. Live URL reopened in Chrome.

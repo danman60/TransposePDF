@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-16 Exact Section-Line Drops and Page-Edge Wrapping
 
-v57 candidate makes a dragged section delineator target an exact lyric-row boundary and prevents chord/lyric or notation rows from crossing the physical page edge.
+v57 is committed, pushed, deployed, and live-verified. Dragged section delineators target exact lyric-row boundaries; chord/lyric and notation rows wrap before physical page edges.
 
 ## Recent Changes
 
@@ -59,6 +59,7 @@ v57 candidate makes a dragged section delineator target an exact lyric-row bound
 
 ## Verification
 
+- v57 live on FIRMAMENT: HTTP 200, cache `transpose-app-v57`, exact SHA-256 matches for four deployed runtime files, and 10/10 live-browser checks through the FIRMAMENT loopback tunnel. Chrome reopened at the cache-busted live URL.
 - v57 local: 10/10 exact row targeting, boundary transfer, ID integrity, undo, and page-edge wrap checks. Existing section drag 6/6, publication 11/11, geometry 9/9, editor/PDF parity 6/6, and chord/notation 15/15. Screenshot inspected; Telegram DM `17176`.
 - v56 live on FIRMAMENT: HTTP 200, cache `transpose-app-v56`, and exact SHA-256 matches for all three deployed runtime files. Live tunnel passes 15/15 chord hotkey, notation deletion, section chord copy/clear, undo, neighbor safety, and reload checks.
 - v56 candidate: new real-browser lifecycle 15/15; existing inline edit/drag, notation, chord copy/insert, editor/PDF parity, ChordPro, anchor/schema, and syntax gates pass. Visual artifact `artifacts/e2e/chord-hotkey-notation-delete.png`; Telegram DM `17175`.
