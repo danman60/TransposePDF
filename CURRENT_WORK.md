@@ -2,7 +2,7 @@
 
 ## Active Task — 2026-09-16 Discoverable Page Breaks and Shift Line Selection
 
-v60 candidate exposes page/column break commands from every chart-row right-click target and adds Shift-click range selection for whole-line checkboxes.
+v60 is committed, pushed, deployed, and live-verified. It exposes page/column break commands from every chart-row right-click target and adds Shift-click range selection for whole-line checkboxes.
 
 ## Recent Changes
 
@@ -62,6 +62,7 @@ v60 candidate exposes page/column break commands from every chart-row right-clic
 
 ## Verification
 
+- v60 live on FIRMAMENT: HTTP 200, cache `transpose-app-v60`, page-break menus 10/10, and whole-line/Shift-selection lifecycle 18/18 through loopback tunnel.
 - v60 local: page-break context menus 10/10; publication/page-break lifecycle 11/11; whole-line/chord lifecycle including Shift range selection 18/18. Screenshot inspected; Telegram DM `17182`.
 - v59 live on FIRMAMENT: HTTP 200, cache `transpose-app-v59`, and 10/10 collapse/reorder lifecycle checks through a fresh loopback tunnel. Chrome reopened at cache-busted v59 URL.
 - v59 local: collapse lifecycle 10/10; existing section drag 6/6; exact section-line/page-wrap 10/10; whole-line/chord lifecycle 18/18; editor/PDF parity 6/6; geometry 9/9. Screenshot inspected; Telegram DM `17180`.
