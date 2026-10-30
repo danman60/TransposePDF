@@ -88,6 +88,8 @@ def main():
         page.evaluate("document.fullscreenElement && document.exitFullscreen()"); page.wait_for_timeout(300)
         page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(300)
         page.screenshot(path=str(ARTIFACTS / "setlist-performance-phone.png"))
+        results["phone_no_empty_chord_lanes"] = page.evaluate("() => [...document.querySelectorAll('#performanceChart .chord-line')].every(l => l.querySelector('.chord-token, button, [data-chord-id]'))")
+        results["arrangement_in_header"] = bool(page.locator("#performanceArrangement").text_content().strip())
         results["phone_lyrics_readable"] = page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('#performanceChart .lyric-line')).fontSize)") >= 16
         results["phone_no_sideways_scroll"] = page.evaluate("() => { const s = document.getElementById('performanceShell'); return s.scrollWidth <= s.clientWidth; }")
         page.set_viewport_size({"width": 1280, "height": 800})

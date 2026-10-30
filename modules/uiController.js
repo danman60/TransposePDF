@@ -118,6 +118,7 @@ class UIController {
       performanceShell: document.getElementById('performanceShell'),
       performanceTitle: document.getElementById('performanceTitle'),
       performanceSetPosition: document.getElementById('performanceSetPosition'),
+      performanceArrangement: document.getElementById('performanceArrangement'),
       performancePageTurner: document.getElementById('performancePageTurner'),
       performanceChart: document.getElementById('performanceChart'),
       performanceExit: document.getElementById('performanceExit'),
@@ -2290,8 +2291,10 @@ class UIController {
     this.elements.performanceTitle.textContent = song.title;
     if (this.elements.performanceSetPosition) this.elements.performanceSetPosition.textContent = `${index + 1} / ${this.currentSongs.length}${upNext ? ` · Next: ${upNext.title}` : ' · End of set'}`;
     if (this.elements.performancePageTurner) this.elements.performancePageTurner.value = state.pageTurner;
+    const arrangement = song.arrangement?.mode === 'manual' ? song.arrangement.value : (song.arrangement?.inferredValue || (typeof Arrangement !== 'undefined' ? Arrangement.infer(song.sections || []) : ''));
+    if (this.elements.performanceArrangement) this.elements.performanceArrangement.textContent = String(arrangement || '');
     if (this.elements.performanceColumns) this.elements.performanceColumns.value = String(state.columns);
-    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(this.performancePageSong(song, state.fontScale, state.columns), { editable: false, columns: state.columns });
+    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(this.performancePageSong(song, state.fontScale, state.columns), { editable: false, columns: state.columns, compactLanes: true });
     this.elements.performanceChart.style.removeProperty('column-count');
     this.elements.performanceChart.dataset.reducedMotion = String(state.reducedMotion);
   }
