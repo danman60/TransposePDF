@@ -92,5 +92,5 @@ const mixedSong = { layout: { columns: 2, typography: 'sans', balance: 'off', se
 const mixedPlan = ChartPageLayout.plan(mixedSong);
 assert.equal(mixedPlan.pages.length, 1, 'compact mixed regions belong on one page');
 assert.deepEqual(mixedPlan.pages[0].regions.map(region => region.kind), ['span', 'columns', 'span']);
-assert.equal(mixedPlan.pages[0].regions.flatMap(region => region.rows || region.columns.flat()).filter(row => row.lineId).length, 8);
+assert.equal(mixedPlan.pages[0].regions.flatMap(region => region.rows || region.columns.flat()).filter(row => row.lineId).length, 12, 'v58: every lyric line keeps a chord lane, so 6 lines plan 12 rows');
 console.log('31/31 shared geometry, proportional metrics, mixed regions, CSS scale, and wrapping checks passed');
