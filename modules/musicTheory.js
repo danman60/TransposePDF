@@ -7,9 +7,12 @@ class MusicTheory {
   constructor() {
     // Chord detection patterns (exactly as specified)
     this.CHORD_PATTERNS = {
-      main: /([A-G])(#{1,2}|b{1,2})?([^\/\s\n]*?)(\/([A-G])(#{1,2}|b{1,2})?)?(?=\s|$|[^A-Za-z0-9#b\/])/g,
+      main: /(?<![A-Za-z0-9#.])([A-G])(#{1,2}|b{1,2})?([^\/\s\n]*?)(\/([A-G])(#{1,2}|b{1,2})?)?(?=\s|$|[^A-Za-z0-9#b\/])/g,
       validRoot: /^[A-G][#b]{0,2}$/,
-      validChord: /^[A-G][#b]{0,2}(m|maj|dim|aug|sus|add|[0-9])*[^\/]*$/,
+      // Root, accidental, then only real chord suffixes: "Amazing", "And", "Grace" are words, not chords.
+      validChord: /^[A-G](?:#{1,2}|b{1,2})?(?:maj|Maj|M|min|m|dim|aug|sus|add|alt|°|ø|\+|-)?\d*(?:(?:maj|add|sus|no|omit|[#b+])\d*|\(\w+\))*$/,
+      // Bar lines, repeat marks, N.C. and a "Intro:" label may share a line with chords.
+      chordLineMark: /^(?:[|\/\-.:%()]+|\(?x\d+\)?|N\.C\.|[A-Za-z][\w-]*:)$/i,
       slashChord: /^([A-G][#b]{0,2}[^\/]*)\/([A-G][#b]{0,2})$/
     };
 
@@ -105,6 +108,9 @@ class MusicTheory {
     const lines = text.split('\n');
     
     lines.forEach((line, lineIndex) => {
+      // A lyric line is not a chord line because one word looks like a chord ("A wretch like me").
+      const tokens = line.trim().split(/\s+/).filter(Boolean);
+      if (!tokens.every(token => this.CHORD_PATTERNS.chordLineMark.test(token) || this.isValidChord(token))) return;
       // Reset regex for each line
       this.CHORD_PATTERNS.main.lastIndex = 0;
       let match;
@@ -142,7 +148,7 @@ class MusicTheory {
     // Check if it's a slash chord
     const slashMatch = chordStr.match(this.CHORD_PATTERNS.slashChord);
     if (slashMatch) {
-      return this.CHORD_PATTERNS.validRoot.test(slashMatch[2]);
+      return this.CHORD_PATTERNS.validChord.test(slashMatch[1]) && this.CHORD_PATTERNS.validRoot.test(slashMatch[2]);
     }
     
     // Check basic chord pattern

@@ -26,6 +26,10 @@ def main():
         page.locator("#fileInput").set_input_files(str(PDF))
         page.wait_for_function("() => window.transposeApp.currentSongs.length === 1", timeout=30000)
         results["pdf_key_detected_g"] = page.evaluate("window.transposeApp.currentSongs[0].originalKey") == "G"
+        for _ in range(2):
+            page.locator("button[data-action='transpose-song'][aria-label='Transpose up']").first.click(); page.wait_for_timeout(400)
+        editor_text = page.locator(".pdf-layout-container").inner_text()
+        results["transpose_keeps_pdf_lyrics"] = "Amazing grace how sweet the sound" in editor_text and "Bmazing" not in editor_text and "A A7 D A" in editor_text
         results["editor_keeps_original_layout"] = page.locator(".pdf-layout-container").count() > 0
         page.locator("#performanceButton").click()
         page.locator("#performanceShell").wait_for(state="visible"); page.wait_for_timeout(500)
