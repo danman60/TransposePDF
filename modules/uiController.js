@@ -2290,6 +2290,7 @@ class UIController {
     this.elements.performanceTitle.textContent = song.title;
     if (this.elements.performanceSetPosition) this.elements.performanceSetPosition.textContent = `${index + 1} / ${this.currentSongs.length}${upNext ? ` · Next: ${upNext.title}` : ' · End of set'}`;
     if (this.elements.performancePageTurner) this.elements.performancePageTurner.value = state.pageTurner;
+    if (this.elements.performanceColumns) this.elements.performanceColumns.value = String(state.columns);
     this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(this.performancePageSong(song, state.fontScale, state.columns), { editable: false, columns: state.columns });
     this.elements.performanceChart.style.removeProperty('column-count');
     this.elements.performanceChart.dataset.reducedMotion = String(state.reducedMotion);
