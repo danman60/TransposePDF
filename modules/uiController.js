@@ -117,6 +117,8 @@ class UIController {
       performanceButton: document.getElementById('performanceButton'),
       performanceShell: document.getElementById('performanceShell'),
       performanceTitle: document.getElementById('performanceTitle'),
+      performanceSetPosition: document.getElementById('performanceSetPosition'),
+      performancePageTurner: document.getElementById('performancePageTurner'),
       performanceChart: document.getElementById('performanceChart'),
       performanceExit: document.getElementById('performanceExit'),
       performancePrev: document.getElementById('performancePrev'),
@@ -213,7 +215,9 @@ class UIController {
       getSongs: () => this.currentSongs,
       getActiveSongId: () => this.activeSongId,
       selectSong: id => this.selectActiveSong(id),
-      render: state => this.renderPerformance(state)
+      render: state => this.renderPerformance(state),
+      scrollTarget: () => this.elements.performanceShell,
+      pageTurner: localStorage.getItem('transposepdf.page-turner')
     });
     this.performance.bindGestureSurface(this.elements.performanceShell);
     this.controlBindings = new ControlBindings({ actions: {
@@ -232,6 +236,7 @@ class UIController {
       const capturing = Boolean(this.controlBindings.captureState);
       this.controlBindings.handleKeydown(event);
       if (capturing) this.renderBindings();
+      else if (!event.defaultPrevented && !this.controlBindings.isEditable(event.target) && this.performance.handlePageTurnerKey(event)) event.preventDefault();
     });
     this.renderBindings();
   }
@@ -330,6 +335,11 @@ class UIController {
     this.elements.performanceFont?.addEventListener('input', event => this.performance.setFontScale(event.target.value));
     this.elements.performanceColumns?.addEventListener('change', event => this.performance.setColumns(event.target.value));
     this.elements.performanceAutoscroll?.addEventListener('change', event => this.performance.setAutoscroll(event.target.checked));
+    this.elements.performancePageTurner?.addEventListener('change', event => {
+      try { localStorage.setItem('transposepdf.page-turner', event.target.value); } catch (_) {}
+      this.performance.setPageTurner(event.target.value);
+      event.target.blur();
+    });
     this.elements.controlsButton?.addEventListener('click', () => { this.elements.controlDrawer.hidden = false; });
     this.elements.closeControlsButton?.addEventListener('click', () => { this.elements.controlDrawer.hidden = true; });
     this.elements.connectMidiButton?.addEventListener('click', async () => {
@@ -2274,7 +2284,11 @@ class UIController {
     if (!state.active) return;
     const song = this.currentSongs.find(item => String(item.id) === String(this.activeSongId));
     if (!song) return;
+    const index = this.currentSongs.indexOf(song);
+    const upNext = this.currentSongs[index + 1];
     this.elements.performanceTitle.textContent = song.title;
+    if (this.elements.performanceSetPosition) this.elements.performanceSetPosition.textContent = `${index + 1} / ${this.currentSongs.length}${upNext ? ` · Next: ${upNext.title}` : ' · End of set'}`;
+    if (this.elements.performancePageTurner) this.elements.performancePageTurner.value = state.pageTurner;
     this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(song, { editable: false, columns: state.columns });
     this.elements.performanceChart.style.fontSize = `${state.fontScale}em`;
     this.elements.performanceChart.style.removeProperty('column-count');

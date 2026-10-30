@@ -367,7 +367,10 @@ body {
 .performance-top { position: sticky; top: 0; z-index: 2; display: flex; justify-content: space-between; padding: 10px 0 18px; background: linear-gradient(#0b0d0e 80%, transparent); }
 #performanceChart { max-width: 1100px; margin: auto; column-gap: 48px; transition: font-size 160ms ease; }
 .performance-dock { position: fixed; z-index: 3; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid #3b4b51; border-radius: 12px; background: rgba(18,26,29,.96); box-shadow: 0 8px 30px rgba(0,0,0,.4); }
-.performance-dock label { display: flex; align-items: center; gap: 6px; }
+.performance-dock label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.performance-heading { display: flex; flex-direction: column; gap: 2px; }
+#performanceSetPosition { font-size: .85rem; color: #9fb3b8; }
+.binding-hint { font-size: .85rem; opacity: .8; }
 .performance-active { overflow: hidden; }
 .offline-badge { padding: 7px 10px; border-radius: 999px; background: #332410; color: #ffd383; font-weight: 800; }
 .update-banner { position: sticky; z-index: 70; top: 0; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 14px clamp(16px,4vw,48px); border-bottom: 1px solid #95abb3; background: #eff8fa; color: #14262c; box-shadow: 0 8px 24px rgba(0,0,0,.16); transition: transform 180ms ease, opacity 180ms ease; }

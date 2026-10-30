@@ -13,6 +13,7 @@ class PerformanceController {
     this.navigator = options.navigator || (typeof navigator !== 'undefined' ? navigator : null);
     this.window = options.window || (typeof window !== 'undefined' ? window : null);
     this.now = options.now || (() => Date.now());
+    this.getScrollTarget = options.scrollTarget || (() => this.window);
     this.scrollPositions = new Map();
     this.wakeLock = null;
     this.frame = null;
@@ -26,6 +27,7 @@ class PerformanceController {
       columns: 1,
       autoscroll: false,
       autoscrollSpeed: 28,
+      pageTurner: options.pageTurner === 'scroll' ? 'scroll' : 'song',
       fullscreen: false,
       wakeLockActive: false,
       reducedMotion: options.reducedMotion ?? this.detectReducedMotion()
@@ -102,6 +104,34 @@ class PerformanceController {
     return this.selectAt(index < 0 ? 0 : index - 1);
   }
 
+  setPageTurner(mode) {
+    this.state.pageTurner = mode === 'scroll' ? 'scroll' : 'song';
+    return this.publish('settings.pageTurner');
+  }
+
+  /**
+   * Default Bluetooth page-turner keys while performing. Left/Right always step songs;
+   * Up/Down/PageUp/PageDown step songs, or in 'scroll' mode page through the chart first.
+   */
+  handlePageTurnerKey(event) {
+    if (!this.state.active || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return false;
+    const forward = { ArrowRight: true, ArrowDown: true, PageDown: true, ArrowLeft: false, ArrowUp: false, PageUp: false }[event.key];
+    if (forward === undefined) return false;
+    const target = this.scrollTarget();
+    const vertical = !['ArrowLeft', 'ArrowRight'].includes(event.key);
+    if (this.state.pageTurner === 'scroll' && vertical && target?.scrollBy) {
+      const top = Number(target.scrollTop ?? target.scrollY) || 0;
+      const view = Number(target.clientHeight ?? target.innerHeight) || 0;
+      const atEdge = forward ? top + view >= (Number(target.scrollHeight) || 0) - 4 : top <= 4;
+      if (!atEdge) {
+        target.scrollBy({ top: (forward ? 1 : -1) * view * 0.85, behavior: this.state.reducedMotion ? 'auto' : 'smooth' });
+        return true;
+      }
+    }
+    if (forward) this.next(); else this.previous();
+    return true;
+  }
+
   bindGestureSurface(element) {
     if (this.gestureSurface === element) return;
     this.unbindGestureSurface();
@@ -150,13 +180,13 @@ class PerformanceController {
   }
 
   scrollTarget() {
-    return this.window;
+    return this.getScrollTarget();
   }
 
   saveScroll(songId = this.getActiveSongId()) {
     if (songId === null || songId === undefined) return;
     const target = this.scrollTarget();
-    const value = Number(target?.scrollY ?? target?.pageYOffset ?? 0) || 0;
+    const value = Number(target?.scrollY ?? target?.scrollTop ?? 0) || 0;
     this.scrollPositions.set(String(songId), value);
   }
 

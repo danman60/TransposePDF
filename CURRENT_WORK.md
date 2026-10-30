@@ -6,6 +6,8 @@ v62 is committed, pushed, deployed, and live-verified. It reserves the footer’
 
 ## Recent Changes
 
+- v64 candidate (branch fable-night-1029, not deployed): Bluetooth page-turner works in Performance with zero setup. ←/→ step songs; ↑/↓/PageUp/PageDown step songs or, with the new dock "Page turner: Scroll, then next song" switch (persisted), page through the chart and advance at the bottom. User key/MIDI bindings still win. Header shows set position "2 / 3 · Next: <title>". Fixed performance scroll target: autoscroll and per-song scroll memory previously scrolled `window`, which cannot move while the fixed performance shell is open. Gate: `tests/e2e_setlist_page_turner.py` 11/11. Pre-existing on HEAD: `tests/chart_page_layout.test.js` expects 8 rows, gets 12 (v62 footer reserve).
+
 - v62 candidate: shared planner footer reservation now includes actual 18pt Arrangement height, 13pt credit rows, grid gaps, padding, and border. At 13pt the reserve is 14 rows rather than 10; editor and PDF use the same reflow.
 - v61 candidate: chord symbols suppress text selection until double-click enters edit mode; pointer-down prevents Chrome text-drag behavior. Single-click selection, body drag, cross-line move, Alt-copy, touch drag, and double-click editing share the same canonical paths.
 - v60 candidate: chord symbols and empty chord lanes now expose `End column after this line` and `Start new page after this line`. Section headings use explicit `Add column/page break before this section` labels. Shift-clicking left-side line checkboxes selects or clears the full intervening range for batch drag/copy/paste/delete.
