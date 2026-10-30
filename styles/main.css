@@ -1900,6 +1900,10 @@ textarea:focus-visible {
 .error-close { color: #07151b; }
 
 /* Performance: screen-sized planned pages shrink to their content instead of keeping paper aspect. */
+/* Original page view on stage: print-like page (the editor's review view is dark grey on dark grey). */
+#performanceChart .pdf-page { background: #fff; border: 0; padding: 0; min-height: 0 !important; margin: 0 auto 24px; }
+#performanceChart .chord-text[style*="position: absolute"] { background: transparent !important; border: 0; padding: 0; }
+.performance-dock { flex-wrap: wrap; justify-content: center; width: max-content; max-width: calc(100vw - 24px); }
 #performanceChart .chart-page { width: 100%; aspect-ratio: auto; min-height: 0; height: auto; overflow: visible; }
 #performanceChart .chart-page-body { position: relative; inset: auto; padding: 18px 6%; }
 #performanceChart .paginated-chart .chart-line { min-height: 0; }

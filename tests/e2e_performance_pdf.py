@@ -33,6 +33,11 @@ def main():
         results["performance_reflows_pdf"] = lyric.count() == 1 and page.locator("#performanceChart .pdf-layout-container").count() == 0
         results["pdf_lyrics_readable"] = results["performance_reflows_pdf"] and lyric.evaluate("e => parseFloat(getComputedStyle(e).fontSize)") >= 20
         results["title_not_repeated_as_lyric"] = page.locator("#performanceChart .lyric-line").evaluate_all("els => !els.some(e => e.textContent.trim() === 'Amazing Grace')")
+        page.locator("#performanceOriginal").check(); page.wait_for_timeout(300)
+        results["original_page_toggle"] = page.locator("#performanceChart .pdf-layout-container").count() == 1
+        page.screenshot(path=os.environ.get("PERF_PDF_SHOT", "/dev/null") if os.environ.get("PERF_PDF_SHOT") else str(Path(profile) / "x.png"))
+        page.locator("#performanceOriginal").uncheck(); page.wait_for_timeout(300)
+        results["toggle_back_reflows"] = page.locator("#performanceChart .pdf-layout-container").count() == 0
         context.close()
     results["no_page_errors"] = not errors
     for key, value in results.items():

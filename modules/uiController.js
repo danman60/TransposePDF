@@ -120,6 +120,8 @@ class UIController {
       performanceSetPosition: document.getElementById('performanceSetPosition'),
       performanceArrangement: document.getElementById('performanceArrangement'),
       performancePageTurner: document.getElementById('performancePageTurner'),
+      performanceOriginal: document.getElementById('performanceOriginal'),
+      performanceOriginalLabel: document.getElementById('performanceOriginalLabel'),
       performanceChart: document.getElementById('performanceChart'),
       performanceExit: document.getElementById('performanceExit'),
       performancePrev: document.getElementById('performancePrev'),
@@ -342,6 +344,14 @@ class UIController {
       this.performance.setPageTurner(event.target.value);
       event.target.blur();
     });
+    if (this.elements.performanceOriginal) {
+      try { this.elements.performanceOriginal.checked = localStorage.getItem('transposepdf.performance-original') === '1'; } catch (_) {}
+      this.elements.performanceOriginal.addEventListener('change', event => {
+        try { localStorage.setItem('transposepdf.performance-original', event.target.checked ? '1' : '0'); } catch (_) {}
+        this.renderPerformance(this.performance.state);
+        event.target.blur();
+      });
+    }
     this.elements.controlsButton?.addEventListener('click', () => { this.elements.controlDrawer.hidden = false; });
     this.elements.closeControlsButton?.addEventListener('click', () => { this.elements.controlDrawer.hidden = true; });
     this.elements.connectMidiButton?.addEventListener('click', async () => {
@@ -2294,9 +2304,36 @@ class UIController {
     const arrangement = song.arrangement?.mode === 'manual' ? song.arrangement.value : (song.arrangement?.inferredValue || (typeof Arrangement !== 'undefined' ? Arrangement.infer(song.sections || []) : ''));
     if (this.elements.performanceArrangement) this.elements.performanceArrangement.textContent = String(arrangement || '');
     if (this.elements.performanceColumns) this.elements.performanceColumns.value = String(state.columns);
-    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(this.performancePageSong(song, state.fontScale, state.columns), { editable: false, columns: state.columns, compactLanes: true });
+    const hasOriginal = Boolean(song.textItems?.length);
+    if (this.elements.performanceOriginalLabel) this.elements.performanceOriginalLabel.hidden = !hasOriginal;
+    // Escape hatch when the import misparsed a PDF: show its page exactly as imported.
+    this.elements.performanceChart.innerHTML = hasOriginal && this.elements.performanceOriginal?.checked
+      ? this.renderLeadSheetContent(song, { editable: false })
+      : this.renderLeadSheetContent(this.performancePageSong(song, state.fontScale, state.columns), { editable: false, columns: state.columns, compactLanes: true });
+    this.fitOriginalPages();
     this.elements.performanceChart.style.removeProperty('column-count');
     this.elements.performanceChart.dataset.reducedMotion = String(state.reducedMotion);
+  }
+
+  /** Imported pages draw at 0.8px per PDF point (~8px text); trim each page to its text and zoom it to the screen width. */
+  fitOriginalPages() {
+    const chart = this.elements.performanceChart;
+    const container = chart.querySelector('.pdf-layout-container');
+    if (!container) return;
+    const margin = 24;
+    let width = 0;
+    container.querySelectorAll('.pdf-page').forEach(page => {
+      const items = [...page.querySelectorAll('.pdf-text-item')];
+      const right = Math.max(0, ...items.map(item => item.offsetLeft + item.offsetWidth));
+      const bottom = Math.max(0, ...items.map(item => item.offsetTop + item.offsetHeight));
+      const left = Math.min(...items.map(item => item.offsetLeft), right);
+      const top = Math.min(...items.map(item => item.offsetTop), bottom);
+      items.forEach(item => { item.style.left = `${item.offsetLeft - left + margin}px`; item.style.top = `${item.offsetTop - top + margin}px`; });
+      page.style.width = `${right - left + margin * 2}px`;
+      page.style.height = `${bottom - top + margin * 2}px`;
+      width = Math.max(width, right - left + margin * 2);
+    });
+    container.style.zoom = String(Math.max(1, (chart.clientWidth || width) / (width || 1)));
   }
 
   /** Chart text scales with page width (cqi), so performance plans a screen-sized page: Text slider and phones get readable type. */

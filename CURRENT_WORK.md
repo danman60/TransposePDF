@@ -5,6 +5,7 @@
 v62 is committed, pushed, deployed, and live-verified. It reserves the footer’s actual rendered height so added sections wrap before writer/arrangement credits instead of overlapping them.
 
 ## Recent Changes
+- v70 candidate (same branch): Performance dock "Original page" switch (shown only for imported PDFs, persisted) shows the PDF exactly as imported, for charts the parser got wrong. On stage it draws a white page trimmed to its text and zoomed to screen width (8px -> ~20px at 820 wide); the editor review view is unchanged. Dock now wraps instead of clipping Previous/Next at 820px. PDF E2E 8/8, page-turner E2E 17/17. Runs that crashed Chromium at page load coincided with <3.3 GB available RAM and passed on rerun. Seen, not fixed: `extractChords` reads "Amazing"/"And" as A chords, so those lyric rows render chord-blue in the original view (transposition leaves them unchanged).
 - v69 candidate (same branch): PDF key detection fixed. Scoring used chord roots only, so a major key and its parallel/relative minor tied and the later (minor) key won: the sample PDF (G G7 C D7) read Gm, and 3 of 5 cases in the never-run `testSuite.js` list failed. Bb/Eb/Ab could never be detected (sharp-only scale lookup). Now chord quality counts (wrong-quality chord scores 1/4), the opening tonic chord gets +2, ties keep the major key, flat keys normalize. `tests/key_detection.test.js` 11/11; PDF E2E 6/6. Only caller: `songSeparator.createSong` (PDF import).
 - v68 candidate (same branch): PDF import no longer repeats the title as the first lyric line (`SongModel.withoutTitleRow`: drops the first non-blank row only when it equals the detected title). The subtitle row ("Traditional - Key of G") still imports as a line: `artist` is not displayed anywhere, so moving it there would hide it; where a subtitle belongs is an owner call. `tests/pdf_title_row.test.js` 2/2, `e2e_performance_pdf.py` 5/5, `e2e_ux_gaps.py` 6/6, layout 31/31, structured PDF 16/16.
 - v67 candidate (same branch): imported PDFs read as a chart in Performance. A PDF song kept `preserveLayout`, so Performance drew the original page as ~8px positioned text with blue detection boxes and dark-on-dark lines (0 lyric lines rendered). `performancePageSong` now renders its parsed sections; editor and PDF export keep the original layout. PDF lyrics 22.8px phone / 29.9px tablet. New `tests/e2e_performance_pdf.py` 4/4; page-turner E2E 17/17 (a rerun hit a fill timeout under host memory pressure); `e2e_ux_gaps.py` not run (browser killed at 357 MB free). Seen, not fixed (import parser, also in editor): PDF title/subtitle lines land as lyrics; sample key detected Gm vs "Key of G".
@@ -255,4 +256,9 @@ Complete. Credits/Arrangement footer now has a horizontal drag boundary. Height 
 ## Arrival brief — 2026-10-30 01:55 ET — fable-transpose
 - DONE: Performance pages now fill a landscape tablet's width instead of a narrow A4 strip. 17/17 tests pass, pushed to the branch.
 - IN PROGRESS: Starting a check of Performance with a real PDF-imported chart at tablet and phone sizes. ETA about 30 min.
+- NEEDS YOU: nothing
+
+## Arrival brief — 2026-10-30 02:25 ET — fable-transpose
+- DONE: Imported PDF charts now show as a readable chart in Performance mode. Pushed to the branch before the freeze.
+- IN PROGRESS: Starting the fix that stops a PDF's title and subtitle being imported as lyric lines. ETA about 40 min.
 - NEEDS YOU: nothing
