@@ -274,3 +274,15 @@ Complete. Credits/Arrangement footer now has a horizontal drag boundary. Height 
 - DONE: Performance has an "Original page" switch that shows an imported PDF as a readable page. The control bar no longer clips on tablets.
 - IN PROGRESS: Fixing chord detection so lyric words like "Amazing" and "And" stop counting as chords. ETA about 30 min.
 - NEEDS YOU: nothing
+
+## Arrival brief — 2026-10-30 03:15 ET — fable-transpose
+- DONE: Transposing an imported PDF no longer rewrites lyrics. Checked in the exported PDF itself. Pushed to the branch.
+- IN PROGRESS: Building one shared chord-line rule for the importer and the editor, with a test over real lyric lines. Push before 03:45.
+- NEEDS YOU: nothing
+
+## Checkpoint — 2026-10-30 03:44 ET — fable-transpose (night burn end)
+- State: branch `fable-night-1029` pushed, v64–v72 candidates (SW cache v72), NOT merged, NOT deployed. Working tree clean after this commit. No servers running.
+- Gates at v72: all `tests/*.test.js` pass; browser E2E at 127.0.0.1:8017: performance_pdf 9/9, setlist_page_turner 17/17, inline_chart_edit 10/10, ux_gaps 6/6.
+- Exact next step: owner reviews the branch (Performance on phone/tablet, PDF import → Performance → Original page, transpose an imported PDF) and decides merge to master.
+- Open question (in assistant/DECISIONS.md): where a PDF subtitle row ("Traditional - Key of G") belongs; today it imports as a lyric line.
+- Rookie (youth-sports-marketplace-fable, branch fable-night-activity on netcup-mirror): follows log `supporter_joined` activity; live follow path UNVERIFIED (needs a prod DB write).
