@@ -263,10 +263,11 @@ class SongModel {
   }
 
   static isChordRow(row) {
-    const tokens = String(row).trim().split(/\s+/).filter(Boolean);
-    if (!tokens.length) return false;
-    const chordPattern = /^(?:N\.C\.|[A-G](?:#{1,2}|b{1,2})?(?:(?:maj|min|m|dim|aug|sus|add|omit|no|alt|[+°ø])?\d*(?:[#b]\d+|add\d+|no\d+|omit\d+|sus\d*)*)?(?:\/[A-G](?:#{1,2}|b{1,2})?)?)$/i;
-    return tokens.every(token => chordPattern.test(token));
+    const Theory = typeof MusicTheory !== 'undefined'
+      ? MusicTheory : (typeof require === 'function' ? require('./musicTheory') : null);
+    this.chordTheory ||= Theory && new Theory();
+    // Same rule as PDF import; no bar/label marks, because parseChordRow keeps every token as a chord symbol.
+    return Boolean(this.chordTheory?.isChordLine(row, { marks: false, ignoreCase: true }));
   }
 
   static parseChordRow(row) {

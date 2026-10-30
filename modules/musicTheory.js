@@ -109,8 +109,7 @@ class MusicTheory {
     
     lines.forEach((line, lineIndex) => {
       // A lyric line is not a chord line because one word looks like a chord ("A wretch like me").
-      const tokens = line.trim().split(/\s+/).filter(Boolean);
-      if (!tokens.every(token => this.CHORD_PATTERNS.chordLineMark.test(token) || this.isValidChord(token))) return;
+      if (!this.isChordLine(line)) return;
       // Reset regex for each line
       this.CHORD_PATTERNS.main.lastIndex = 0;
       let match;
@@ -137,6 +136,18 @@ class MusicTheory {
     });
     
     return chords;
+  }
+
+  /**
+   * The one chord-line rule, shared by PDF import and the editor (SongModel.isChordRow):
+   * every token must be a chord, N.C., or (with marks) a bar/repeat mark or "Intro:" label.
+   * ignoreCase lets typed rows like "g c d" count; PDF transposition only handles A-G roots.
+   */
+  isChordLine(line, { marks = true, ignoreCase = false } = {}) {
+    const tokens = String(line || '').trim().split(/\s+/).filter(Boolean);
+    const chord = token => token.toUpperCase() === 'N.C.'
+      || this.isValidChord(ignoreCase ? token.charAt(0).toUpperCase() + token.slice(1) : token);
+    return tokens.some(chord) && tokens.every(token => chord(token) || (marks && this.CHORD_PATTERNS.chordLineMark.test(token)));
   }
 
   /**
