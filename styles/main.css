@@ -1896,3 +1896,7 @@ textarea:focus-visible {
 .loading-content { padding: 2rem; border-radius: 12px; background: var(--surface); }
 .loading-text { color: var(--text-primary); }
 .error-close { color: #07151b; }
+
+/* Performance: screen-sized planned pages shrink to their content instead of keeping paper aspect. */
+#performanceChart .chart-page { aspect-ratio: auto; min-height: 0; height: auto; overflow: visible; }
+#performanceChart .chart-page-body { position: relative; inset: auto; padding: 18px 6%; }

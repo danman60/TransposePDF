@@ -67,6 +67,11 @@ def main():
         page.keyboard.press("PageUp"); page.wait_for_timeout(250)
         results["back_to_first"] = active_title(page) == "Alpha"
         page.screenshot(path=str(ARTIFACTS / "setlist-performance-song-mode.png"))
+        lyric_px = "() => parseFloat(getComputedStyle(document.querySelector('#performanceChart .lyric-line')).fontSize)"
+        base_px = page.evaluate(lyric_px)
+        page.evaluate("window.transposeApp.performance.setFontScale(1.6)"); page.wait_for_timeout(250)
+        results["text_slider_scales_chart"] = page.evaluate(lyric_px) > base_px * 1.4
+        page.evaluate("window.transposeApp.performance.setFontScale(1)"); page.wait_for_timeout(250)
 
         # Scroll mode: PageDown pages through long Alpha before advancing.
         page.locator("#performancePageTurner").select_option("scroll")
@@ -83,6 +88,8 @@ def main():
         page.evaluate("document.fullscreenElement && document.exitFullscreen()"); page.wait_for_timeout(300)
         page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(300)
         page.screenshot(path=str(ARTIFACTS / "setlist-performance-phone.png"))
+        results["phone_lyrics_readable"] = page.evaluate("() => parseFloat(getComputedStyle(document.querySelector('#performanceChart .lyric-line')).fontSize)") >= 16
+        results["phone_no_sideways_scroll"] = page.evaluate("() => { const s = document.getElementById('performanceShell'); return s.scrollWidth <= s.clientWidth; }")
         page.set_viewport_size({"width": 1280, "height": 800})
         page.locator("#performanceExit").click()
         page.reload(wait_until="domcontentloaded")

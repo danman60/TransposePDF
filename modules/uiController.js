@@ -220,6 +220,7 @@ class UIController {
       pageTurner: localStorage.getItem('transposepdf.page-turner')
     });
     this.performance.bindGestureSurface(this.elements.performanceShell);
+    window.addEventListener('resize', () => { if (this.performance.state.active) this.renderPerformance(this.performance.snapshot()); });
     this.controlBindings = new ControlBindings({ actions: {
       previous: () => this.performance.previous(), next: () => this.performance.next(),
       transposeDown: () => this.transposeSong(this.activeSongId, -1),
@@ -2289,15 +2290,30 @@ class UIController {
     this.elements.performanceTitle.textContent = song.title;
     if (this.elements.performanceSetPosition) this.elements.performanceSetPosition.textContent = `${index + 1} / ${this.currentSongs.length}${upNext ? ` · Next: ${upNext.title}` : ' · End of set'}`;
     if (this.elements.performancePageTurner) this.elements.performancePageTurner.value = state.pageTurner;
-    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(song, { editable: false, columns: state.columns });
-    this.elements.performanceChart.style.fontSize = `${state.fontScale}em`;
+    this.elements.performanceChart.innerHTML = this.renderLeadSheetContent(this.performancePageSong(song, state.fontScale, state.columns), { editable: false, columns: state.columns });
     this.elements.performanceChart.style.removeProperty('column-count');
     this.elements.performanceChart.dataset.reducedMotion = String(state.reducedMotion);
   }
 
+  /** Chart text scales with page width (cqi), so performance plans a screen-sized page: Text slider and phones get readable type. */
+  performancePageSong(song, fontScale = 1, columns = 1) {
+    const shell = this.elements.performanceShell;
+    const chartWidth = this.elements.performanceChart.clientWidth || shell.clientWidth || 1100;
+    const songFont = Math.max(10, Math.min(18, Number(song.layout?.fontSize) || 13));
+    const clamp = value => Math.round(Math.max(288, Math.min(1296, value)));
+    const rawWidth = songFont * chartWidth / (30 * fontScale);
+    // Below the planner's 288pt page floor, grow the type instead (planner caps it at 18pt).
+    const fontSize = rawWidth < 288 ? Math.min(18, Math.round(songFont * 288 / rawWidth)) : songFont;
+    const width = clamp(rawWidth);
+    // One column reads straight down (tall pages); multiple columns need each page to fit the screen.
+    const height = columns > 1 ? clamp(width * Math.max(1, shell.clientHeight - 160) / chartWidth) : 1296;
+    const margins = { top: 18, right: 18, bottom: 18, left: 18 };
+    return { ...song, layout: { ...(song.layout || {}), fontSize, pageSize: 'custom', customPage: { width, height }, orientation: width > height ? 'landscape' : 'portrait', margins } };
+  }
+
   enterPerformance() {
     const song = this.currentSongs.find(item => String(item.id) === String(this.activeSongId));
-    const columns = Math.max(1, Math.min(3, Number(song?.layout?.columns) || 1));
+    const columns = window.innerWidth < 600 ? 1 : Math.max(1, Math.min(3, Number(song?.layout?.columns) || 1));
     this.performance.setColumns(columns);
     if (this.elements.performanceColumns) this.elements.performanceColumns.value = String(columns);
     return this.performance.enter({ fullscreen: true, fullscreenElement: this.elements.performanceShell });
