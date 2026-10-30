@@ -190,8 +190,16 @@ class SongModel {
       ...song,
       sourceType: 'pdf',
       source: { ...(song.source || {}), preserveLayout: true },
-      sections: this.parseEditorText(song.songText || '')
+      sections: this.parseEditorText(this.withoutTitleRow(song.songText || '', song.title))
     });
+  }
+
+  /** The PDF's title row is already the chart header; parsed as a lyric it would print twice. */
+  static withoutTitleRow(text, title) {
+    const rows = String(text).split('\n');
+    const first = rows.findIndex(row => row.trim());
+    const same = first >= 0 && title && rows[first].trim().toLowerCase() === String(title).trim().toLowerCase();
+    return same ? rows.filter((_, index) => index !== first).join('\n') : text;
   }
 
   static parseEditorText(text) {

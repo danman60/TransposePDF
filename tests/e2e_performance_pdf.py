@@ -31,6 +31,7 @@ def main():
         lyric = page.locator("#performanceChart .lyric-line", has_text="Amazing grace how sweet the sound")
         results["performance_reflows_pdf"] = lyric.count() == 1 and page.locator("#performanceChart .pdf-layout-container").count() == 0
         results["pdf_lyrics_readable"] = results["performance_reflows_pdf"] and lyric.evaluate("e => parseFloat(getComputedStyle(e).fontSize)") >= 20
+        results["title_not_repeated_as_lyric"] = page.locator("#performanceChart .lyric-line").evaluate_all("els => !els.some(e => e.textContent.trim() === 'Amazing Grace')")
         context.close()
     results["no_page_errors"] = not errors
     for key, value in results.items():
