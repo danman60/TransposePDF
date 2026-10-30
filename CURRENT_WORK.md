@@ -5,6 +5,7 @@
 v62 is committed, pushed, deployed, and live-verified. It reserves the footer’s actual rendered height so added sections wrap before writer/arrangement credits instead of overlapping them.
 
 ## Recent Changes
+- v67 candidate (same branch): imported PDFs read as a chart in Performance. A PDF song kept `preserveLayout`, so Performance drew the original page as ~8px positioned text with blue detection boxes and dark-on-dark lines (0 lyric lines rendered). `performancePageSong` now renders its parsed sections; editor and PDF export keep the original layout. PDF lyrics 22.8px phone / 29.9px tablet. New `tests/e2e_performance_pdf.py` 4/4; page-turner E2E 17/17 (a rerun hit a fill timeout under host memory pressure); `e2e_ux_gaps.py` not run (browser killed at 357 MB free). Seen, not fixed (import parser, also in editor): PDF title/subtitle lines land as lyrics; sample key detected Gm vs "Key of G".
 - v66 candidate (same branch): Performance pages fill the screen width. The editor page cap `min(100%, 794px)` (A4 at 96dpi) still applied in Performance, so the planner sized type for 1100px but the page drew at 794px: landscape tablets (1180×820) got a narrow centered page and 2-column charts wrapped. Now landscape page 1085px, lyrics 29.9px in both tablet orientations, no sideways scroll. E2E 17/17 (new `tablet_page_fills_width`), layout 31/31.
 
 - v65 candidate (same branch): Performance shows arrangement order under the title and drops empty chord lanes (chordless lines, wrapped continuations) — performance only via `compactLanes`; editor/PDF keep the v58 lane. E2E 16/16, inline-edit and UX-gap suites pass.
@@ -242,4 +243,9 @@ Complete. Credits/Arrangement footer now has a horizontal drag boundary. Height 
 ## Arrival brief — 2026-10-30 01:08 ET — fable-transpose
 - DONE: Since your last message, nothing new is finished. #33 is owned by fable-tvguide, so I stood down from it.
 - IN PROGRESS: Claim check, then the youth-sports notification bell, the alt I offered tonight.
+- NEEDS YOU: nothing
+
+## Arrival brief — 2026-10-30 01:39 ET — fable-transpose
+- DONE: Rookie follows now appear on the activity feed as "new supporter" rows. Preview is Ready; the live follow is untested because it needs a prod write.
+- IN PROGRESS: Starting a tablet-size check of TransposePDF Performance mode. ETA about 30 min.
 - NEEDS YOU: nothing

@@ -2312,7 +2312,9 @@ class UIController {
     // One column reads straight down (tall pages); multiple columns need each page to fit the screen.
     const height = columns > 1 ? clamp(width * Math.max(1, shell.clientHeight - 160) / chartWidth) : 1296;
     const margins = { top: 18, right: 18, bottom: 18, left: 18 };
-    return { ...song, layout: { ...(song.layout || {}), fontSize, pageSize: 'custom', customPage: { width, height }, orientation: width > height ? 'landscape' : 'portrait', margins } };
+    // An imported PDF's original-page view is tiny on stage; Performance reflows its parsed sections instead.
+    const source = song.sections?.length ? { ...(song.source || {}), preserveLayout: false } : song.source;
+    return { ...song, source, layout: { ...(song.layout || {}), fontSize, pageSize: 'custom', customPage: { width, height }, orientation: width > height ? 'landscape' : 'portrait', margins } };
   }
 
   enterPerformance() {
