@@ -445,10 +445,9 @@ class MusicTheory {
     if (!chords || chords.length === 0) return { key: 'C', confidence: 0 };
     
     const chordRoots = chords.map(chord => {
-      if (typeof chord === 'string') {
-        return this.extractRootNote(chord);
-      }
-      return chord.root || this.extractRootNote(chord.original);
+      const name = typeof chord === 'string' ? chord : (chord.original || chord.symbol || '');
+      const root = typeof chord === 'string' ? this.extractRootNote(chord) : (chord.root || this.extractRootNote(name));
+      return root && { root, minor: /^[A-G](?:#{1,2}|b{1,2})?m(?!aj)/.test(name) };
     }).filter(Boolean);
     
     if (chordRoots.length === 0) return { key: 'C', confidence: 0 };
@@ -460,9 +459,9 @@ class MusicTheory {
       keyScores[key] = this.calculateKeyScore(chordRoots, key);
     });
     
-    // Find the highest scoring key
+    // Highest score wins; ties keep the earlier (major-first) key.
     const bestKey = Object.keys(keyScores).reduce((a, b) => 
-      keyScores[a] > keyScores[b] ? a : b
+      keyScores[b] > keyScores[a] ? b : a
     );
     
     const confidence = keyScores[bestKey] / chordRoots.length;
@@ -479,20 +478,26 @@ class MusicTheory {
    */
   calculateKeyScore(chordRoots, key) {
     const isMinor = key.includes('m');
-    const keyRoot = key.replace('m', '');
+    // Scale lookups are sharp-spelled; without this Bb, Eb and Ab never scored.
+    const keyRoot = this.FLAT_TO_SHARP_MAP[key.replace('m', '')] || key.replace('m', '');
     
     // Get scale degrees for the key
     const scaleRoots = this.getScaleRoots(keyRoot, isMinor);
+    // Diatonic triad quality per degree (true = minor, null = either: minor keys borrow a major V).
+    const minorDegrees = isMinor ? [true, null, false, true, null, false, false] : [false, true, true, false, false, true, null];
+    const weights = isMinor ? [3, 1, 2, 2, 2, 2, 1] : [3, 1, 2, 2, 2, 2, 1]; // i/I, ii, iii, IV, V, vi, vii
     let score = 0;
     
-    chordRoots.forEach(chordRoot => {
-      const rootIndex = scaleRoots.indexOf(chordRoot);
+    chordRoots.forEach(({ root, minor }) => {
+      const rootIndex = scaleRoots.indexOf(root);
       if (rootIndex !== -1) {
-        // Weight common scale degrees higher
-        const weights = isMinor ? [3, 1, 2, 2, 2, 2, 1] : [3, 1, 2, 2, 2, 1, 1]; // i/I, ii, iii, IV, V, vi, vii
-        score += weights[rootIndex] || 1;
+        // Root-only scoring made G and Gm (G C D vs G Cm Dm) tie; a chord of the wrong quality counts a quarter.
+        const fits = minorDegrees[rootIndex] === null || minorDegrees[rootIndex] === minor;
+        score += (weights[rootIndex] || 1) * (fits ? 1 : 0.25);
       }
     });
+    // Songs usually open on the tonic chord: the only thing separating C from Am on C G Am F.
+    if (chordRoots[0].root === keyRoot && chordRoots[0].minor === isMinor) score += 2;
     
     return score;
   }

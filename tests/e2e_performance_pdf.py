@@ -25,6 +25,7 @@ def main():
         page.wait_for_function("() => window.transposeApp?.libraryStore")
         page.locator("#fileInput").set_input_files(str(PDF))
         page.wait_for_function("() => window.transposeApp.currentSongs.length === 1", timeout=30000)
+        results["pdf_key_detected_g"] = page.evaluate("window.transposeApp.currentSongs[0].originalKey") == "G"
         results["editor_keeps_original_layout"] = page.locator(".pdf-layout-container").count() > 0
         page.locator("#performanceButton").click()
         page.locator("#performanceShell").wait_for(state="visible"); page.wait_for_timeout(500)
