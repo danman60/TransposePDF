@@ -1900,6 +1900,6 @@ textarea:focus-visible {
 .error-close { color: #07151b; }
 
 /* Performance: screen-sized planned pages shrink to their content instead of keeping paper aspect. */
-#performanceChart .chart-page { aspect-ratio: auto; min-height: 0; height: auto; overflow: visible; }
+#performanceChart .chart-page { width: 100%; aspect-ratio: auto; min-height: 0; height: auto; overflow: visible; }
 #performanceChart .chart-page-body { position: relative; inset: auto; padding: 18px 6%; }
 #performanceChart .paginated-chart .chart-line { min-height: 0; }

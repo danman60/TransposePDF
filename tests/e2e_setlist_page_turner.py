@@ -86,6 +86,8 @@ def main():
         results["scroll_mode_advances_at_bottom"] = active_title(page) == "Gamma"
         page.screenshot(path=str(ARTIFACTS / "setlist-performance-scroll-mode.png"))
         page.evaluate("document.fullscreenElement && document.exitFullscreen()"); page.wait_for_timeout(300)
+        page.set_viewport_size({"width": 1180, "height": 820}); page.wait_for_timeout(300)
+        results["tablet_page_fills_width"] = page.evaluate("() => { const c = document.getElementById('performanceChart'); return c.querySelector('.chart-page').getBoundingClientRect().width >= c.clientWidth * 0.95; }")
         page.set_viewport_size({"width": 390, "height": 844}); page.wait_for_timeout(300)
         page.screenshot(path=str(ARTIFACTS / "setlist-performance-phone.png"))
         results["phone_no_empty_chord_lanes"] = page.evaluate("() => [...document.querySelectorAll('#performanceChart .chord-line')].every(l => l.querySelector('.chord-token, button, [data-chord-id]'))")

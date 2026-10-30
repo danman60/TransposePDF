@@ -5,6 +5,7 @@
 v62 is committed, pushed, deployed, and live-verified. It reserves the footer’s actual rendered height so added sections wrap before writer/arrangement credits instead of overlapping them.
 
 ## Recent Changes
+- v66 candidate (same branch): Performance pages fill the screen width. The editor page cap `min(100%, 794px)` (A4 at 96dpi) still applied in Performance, so the planner sized type for 1100px but the page drew at 794px: landscape tablets (1180×820) got a narrow centered page and 2-column charts wrapped. Now landscape page 1085px, lyrics 29.9px in both tablet orientations, no sideways scroll. E2E 17/17 (new `tablet_page_fills_width`), layout 31/31.
 
 - v65 candidate (same branch): Performance shows arrangement order under the title and drops empty chord lanes (chordless lines, wrapped continuations) — performance only via `compactLanes`; editor/PDF keep the v58 lane. E2E 16/16, inline-edit and UX-gap suites pass.
 - v64 candidate (branch fable-night-1029, not deployed): Performance now plans a screen-sized page instead of printing the A4/Letter page. Chart text is page-width-relative (cqi), so phones showed 7.9px lyrics and the Text slider did nothing anywhere. Now phone lyrics 22.8px, desktop 21.6px at 1× and 44px at 2×, no sideways scroll; one column uses tall content-height pages, 2–3 columns use one-screen pages. Phones (<600px) enter Performance in one column. PDF/editor untouched. E2E 14/14.
@@ -236,4 +237,9 @@ Complete. Credits/Arrangement footer now has a horizontal drag boundary. Height 
 ## Arrival brief — 2026-10-30 00:51 ET — fable-transpose
 - DONE: #24, the youth-sports activity feed, is built, pushed and preview-deployed. After the disk alert I deleted my own build output and installed packages from that worktree (about 814 MB). Source files are intact. Root disk now has 6.5 GB free.
 - IN PROGRESS: nothing.
+- NEEDS YOU: nothing
+
+## Arrival brief — 2026-10-30 01:08 ET — fable-transpose
+- DONE: Since your last message, nothing new is finished. #33 is owned by fable-tvguide, so I stood down from it.
+- IN PROGRESS: Claim check, then the youth-sports notification bell, the alt I offered tonight.
 - NEEDS YOU: nothing
